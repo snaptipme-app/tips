@@ -1,27 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 
-const BarChartIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 20V10M12 20V4M6 20v-6" />
-  </svg>
-);
+/* ── Inline SVG Icons ── */
 const ClickIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6c6cff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 15l-2 5L9 9l11 4-5 2z" /><path d="M22 22l-5-10" />
   </svg>
 );
 const EyeIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" />
   </svg>
 );
-const TrendIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const PulseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
   </svg>
 );
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+const EmptyIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+  </svg>
+);
+
+const pageBg = {
+  minHeight: '100dvh',
+  background: '#0a0a1a',
+};
+
+const card = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: '16px',
+  padding: '16px',
+  boxSizing: 'border-box',
+  width: '100%',
+};
 
 export default function AdminStats() {
   const { user } = useAuth();
@@ -50,24 +70,16 @@ export default function AdminStats() {
   useEffect(() => { fetchData(); }, []);
 
   const handleReset = async () => {
-    if (!window.confirm('Are you sure you want to delete all analytics data?')) return;
+    if (!window.confirm('Are you sure you want to delete all analytics data? This cannot be undone.')) return;
     setResetting(true);
     try {
       const token = localStorage.getItem('snaptip_token');
       const response = await fetch('/api/analytics/reset', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       });
-      
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Server error resetting analytics');
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Server error');
       setSummary({ total_events: 0, total_clicks: 0, total_views: 0 });
       setEvents([]);
     } catch (err) {
@@ -77,134 +89,191 @@ export default function AdminStats() {
     }
   };
 
+  /* ── Loading ── */
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center" style={pageBg}>
+        <div style={{ width: '36px', height: '36px', border: '3px solid #6c6cff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
       </div>
     );
   }
 
+  /* ── Error ── */
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center max-w-md w-full">
-          <p className="text-red-400 font-bold text-lg mb-2">Access Denied</p>
-          <p className="text-slate-400 text-sm">{error}</p>
+      <div className="flex items-center justify-center" style={{ ...pageBg, padding: '16px' }}>
+        <div style={{ ...card, maxWidth: '360px', textAlign: 'center', padding: '32px 20px' }}>
+          <p style={{ fontSize: '18px', fontWeight: 700, color: '#ef4444', marginBottom: '8px' }}>Access Denied</p>
+          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>{error}</p>
         </div>
       </div>
     );
   }
 
-  const conversionRate = summary && summary.total_clicks > 0
-    ? ((summary.total_views / summary.total_clicks) * 100).toFixed(1)
-    : '0.0';
+  const clicks = summary?.total_clicks ?? 0;
+  const views = summary?.total_views ?? 0;
+  const viewRate = clicks > 0 ? ((views / clicks) * 100).toFixed(1) : '0.0';
+  const viewRateNum = parseFloat(viewRate);
+
+  /* Conversion insight */
+  let insight = '';
+  if (clicks === 0) {
+    insight = '📊 No data yet. Share your QR code to start tracking.';
+  } else if (viewRateNum < 30) {
+    insight = '⚠️ Low engagement. Consider improving the tip page.';
+  } else if (viewRateNum >= 70) {
+    insight = '🔥 High intent! Consider integrating real payments.';
+  } else {
+    insight = '📈 Moderate engagement. Keep optimizing your tip page.';
+  }
+
+  const formatTime = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight mb-1">Admin Analytics</h1>
-            <p className="text-sm text-slate-500 font-medium">Fake Door payment tracking overview</p>
+    <div style={{ ...pageBg, animation: 'fadeIn 0.4s ease-out' }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '20px 16px 40px', boxSizing: 'border-box' }}>
+
+        {/* ── ① Header ── */}
+        <div className="flex items-start justify-between" style={{ marginBottom: '20px', gap: '12px' }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.01em' }}>Admin Analytics</h1>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', marginTop: '4px', fontWeight: 500 }}>Fake door payment tracking</p>
           </div>
           <button
             onClick={handleReset}
             disabled={resetting}
-            className="shrink-0 px-4 py-2 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 hover:text-red-300 transition-all active:scale-95 disabled:opacity-50"
+            className="flex items-center active:scale-95"
+            style={{
+              flexShrink: 0,
+              gap: '5px',
+              padding: '6px 14px',
+              borderRadius: '50px',
+              background: 'transparent',
+              border: '1px solid rgba(239,68,68,0.3)',
+              color: '#ef4444',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              opacity: resetting ? 0.5 : 1,
+            }}
           >
-            {resetting ? 'Clearing...' : 'Reset Analytics'}
+            <TrashIcon />
+            {resetting ? 'Clearing...' : 'Reset'}
           </button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {/* Clicks */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">Payment Clicks</span>
-              <div className="text-blue-400"><ClickIcon /></div>
+        {/* ── ② Stats Cards ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+
+          {/* Payment Clicks */}
+          <div style={card}>
+            <div className="flex items-start justify-between" style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Payment Clicks</span>
+              <ClickIcon />
             </div>
-            <p className="text-3xl font-black text-white">{summary?.total_clicks ?? 0}</p>
+            <p style={{ fontSize: '36px', fontWeight: 800, color: '#ffffff', lineHeight: 1.1, marginBottom: '4px' }}>{clicks}</p>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>tourists clicked pay</p>
           </div>
 
-          {/* Views */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">Message Views</span>
-              <div className="text-emerald-400"><EyeIcon /></div>
+          {/* Message Views */}
+          <div style={card}>
+            <div className="flex items-start justify-between" style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Message Views</span>
+              <EyeIcon />
             </div>
-            <p className="text-3xl font-black text-white">{summary?.total_views ?? 0}</p>
+            <p style={{ fontSize: '36px', fontWeight: 800, color: '#ffffff', lineHeight: 1.1, marginBottom: '4px' }}>{views}</p>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>saw maintenance message</p>
           </div>
 
-          {/* Conversion */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">View Rate</span>
-              <div className="text-amber-400"><TrendIcon /></div>
+          {/* View Rate */}
+          <div style={card}>
+            <div className="flex items-start justify-between" style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>View Rate</span>
+              <PulseIcon />
             </div>
-            <p className="text-3xl font-black text-white">{conversionRate}%</p>
-            <p className="text-xs text-slate-500 mt-1 truncate">views / clicks</p>
+            <p style={{ fontSize: '36px', fontWeight: 800, color: '#ffffff', lineHeight: 1.1, marginBottom: '4px' }}>{viewRate}%</p>
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, marginBottom: '10px' }}>views / clicks ratio</p>
+            {/* Progress bar */}
+            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${Math.min(viewRateNum, 100)}%`,
+                height: '100%',
+                borderRadius: '2px',
+                background: viewRateNum >= 70 ? '#00C896' : viewRateNum >= 30 ? '#f59e0b' : '#ef4444',
+                transition: 'width 0.6s ease-out',
+              }} />
+            </div>
+          </div>
+
+          {/* Conversion Insight */}
+          <div style={{ ...card, background: 'rgba(108,108,255,0.06)', border: '1px solid rgba(108,108,255,0.12)' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: 500, lineHeight: 1.5 }}>{insight}</p>
           </div>
         </div>
 
-        {/* Events Table */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm">
-          <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
-            <div className="text-indigo-400"><BarChartIcon /></div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Event Log</h2>
-            <span className="text-xs text-slate-500 ml-auto font-bold">{events.length} events</span>
+        {/* ── ③ Event Log ── */}
+        <div style={{ marginBottom: '16px' }}>
+          <div className="flex items-center" style={{ gap: '8px', marginBottom: '14px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Event Log</h2>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.4)',
+              background: 'rgba(255,255,255,0.08)',
+              borderRadius: '50px',
+              padding: '2px 10px',
+            }}>
+              {events.length}
+            </span>
           </div>
 
           {events.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-slate-500 font-semibold text-sm">No analytics events recorded yet.</p>
+            <div className="flex flex-col items-center justify-center" style={{ ...card, padding: '40px 16px' }}>
+              <EmptyIcon />
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, marginTop: '12px' }}>No events recorded yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-800">
-                    <th className="px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Username</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Event</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((ev) => (
-                    <tr key={ev.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                      <td className="px-5 py-3.5 text-xs text-slate-400 font-medium whitespace-nowrap">
-                        {new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        <span className="text-slate-600 ml-1.5">
-                          {new Date(ev.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-200 truncate max-w-[150px]">
-                        {ev.employee_name || '—'}
-                      </td>
-                      <td className="px-5 py-3.5 text-xs text-blue-400 font-medium hidden sm:table-cell truncate max-w-[120px]">
-                        @{ev.employee_username || '—'}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md inline-block truncate max-w-[120px] ${
-                          ev.event === 'click_payment' 
-                            ? 'bg-blue-900/40 text-blue-300' 
-                            : 'bg-emerald-900/40 text-emerald-300'
-                        }`}>
-                          {ev.event}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-sm font-bold text-slate-200 text-right whitespace-nowrap">
-                        {ev.amount != null ? `$${Number(ev.amount).toFixed(2)}` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {events.map((ev) => {
+                const isClick = ev.event === 'click_payment';
+                const dotColor = isClick ? '#6c6cff' : '#00C896';
+                const label = isClick ? 'Payment Click' : 'View Message';
+                return (
+                  <div key={ev.id} style={card}>
+                    <div className="flex items-center justify-between" style={{ marginBottom: '4px' }}>
+                      {/* Left: dot + label */}
+                      <div className="flex items-center" style={{ gap: '8px', minWidth: 0 }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                      </div>
+                      {/* Right: amount + time */}
+                      <div className="flex items-center" style={{ gap: '10px', flexShrink: 0 }}>
+                        {ev.amount != null && (
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#00C896' }}>${Number(ev.amount).toFixed(2)}</span>
+                        )}
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>{formatTime(ev.created_at)}</span>
+                      </div>
+                    </div>
+                    {/* Username */}
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, marginLeft: '16px' }}>
+                      @{ev.employee_username || '—'}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
