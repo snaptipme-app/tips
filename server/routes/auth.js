@@ -124,13 +124,14 @@ router.post('/verify-otp', async (req, res) => {
 // POST /api/auth/register
 router.post('/register', upload.single('profileImage'), async (req, res) => {
   try {
-    const { firstName, lastName, email, username, password } = req.body;
+    const { firstName, lastName, email, username: rawUsername, password } = req.body;
     const db = getDB();
 
-    if (!firstName || !lastName || !email || !username || !password) {
+    if (!firstName || !lastName || !email || !rawUsername || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
+    const username = rawUsername.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
 
     const otpRecord = rowToObj(

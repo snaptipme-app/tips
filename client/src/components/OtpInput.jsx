@@ -36,7 +36,16 @@ export default function OtpInput({ value = '', onChange }) {
   };
 
   return (
-    <div className="flex justify-center" style={{ gap: '10px', margin: '12px 0' }} onPaste={handlePaste}>
+    <div
+      className="flex justify-center"
+      style={{
+        gap: '8px',
+        margin: '12px 0',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+      onPaste={handlePaste}
+    >
       {Array.from({ length: 6 }).map((_, idx) => (
         <input
           key={idx}
@@ -49,18 +58,21 @@ export default function OtpInput({ value = '', onChange }) {
           onKeyDown={(e) => handleKeyDown(e, idx)}
           onFocus={(e) => e.target.select()}
           style={{
-            width: '46px',
-            height: '54px',
+            flex: 1,
+            maxWidth: '48px',
+            height: '56px',
             textAlign: 'center',
             fontSize: '20px',
             fontWeight: 700,
-            borderRadius: '14px',
+            borderRadius: '12px',
             outline: 'none',
             background: 'rgba(255,255,255,0.06)',
             border: value[idx] ? '2px solid #00C896' : '2px solid rgba(255,255,255,0.1)',
             color: '#ffffff',
             boxShadow: value[idx] ? '0 0 12px rgba(0,200,150,0.25)' : 'none',
             transition: 'all 0.2s ease',
+            boxSizing: 'border-box',
+            minWidth: 0,
           }}
         />
       ))}

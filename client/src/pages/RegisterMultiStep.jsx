@@ -82,15 +82,18 @@ const outerCard = {
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: '24px',
-  padding: '28px',
+  padding: '24px 16px',
   boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+  boxSizing: 'border-box',
+  width: '100%',
 };
 
 const innerCard = {
   background: 'rgba(255,255,255,0.05)',
   borderRadius: '18px',
-  padding: '24px',
+  padding: '20px 16px',
   marginTop: '20px',
+  boxSizing: 'border-box',
 };
 
 const inputBase = {
@@ -104,6 +107,7 @@ const inputBase = {
   fontSize: '15px',
   outline: 'none',
   transition: 'all 0.2s ease',
+  boxSizing: 'border-box',
 };
 
 const iconLeft = {
@@ -116,13 +120,13 @@ const iconLeft = {
 
 const gradientBtn = {
   width: '100%',
-  height: '54px',
+  height: '52px',
   borderRadius: '50px',
   background: 'linear-gradient(135deg, #5b6ef5 0%, #7c3aed 100%)',
   boxShadow: '0 6px 24px rgba(124,58,237,0.5)',
   border: 'none',
   color: '#ffffff',
-  fontSize: '16px',
+  fontSize: '15px',
   fontWeight: 700,
   cursor: 'pointer',
   transition: 'all 0.2s ease',
@@ -130,6 +134,7 @@ const gradientBtn = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: '8px',
+  boxSizing: 'border-box',
 };
 
 function handleFocus(e) {
@@ -296,8 +301,8 @@ export default function RegisterMultiStep() {
   };
 
   return (
-    <div className="flex items-center justify-center" style={{ ...pageBg, padding: '20px' }}>
-      <div style={{ width: '90%', maxWidth: '420px' }}>
+    <div className="flex items-center justify-center" style={{ ...pageBg, padding: '16px' }}>
+      <div style={{ width: '100%', maxWidth: 'min(480px, calc(100vw - 32px))' }}>
 
         {/* Outer card */}
         <div style={outerCard}>
@@ -324,21 +329,21 @@ export default function RegisterMultiStep() {
               <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
                 <h2 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', textAlign: 'center', marginBottom: '20px' }}>Create your account</h2>
 
-                {/* First + Last name row */}
-                <div className="flex" style={{ gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>First Name</label>
-                    <div style={{ position: 'relative' }}>
-                      <div style={iconLeft}><PersonInputIcon /></div>
-                      <input style={inputBase} placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus onFocus={handleFocus} onBlur={handleBlur} />
-                    </div>
+                {/* First Name */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>First Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={iconLeft}><PersonInputIcon /></div>
+                    <input style={inputBase} placeholder="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus onFocus={handleFocus} onBlur={handleBlur} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Last Name</label>
-                    <div style={{ position: 'relative' }}>
-                      <div style={iconLeft}><PersonInputIcon /></div>
-                      <input style={inputBase} placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} onFocus={handleFocus} onBlur={handleBlur} />
-                    </div>
+                </div>
+
+                {/* Last Name */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>Last Name</label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={iconLeft}><PersonInputIcon /></div>
+                    <input style={inputBase} placeholder="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} onFocus={handleFocus} onBlur={handleBlur} />
                   </div>
                 </div>
 
