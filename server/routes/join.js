@@ -4,7 +4,6 @@ const router = express.Router();
 // GET /join/:token → serve a self-contained HTML page
 router.get('/:token', (req, res) => {
   const { token } = req.params;
-  const apiBase = `${req.protocol}://${req.get('host')}`;
 
   res.setHeader('Content-Type', 'text/html');
   res.send(`<!DOCTYPE html>
@@ -249,8 +248,12 @@ router.get('/:token', (req, res) => {
   </div>
 
   <script>
-    const TOKEN = '${token}';
-    const API = '${apiBase}/api';
+    // Extract token from server injection OR window.location as fallback
+    const TOKEN = '${token}' || window.location.pathname.split('/join/')[1] || window.location.pathname.split('/').pop();
+    const API = '/api'; // Always use relative path so it correctly proxies through Nginx
+
+    console.log('[join] Final TOKEN:', TOKEN);
+    console.log('[join] Fetch URL:', API + '/business/invite-info/' + TOKEN);
 
     const $ = id => document.getElementById(id);
 
