@@ -99,11 +99,17 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* Business link */}
+        {/* Business Team Card */}
         {user?.account_type === 'business' && (
-          <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ height: 48, borderRadius: 16, backgroundColor: CARD, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-            <Ionicons name="people-outline" size={18} color={ACCENT} />
-            <Text style={{ color: ACCENT, fontSize: 14, fontWeight: '600' }}>Manage Team →</Text>
+          <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, backgroundColor: 'rgba(108,108,255,0.1)', borderWidth: 1, borderColor: 'rgba(108,108,255,0.3)', padding: 16, gap: 12 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="people" size={22} color={ACCENT} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Manage Your Team</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Add members, send invites</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
           </TouchableOpacity>
         )}
       </ScrollView>

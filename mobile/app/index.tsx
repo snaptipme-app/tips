@@ -1,11 +1,41 @@
+import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../lib/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
+import api from '../lib/api';
 
 export default function Index() {
-  const { token, loading } = useAuth();
+  const { token, user, loading } = useAuth();
+  const [checking, setChecking] = useState(true);
+  const [destination, setDestination] = useState<string | null>(null);
 
-  if (loading) {
+  useEffect(() => {
+    if (loading) return;
+
+    if (!token) {
+      setDestination('/login');
+      setChecking(false);
+      return;
+    }
+
+    // Business owners: check if they have a business set up
+    if (user?.account_type === 'business') {
+      api.get('/business/me')
+        .then(() => {
+          setDestination('/(tabs)/home');
+        })
+        .catch(() => {
+          // No business yet → go to setup
+          setDestination('/business/setup');
+        })
+        .finally(() => setChecking(false));
+    } else {
+      setDestination('/(tabs)/home');
+      setChecking(false);
+    }
+  }, [token, user, loading]);
+
+  if (loading || checking) {
     return (
       <View style={{ flex: 1, backgroundColor: '#080818', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#6c6cff" />
@@ -13,6 +43,5 @@ export default function Index() {
     );
   }
 
-  if (token) return <Redirect href="/(tabs)/home" />;
-  return <Redirect href="/login" />;
+  return <Redirect href={destination as any} />;
 }

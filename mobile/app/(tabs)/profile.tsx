@@ -221,16 +221,31 @@ export default function Profile() {
 
         {/* ── Business Settings (owner only) ── */}
         {user?.account_type === 'business' && (
-          <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: BORDER, gap: 12 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="people-outline" size={20} color={ACCENT} />
+          <>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Business Settings</Text>
+            <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 20, overflow: 'hidden' }}>
+              <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="people-outline" size={18} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>My Team</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Manage team members</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/business/invite')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="person-add-outline" size={18} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Invite Members</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Send invitations</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Business Settings</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Manage team & invitations</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
-          </TouchableOpacity>
+          </>
         )}
 
         {/* ── Withdraw ── */}

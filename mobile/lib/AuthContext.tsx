@@ -46,9 +46,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (identifier: string, password: string) => {
     const { data } = await api.post('/auth/login', { email: identifier, password });
     await AsyncStorage.setItem('snaptip_token', data.token);
-    await AsyncStorage.setItem('snaptip_user', JSON.stringify(data.employee));
     setToken(data.token);
-    setUser(data.employee);
+
+    // Immediately fetch full profile from dashboard to get account_type etc.
+    try {
+      const dashRes = await api.get('/dashboard', { headers: { Authorization: `Bearer ${data.token}` } });
+      const fullUser = { ...data.employee, ...dashRes.data.employee, balance: dashRes.data.employee?.balance ?? data.employee.balance };
+      console.log('account_type:', fullUser.account_type);
+      await AsyncStorage.setItem('snaptip_user', JSON.stringify(fullUser));
+      setUser(fullUser);
+    } catch {
+      // Fallback to login response data
+      console.log('account_type (fallback):', data.employee.account_type);
+      await AsyncStorage.setItem('snaptip_user', JSON.stringify(data.employee));
+      setUser(data.employee);
+    }
   };
 
   const logout = async () => {

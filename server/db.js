@@ -102,6 +102,14 @@ async function initDB() {
     db.run("ALTER TABLE otps ADD COLUMN email TEXT DEFAULT ''");
   } catch (_) { /* already exists */ }
 
+  try {
+    db.run("ALTER TABLE employees ADD COLUMN account_type TEXT DEFAULT 'individual'");
+  } catch (_) { /* already exists */ }
+
+  try {
+    db.run("ALTER TABLE employees ADD COLUMN job_title TEXT DEFAULT ''");
+  } catch (_) { /* already exists */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS analytics (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

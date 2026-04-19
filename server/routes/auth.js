@@ -177,10 +177,10 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
 
     db.run(
       `INSERT INTO employees
-         (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
-       hashedPassword, profileImageUrl, profileImageUrl, photoBase64]
+       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, req.body.account_type || 'individual']
     );
     saveDB();
 
@@ -206,6 +206,7 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
         profile_image_url: profileImageUrl,
         photo_base64: photoBase64,
         is_admin: 0,
+        account_type: req.body.account_type || 'individual',
       },
     });
   } catch (err) {
@@ -259,6 +260,7 @@ router.post('/login', async (req, res) => {
         email: employee.email,
         photo_base64: employee.photo_base64 || '',
         is_admin: employee.is_admin || 0,
+        account_type: employee.account_type || 'individual',
       },
     });
   } catch (err) {

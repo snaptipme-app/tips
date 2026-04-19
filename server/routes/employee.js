@@ -41,7 +41,7 @@ router.get('/:username', (req, res) => {
     const db = getDB();
 
     const rows = db.exec(
-      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url FROM employees WHERE username = ?',
+      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title FROM employees WHERE username = ?',
       [username]
     );
 
