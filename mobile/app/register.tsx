@@ -331,22 +331,26 @@ export default function Register() {
     if (Object.keys(errs).length) return;
     setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('firstName', firstName.trim());
-      fd.append('lastName', lastName.trim());
-      fd.append('email', email.trim().toLowerCase());
-      fd.append('username', username.toLowerCase());
-      fd.append('password', password);
-      const { data } = await api.post('/auth/register', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      console.log('Registering with account_type:', accountType);
+      const { data } = await api.post('/auth/register', {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        username: username.toLowerCase(),
+        password,
+        account_type: accountType,
+      });
+      console.log('Register response account_type:', data.employee?.account_type);
+      const userData = { ...data.employee, account_type: accountType };
       await AsyncStorage.setItem('snaptip_token', data.token);
-      await AsyncStorage.setItem('snaptip_user', JSON.stringify(data.employee));
-      setUser(data.employee);
+      await AsyncStorage.setItem('snaptip_user', JSON.stringify(userData));
+      setUser(userData);
       showToast('Account created! 🎉', 'success');
       setStep(4);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Registration failed.', 'error');
     } finally { setLoading(false); }
-  }, [username, password, confirmPw, firstName, lastName, email, setUser, showToast]);
+  }, [username, password, confirmPw, firstName, lastName, email, accountType, setUser, showToast]);
 
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 

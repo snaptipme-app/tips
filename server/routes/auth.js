@@ -124,12 +124,15 @@ router.post('/verify-otp', async (req, res) => {
 // POST /api/auth/register
 router.post('/register', upload.single('profileImage'), async (req, res) => {
   try {
-    const { firstName, lastName, email, username: rawUsername, password } = req.body;
+    const { firstName, lastName, email, username: rawUsername, password, account_type } = req.body;
     const db = getDB();
 
     if (!firstName || !lastName || !email || !rawUsername || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
+
+    const accountType = account_type === 'business' ? 'business' : 'individual';
+    console.log('Saving employee with account_type:', accountType);
 
     const username = rawUsername.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
@@ -180,7 +183,7 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
          (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
-       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, req.body.account_type || 'individual']
+       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, accountType]
     );
     saveDB();
 
@@ -206,7 +209,7 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
         profile_image_url: profileImageUrl,
         photo_base64: photoBase64,
         is_admin: 0,
-        account_type: req.body.account_type || 'individual',
+        account_type: accountType,
       },
     });
   } catch (err) {
