@@ -219,6 +219,20 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Business Settings (owner only) ── */}
+        {user?.account_type === 'business' && (
+          <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: BORDER, gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={20} color={ACCENT} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Business Settings</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Manage team & invitations</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+          </TouchableOpacity>
+        )}
+
         {/* ── Withdraw ── */}
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Withdraw Funds</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>

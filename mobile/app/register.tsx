@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
+import { Toast, useToast } from '../components/Toast';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -14,45 +15,85 @@ const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
+const STEPS = [
+  { label: 'Info', icon: 'person' },
+  { label: 'Verify', icon: 'mail' },
+  { label: 'Account', icon: 'key' },
+  { label: 'Photo', icon: 'camera' },
+] as const;
+
 export default function Register() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // Step 1
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Step 2
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const otpRefs = useRef<TextInput[]>([]);
+  const otpRefs = useRef<(TextInput | null)[]>([]);
+
+  // Step 3
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [accountType, setAccountType] = useState<'individual' | 'business'>('individual');
+  const [usernameValid, setUsernameValid] = useState<null | boolean>(null);
+
+  // Step 4
   const [imageUri, setImageUri] = useState('');
+  const [imageBase64, setImageBase64] = useState('');
   const [jobTitle, setJobTitle] = useState('');
 
   const progress = (step / 4) * 100;
 
+  const clearError = (field: string) => setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
+
+  // ── Username validation ──
+  useEffect(() => {
+    if (!username || username.length < 3) { setUsernameValid(null); return; }
+    const valid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
+    setUsernameValid(valid);
+  }, [username]);
+
+  // ── Step 1: Send OTP ──
   const handleStep1 = async () => {
-    if (!firstName.trim() || !lastName.trim()) return Alert.alert('Error', 'Name fields are required.');
-    if (!email.includes('@')) return Alert.alert('Error', 'Enter a valid email.');
+    const errs: Record<string, string> = {};
+    if (!firstName.trim()) errs.firstName = 'First name is required.';
+    if (!lastName.trim()) errs.lastName = 'Last name is required.';
+    if (!email.trim() || !email.includes('@')) errs.email = 'Enter a valid email.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
+      showToast(`Code sent to ${email.trim().toLowerCase()} 📧`, 'success');
       setStep(2);
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Failed to send code.');
+      showToast(e.response?.data?.error || 'Failed to send code.', 'error');
     } finally { setLoading(false); }
   };
 
+  // ── Step 2: OTP ──
   const handleOtpChange = (text: string, idx: number) => {
     const digit = text.replace(/\D/g, '').slice(-1);
     const arr = [...otp];
     arr[idx] = digit;
     setOtp(arr);
     if (digit && idx < 5) otpRefs.current[idx + 1]?.focus();
+    // Auto-submit on last digit
+    if (digit && idx === 5) {
+      const code = [...arr].join('');
+      if (code.length === 6) setTimeout(() => verifyOtp(code), 200);
+    }
   };
 
   const handleOtpKey = (e: any, idx: number) => {
@@ -64,15 +105,16 @@ export default function Register() {
     }
   };
 
-  const handleStep2 = async () => {
-    const code = otp.join('');
-    if (code.length < 6) return Alert.alert('Error', 'Enter the full 6-digit code.');
+  const verifyOtp = async (code?: string) => {
+    const c = code || otp.join('');
+    if (c.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code });
+      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code: c });
+      showToast('Email verified! ✅', 'success');
       setStep(3);
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Verification failed.');
+      showToast(e.response?.data?.error || 'Verification failed.', 'error');
     } finally { setLoading(false); }
   };
 
@@ -81,25 +123,21 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
-      Alert.alert('Sent', 'New code sent!');
+      showToast('New code sent! 📧', 'success');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Failed.');
+      showToast(e.response?.data?.error || 'Failed.', 'error');
     } finally { setLoading(false); }
   };
 
-  const handleStep3 = () => {
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) return Alert.alert('Error', 'Username: 3-20 chars, letters/numbers/underscores.');
-    if (password.length < 6) return Alert.alert('Error', 'Min 6 characters.');
-    if (password !== confirmPw) return Alert.alert('Error', 'Passwords do not match.');
-    setStep(4);
-  };
+  // ── Step 3: Create Account ──
+  const handleStep3 = async () => {
+    const errs: Record<string, string> = {};
+    if (!usernameValid) errs.username = 'Username: 3-20 chars, letters/numbers/underscores.';
+    if (password.length < 6) errs.password = 'Minimum 6 characters.';
+    if (password !== confirmPw) errs.confirmPw = 'Passwords do not match.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-    if (!result.canceled) setImageUri(result.assets[0].uri);
-  };
-
-  const handleSubmit = async () => {
     setLoading(true);
     try {
       const fd = new FormData();
@@ -108,73 +146,154 @@ export default function Register() {
       fd.append('email', email.trim().toLowerCase());
       fd.append('username', username.toLowerCase());
       fd.append('password', password);
-      if (imageUri) {
-        const ext = imageUri.split('.').pop() || 'jpg';
-        fd.append('profileImage', { uri: imageUri, type: `image/${ext}`, name: `photo.${ext}` } as any);
-      }
+
       const { data } = await api.post('/auth/register', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       await AsyncStorage.setItem('snaptip_token', data.token);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(data.employee));
       setUser(data.employee);
-      router.replace('/(tabs)/home');
+      showToast('Account created! 🎉', 'success');
+      setStep(4);
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || 'Registration failed.');
+      showToast(e.response?.data?.error || 'Registration failed.', 'error');
     } finally { setLoading(false); }
   };
 
-  const InputRow = ({ icon, placeholder, value, onChangeText, secure, toggle, showToggle, ...props }: any) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1, borderColor: BORDER }}>
-      <Ionicons name={icon} size={18} color="rgba(255,255,255,0.4)" />
-      <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.2)" value={value} onChangeText={onChangeText} secureTextEntry={secure} autoCapitalize="none" {...props} />
-      {toggle && (
-        <TouchableOpacity onPress={showToggle}>
-          <Ionicons name={secure ? 'eye-outline' : 'eye-off-outline'} size={18} color="rgba(255,255,255,0.4)" />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  // ── Step 4: Photo + Complete ──
+  const showPhotoOptions = () => {
+    Alert.alert('Profile Photo', 'Choose an option', [
+      { text: '📷 Take Photo', onPress: () => pickImage('camera') },
+      { text: '🖼️ Choose from Gallery', onPress: () => pickImage('gallery') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
-  const GradientBtn = ({ label, onPress, disabled }: any) => (
-    <TouchableOpacity onPress={onPress} disabled={disabled || loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (disabled || loading) ? 0.5 : 1 }}>
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Loading...' : label}</Text>
-    </TouchableOpacity>
+  const pickImage = async (source: 'camera' | 'gallery') => {
+    if (source === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') { showToast('Camera permission required.', 'error'); return; }
+    }
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      setImageBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
+  const handleComplete = async () => {
+    setLoading(true);
+    try {
+      const body: any = {};
+      if (imageBase64) { body.photo_url = imageBase64; body.photo_base64 = imageBase64; }
+      if (jobTitle.trim()) body.job_title = jobTitle.trim();
+      if (Object.keys(body).length) await api.patch('/employee/profile', body);
+
+      showToast('Setup complete! 🚀', 'success');
+      setTimeout(() => {
+        if (accountType === 'business') {
+          router.replace('/business/setup');
+        } else {
+          router.replace('/(tabs)/home');
+        }
+      }, 500);
+    } catch {
+      showToast('Failed to save. Try again.', 'error');
+    } finally { setLoading(false); }
+  };
+
+  const handleSkip = () => {
+    if (accountType === 'business') {
+      router.replace('/business/setup');
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
+  // ── Reusable Input ──
+  const InputField = ({ icon, placeholder, value, onChangeText, error, ...props }: any) => (
+    <View style={{ marginBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: error ? 'rgba(239,68,68,0.4)' : BORDER }}>
+        <Ionicons name={icon} size={18} color="rgba(255,255,255,0.4)" />
+        <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.2)" value={value} onChangeText={(t: string) => { onChangeText(t); if (error) clearError(props.errorKey); }} autoCapitalize="none" {...props} />
+        {props.right}
+      </View>
+      {error ? <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, marginLeft: 4 }}>{error}</Text> : null}
+    </View>
   );
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingTop: 60 }} keyboardShouldPersistTaps="handled">
-        {/* Progress */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 10 }}>Step {step} of 4</Text>
-        <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 24 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }} keyboardShouldPersistTaps="handled">
+
+        {/* ── Progress Bar ── */}
+        <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 16 }}>
           <View style={{ width: `${progress}%`, height: '100%', backgroundColor: GREEN, borderRadius: 2 }} />
         </View>
 
-        {/* Card */}
-        <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER }}>
-          {/* STEP 1 */}
+        {/* ── Step Indicator ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 24, position: 'relative' }}>
+          {/* Connector line */}
+          <View style={{ position: 'absolute', top: 20, left: '15%', right: '15%', height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          {STEPS.map((s, i) => {
+            const si = i + 1;
+            const done = si < step;
+            const active = si === step;
+            return (
+              <View key={i} style={{ flex: 1, alignItems: 'center', zIndex: 1 }}>
+                <View style={{
+                  width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center',
+                  backgroundColor: active ? 'rgba(0,200,150,0.15)' : done ? 'rgba(0,200,150,0.1)' : 'rgba(255,255,255,0.06)',
+                  borderWidth: 2, borderColor: active || done ? GREEN : 'transparent',
+                  shadowColor: active ? GREEN : 'transparent', shadowOpacity: active ? 0.6 : 0, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: active ? 8 : 0,
+                }}>
+                  {done ? (
+                    <Ionicons name="checkmark" size={18} color={GREEN} />
+                  ) : (
+                    <Ionicons name={s.icon as any} size={16} color={active ? GREEN : 'rgba(255,255,255,0.3)'} />
+                  )}
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: active ? '700' : '500', color: active || done ? GREEN : 'rgba(255,255,255,0.3)', marginTop: 4 }}>{s.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── Card ── */}
+        <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: BORDER }}>
+
+          {/* ═══ STEP 1: Personal Info ═══ */}
           {step === 1 && (
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
-              <InputRow icon="person-outline" placeholder="First name" value={firstName} onChangeText={setFirstName} />
-              <InputRow icon="person-outline" placeholder="Last name" value={lastName} onChangeText={setLastName} />
-              <InputRow icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" />
-              <GradientBtn label="Send Verification Code" onPress={handleStep1} />
-            </View>
+            <>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
+              <InputField icon="person-outline" placeholder="First name" value={firstName} onChangeText={setFirstName} error={errors.firstName} errorKey="firstName" />
+              <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={setLastName} error={errors.lastName} errorKey="lastName" />
+              <InputField icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={setEmail} error={errors.email} errorKey="email" keyboardType="email-address" />
+              <TouchableOpacity onPress={handleStep1} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+                {loading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 10 }}>🔒 Secure & encrypted</Text>
+            </>
           )}
 
-          {/* STEP 2 */}
+          {/* ═══ STEP 2: OTP ═══ */}
           {step === 2 && (
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 }}>Check your email</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>6-digit code sent to</Text>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email.trim().toLowerCase()}</Text>
+            <>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 }}>Check your email</Text>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>We sent a 6-digit code to</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email.trim().toLowerCase()}</Text>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
                 {otp.map((d, i) => (
                   <TextInput
                     key={i}
-                    ref={(el) => { if (el) otpRefs.current[i] = el; }}
-                    style={{ width: 44, height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center' }}
+                    ref={(el) => { otpRefs.current[i] = el; }}
+                    style={{
+                      width: 48, height: 56, borderRadius: 12, backgroundColor: INPUT_BG, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center',
+                      borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.08)',
+                      shadowColor: d ? GREEN : 'transparent', shadowOpacity: d ? 0.3 : 0, shadowRadius: 8,
+                    }}
                     maxLength={1}
                     keyboardType="number-pad"
                     value={d}
@@ -184,7 +303,9 @@ export default function Register() {
                 ))}
               </View>
 
-              <GradientBtn label="Verify Code" onPress={handleStep2} disabled={otp.join('').length < 6} />
+              <TouchableOpacity onPress={() => verifyOtp()} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Verifying...' : 'Verify Code'}</Text>
+              </TouchableOpacity>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
                 <TouchableOpacity onPress={() => { setStep(1); setOtp(['', '', '', '', '', '']); }}>
@@ -194,76 +315,127 @@ export default function Register() {
                   <Text style={{ fontSize: 13, color: GREEN }}>Resend code</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </>
           )}
 
-          {/* STEP 3 */}
+          {/* ═══ STEP 3: Credentials ═══ */}
           {step === 3 && (
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
-              <InputRow icon="at-outline" placeholder="username" value={username} onChangeText={(t: string) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20))} />
-              <InputRow icon="lock-closed-outline" placeholder="Password (min 6)" value={password} onChangeText={setPassword} secure={!showPw} toggle showToggle={() => setShowPw(!showPw)} />
-              <InputRow icon="lock-closed-outline" placeholder="Confirm password" value={confirmPw} onChangeText={setConfirmPw} secure={!showPw} />
+            <>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
+
+              {/* Username with validation indicator */}
+              <InputField
+                icon="at-outline"
+                placeholder="username"
+                value={username}
+                onChangeText={(t: string) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20))}
+                error={errors.username}
+                errorKey="username"
+                right={usernameValid !== null ? (
+                  <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} />
+                ) : null}
+              />
+              <InputField
+                icon="lock-closed-outline"
+                placeholder="Password (min 6 characters)"
+                value={password}
+                onChangeText={setPassword}
+                error={errors.password}
+                errorKey="password"
+                secureTextEntry={!showPw}
+                right={
+                  <TouchableOpacity onPress={() => setShowPw(!showPw)}>
+                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" />
+                  </TouchableOpacity>
+                }
+              />
+              <InputField
+                icon="lock-closed-outline"
+                placeholder="Confirm password"
+                value={confirmPw}
+                onChangeText={setConfirmPw}
+                error={errors.confirmPw}
+                errorKey="confirmPw"
+                secureTextEntry={!showPw}
+              />
 
               {/* Account Type */}
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 8 }}>Account Type</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-                {(['individual', 'business'] as const).map((t) => (
-                  <TouchableOpacity key={t} onPress={() => setAccountType(t)} style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: accountType === t ? 'rgba(108,108,255,0.15)' : INPUT_BG, borderWidth: 1, borderColor: accountType === t ? ACCENT : BORDER, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ color: accountType === t ? ACCENT : 'rgba(255,255,255,0.5)', fontWeight: '600', fontSize: 13 }}>
-                      {t === 'individual' ? '👤 Individual' : '🏢 Business'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {[
+                  { key: 'individual' as const, emoji: '👤', title: 'Individual', desc: 'I work alone' },
+                  { key: 'business' as const, emoji: '🏢', title: 'Business', desc: 'I manage a team' },
+                ].map((opt) => {
+                  const sel = accountType === opt.key;
+                  return (
+                    <TouchableOpacity key={opt.key} onPress={() => setAccountType(opt.key)} activeOpacity={0.8} style={{
+                      flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
+                      borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
+                      shadowColor: sel ? ACCENT : 'transparent', shadowOpacity: sel ? 0.3 : 0, shadowRadius: 10,
+                    }}>
+                      <Text style={{ fontSize: 24, marginBottom: 6 }}>{opt.emoji}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <GradientBtn label="Next →" onPress={handleStep3} />
+              <TouchableOpacity onPress={handleStep3} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+                {loading && <ActivityIndicator color="#fff" size="small" />}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity onPress={() => setStep(2)} style={{ marginTop: 12, alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
               </TouchableOpacity>
-            </View>
+            </>
           )}
 
-          {/* STEP 4 */}
+          {/* ═══ STEP 4: Photo ═══ */}
           {step === 4 && (
-            <View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Profile photo</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 20 }}>Optional — helps customers recognize you.</Text>
+            <>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done! 🎉</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
 
-              <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center', borderWidth: 2, borderStyle: 'dashed', borderColor: 'rgba(0,200,150,0.25)', borderRadius: 16, padding: 28, backgroundColor: 'rgba(0,200,150,0.03)', marginBottom: 16 }}>
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: GREEN, marginBottom: 10 }} />
-                ) : (
-                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+              <TouchableOpacity onPress={showPhotoOptions} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
+                <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: imageUri ? GREEN : 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.06)' }}>
+                  {imageUri ? (
+                    <Image source={{ uri: imageUri }} style={{ width: 100, height: 100 }} />
+                  ) : (
                     <Ionicons name="camera-outline" size={36} color={GREEN} />
-                  </View>
-                )}
-                <Text style={{ fontSize: 14, color: GREEN, fontWeight: '600' }}>{imageUri ? 'Change photo' : 'Upload photo'}</Text>
+                  )}
+                </View>
+                <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>
+                  {imageUri ? 'Change photo' : 'Add photo'}
+                </Text>
               </TouchableOpacity>
 
-              <InputRow icon="briefcase-outline" placeholder="Job title (optional)" value={jobTitle} onChangeText={setJobTitle} />
+              <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide, Driver)" value={jobTitle} onChangeText={setJobTitle} />
 
-              <GradientBtn label="Complete Registration ✓" onPress={handleSubmit} />
-              {!imageUri && (
-                <TouchableOpacity onPress={handleSubmit} disabled={loading} style={{ marginTop: 10, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Skip for now</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => setStep(3)} style={{ marginTop: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
+              <TouchableOpacity onPress={handleComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+                {loading && <ActivityIndicator color="#fff" size="small" />}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup ✓'}</Text>
               </TouchableOpacity>
-            </View>
+
+              <TouchableOpacity onPress={handleSkip} style={{ marginTop: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Skip for now</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
 
         {/* Footer */}
-        <View style={{ alignItems: 'center', marginTop: 20, paddingBottom: 40 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-            Already have an account?{' '}
-            <Link href="/login" style={{ color: '#fff', fontWeight: '700' }}>Log in</Link>
-          </Text>
-        </View>
+        {step <= 2 && (
+          <View style={{ alignItems: 'center', marginTop: 20, paddingBottom: 40 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+              Already have an account?{' '}
+              <Link href="/login" style={{ color: '#fff', fontWeight: '700' }}>Log in</Link>
+            </Text>
+          </View>
+        )}
       </ScrollView>
+      <Toast {...toast} />
     </KeyboardAvoidingView>
   );
 }
