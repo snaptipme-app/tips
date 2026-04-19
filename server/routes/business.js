@@ -303,12 +303,17 @@ router.get('/invite-info/:token', (req, res) => {
     const { token } = req.params;
     const db = getDB();
 
+    console.log('[business/invite-info] Looking up token:', token);
+
     const invitation = rowToObj(
       db.exec('SELECT * FROM invitations WHERE token = ?', [token])
     );
     if (!invitation) {
+      console.log('[business/invite-info] Token not found');
       return res.status(404).json({ error: 'Invitation not found.' });
     }
+
+    console.log('[business/invite-info] Found invitation:', JSON.stringify({ id: invitation.id, status: invitation.status, email: invitation.email, business_id: invitation.business_id }));
 
     if (invitation.status !== 'pending' && invitation.status !== 'active') {
       return res.status(400).json({ error: 'This invitation has already been used.' });
@@ -322,6 +327,8 @@ router.get('/invite-info/:token', (req, res) => {
       db.exec('SELECT business_name, business_type, logo_url FROM businesses WHERE id = ?', [invitation.business_id])
     );
 
+    console.log('[business/invite-info] Business:', JSON.stringify(business));
+
     res.json({
       business_name: business?.business_name || 'Unknown Business',
       business_type: business?.business_type || '',
@@ -329,7 +336,7 @@ router.get('/invite-info/:token', (req, res) => {
       email: invitation.email,
     });
   } catch (err) {
-    console.error('[business/invite-info]', err.message);
+    console.error('[business/invite-info] FULL ERROR:', err);
     res.status(500).json({ error: 'Server error.' });
   }
 });
