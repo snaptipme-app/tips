@@ -160,6 +160,12 @@ async function initDB() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: add expires_at to invitations
+  try {
+    db.run("ALTER TABLE invitations ADD COLUMN expires_at DATETIME DEFAULT (datetime('now', '+48 hours'))");
+  } catch (_) { /* column already exists */ }
+
   // ────────────────────────────────────────────────────────────────────
 
   saveDB();

@@ -40,4 +40,20 @@ async function sendOTPEmail(email, code) {
   });
 }
 
-module.exports = { sendOTPEmail };
+/**
+ * Send a generic HTML email (used for invitations, etc.)
+ * @param {string} to       Recipient email
+ * @param {string} subject  Email subject
+ * @param {string} html     Full HTML body
+ */
+async function sendEmail(to, subject, html) {
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: `"SnapTip" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+}
+
+module.exports = { sendOTPEmail, sendEmail };

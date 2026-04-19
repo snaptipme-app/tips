@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,179 @@ const STEPS = [
   { label: 'Photo', icon: 'camera' },
 ] as const;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   REUSABLE INPUT — memoized to prevent re-renders
+   ═══════════════════════════════════════════════════════════════════════════ */
+const InputField = memo(({ icon, placeholder, value, onChangeText, error, right, ...props }: any) => (
+  <View style={{ marginBottom: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: error ? 'rgba(239,68,68,0.4)' : BORDER }}>
+      <Ionicons name={icon} size={18} color="rgba(255,255,255,0.4)" />
+      <TextInput
+        style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }}
+        placeholder={placeholder}
+        placeholderTextColor="rgba(255,255,255,0.2)"
+        value={value}
+        onChangeText={onChangeText}
+        autoCapitalize="none"
+        blurOnSubmit={false}
+        returnKeyType="next"
+        {...props}
+      />
+      {right}
+    </View>
+    {error ? <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, marginLeft: 4 }}>{error}</Text> : null}
+  </View>
+));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEP 1 — Personal Info
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading }: any) => (
+  <>
+    <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
+    <InputField icon="person-outline" placeholder="First name" value={firstName} onChangeText={onFirstName} error={errors.firstName} />
+    <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={onLastName} error={errors.lastName} />
+    <InputField icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={onEmail} error={errors.email} keyboardType="email-address" />
+    <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+      {loading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
+    </TouchableOpacity>
+    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 10 }}>🔒 Secure & encrypted</Text>
+  </>
+));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEP 2 — OTP Verification
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onResend, onBack, loading }: any) => (
+  <>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 }}>Check your email</Text>
+    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>We sent a 6-digit code to</Text>
+    <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email}</Text>
+
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+      {otp.map((d: string, i: number) => (
+        <TextInput
+          key={i}
+          ref={(el: TextInput | null) => { if (otpRefs?.current) otpRefs.current[i] = el; }}
+          style={{
+            width: 48, height: 56, borderRadius: 12, backgroundColor: INPUT_BG, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center',
+            borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.08)',
+          }}
+          maxLength={1}
+          keyboardType="number-pad"
+          value={d}
+          onChangeText={(t: string) => onOtpChange(t, i)}
+          onKeyPress={(e: any) => onOtpKey(e, i)}
+          blurOnSubmit={false}
+        />
+      ))}
+    </View>
+
+    <TouchableOpacity onPress={onVerify} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Verifying...' : 'Verify Code'}</Text>
+    </TouchableOpacity>
+
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+      <TouchableOpacity onPress={onBack}>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Change email</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onResend} disabled={loading}>
+        <Text style={{ fontSize: 13, color: GREEN }}>Resend code</Text>
+      </TouchableOpacity>
+    </View>
+  </>
+));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEP 3 — Credentials
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors,
+  onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onNext, onBack, loading }: any) => (
+  <>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
+
+    <InputField
+      icon="at-outline" placeholder="username" value={username} onChangeText={onUsername}
+      error={errors.username}
+      right={usernameValid !== null ? <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} /> : null}
+    />
+    <InputField
+      icon="lock-closed-outline" placeholder="Password (min 6 characters)" value={password} onChangeText={onPassword}
+      error={errors.password} secureTextEntry={!showPw}
+      right={<TouchableOpacity onPress={onTogglePw}><Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" /></TouchableOpacity>}
+    />
+    <InputField
+      icon="lock-closed-outline" placeholder="Confirm password" value={confirmPw} onChangeText={onConfirmPw}
+      error={errors.confirmPw} secureTextEntry={!showPw}
+    />
+
+    <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
+    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+      {[
+        { key: 'individual', emoji: '👤', title: 'Individual', desc: 'I work alone' },
+        { key: 'business', emoji: '🏢', title: 'Business', desc: 'I manage a team' },
+      ].map((opt) => {
+        const sel = accountType === opt.key;
+        return (
+          <TouchableOpacity key={opt.key} onPress={() => onAccountType(opt.key)} activeOpacity={0.8} style={{
+            flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
+            borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 24, marginBottom: 6 }}>{opt.emoji}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+      {loading && <ActivityIndicator color="#fff" size="small" />}
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity onPress={onBack} style={{ marginTop: 12, alignItems: 'center' }}>
+      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
+    </TouchableOpacity>
+  </>
+));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEP 4 — Profile Photo
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, onSkip, loading }: any) => (
+  <>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done! 🎉</Text>
+    <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
+
+    <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
+      <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: imageUri ? GREEN : 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.06)' }}>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={{ width: 100, height: 100 }} />
+        ) : (
+          <Ionicons name="camera-outline" size={36} color={GREEN} />
+        )}
+      </View>
+      <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>{imageUri ? 'Change photo' : 'Add photo'}</Text>
+    </TouchableOpacity>
+
+    <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide)" value={jobTitle} onChangeText={onJobTitle} />
+
+    <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+      {loading && <ActivityIndicator color="#fff" size="small" />}
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup ✓'}</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity onPress={onSkip} style={{ marginTop: 12, alignItems: 'center' }}>
+      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Skip for now</Text>
+    </TouchableOpacity>
+  </>
+));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN REGISTER COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
 export default function Register() {
   const router = useRouter();
   const { setUser } = useAuth();
@@ -54,24 +227,31 @@ export default function Register() {
 
   const progress = (step / 4) * 100;
 
-  const clearError = (field: string) => setErrors((p) => { const n = { ...p }; delete n[field]; return n; });
-
-  // ── Username validation ──
+  // Username validation
   useEffect(() => {
     if (!username || username.length < 3) { setUsernameValid(null); return; }
-    const valid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
-    setUsernameValid(valid);
+    setUsernameValid(/^[a-zA-Z0-9_]{3,20}$/.test(username));
   }, [username]);
 
-  // ── Step 1: Send OTP ──
-  const handleStep1 = async () => {
+  // ── Memoized handlers ──
+  const handleFirstNameChange = useCallback((t: string) => setFirstName(t), []);
+  const handleLastNameChange = useCallback((t: string) => setLastName(t), []);
+  const handleEmailChange = useCallback((t: string) => setEmail(t), []);
+  const handleUsernameChange = useCallback((t: string) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)), []);
+  const handlePasswordChange = useCallback((t: string) => setPassword(t), []);
+  const handleConfirmPwChange = useCallback((t: string) => setConfirmPw(t), []);
+  const handleJobTitleChange = useCallback((t: string) => setJobTitle(t), []);
+  const handleTogglePw = useCallback(() => setShowPw((p) => !p), []);
+  const handleAccountType = useCallback((t: 'individual' | 'business') => setAccountType(t), []);
+
+  // ── Step 1 handler ──
+  const handleStep1 = useCallback(async () => {
     const errs: Record<string, string> = {};
     if (!firstName.trim()) errs.firstName = 'First name is required.';
     if (!lastName.trim()) errs.lastName = 'Last name is required.';
     if (!email.trim() || !email.includes('@')) errs.email = 'Enter a valid email.';
     setErrors(errs);
     if (Object.keys(errs).length) return;
-
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
@@ -80,45 +260,55 @@ export default function Register() {
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to send code.', 'error');
     } finally { setLoading(false); }
-  };
+  }, [firstName, lastName, email, showToast]);
 
-  // ── Step 2: OTP ──
-  const handleOtpChange = (text: string, idx: number) => {
+  // ── Step 2 handlers ──
+  const handleOtpChange = useCallback((text: string, idx: number) => {
     const digit = text.replace(/\D/g, '').slice(-1);
-    const arr = [...otp];
-    arr[idx] = digit;
-    setOtp(arr);
+    setOtp((prev) => {
+      const arr = [...prev];
+      arr[idx] = digit;
+      if (digit && idx === 5) {
+        const code = arr.join('');
+        if (code.length === 6) setTimeout(() => verifyOtpDirect(code), 200);
+      }
+      return arr;
+    });
     if (digit && idx < 5) otpRefs.current[idx + 1]?.focus();
-    // Auto-submit on last digit
-    if (digit && idx === 5) {
-      const code = [...arr].join('');
-      if (code.length === 6) setTimeout(() => verifyOtp(code), 200);
-    }
-  };
+  }, []);
 
-  const handleOtpKey = (e: any, idx: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[idx] && idx > 0) {
-      const arr = [...otp];
-      arr[idx - 1] = '';
-      setOtp(arr);
-      otpRefs.current[idx - 1]?.focus();
+  const handleOtpKey = useCallback((e: any, idx: number) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      setOtp((prev) => {
+        if (!prev[idx] && idx > 0) {
+          const arr = [...prev];
+          arr[idx - 1] = '';
+          otpRefs.current[idx - 1]?.focus();
+          return arr;
+        }
+        return prev;
+      });
     }
-  };
+  }, []);
 
-  const verifyOtp = async (code?: string) => {
-    const c = code || otp.join('');
-    if (c.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
+  const verifyOtpDirect = useCallback(async (code: string) => {
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code: c });
+      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code });
       showToast('Email verified! ✅', 'success');
       setStep(3);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Verification failed.', 'error');
     } finally { setLoading(false); }
-  };
+  }, [email, showToast]);
 
-  const handleResend = async () => {
+  const handleVerifyOtp = useCallback(async () => {
+    const code = otp.join('');
+    if (code.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
+    await verifyOtpDirect(code);
+  }, [otp, verifyOtpDirect, showToast]);
+
+  const handleResend = useCallback(async () => {
     setOtp(['', '', '', '', '', '']);
     setLoading(true);
     try {
@@ -127,17 +317,18 @@ export default function Register() {
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed.', 'error');
     } finally { setLoading(false); }
-  };
+  }, [email, showToast]);
 
-  // ── Step 3: Create Account ──
-  const handleStep3 = async () => {
+  const handleBackToStep1 = useCallback(() => { setStep(1); setOtp(['', '', '', '', '', '']); }, []);
+
+  // ── Step 3 handler ──
+  const handleStep3 = useCallback(async () => {
     const errs: Record<string, string> = {};
-    if (!usernameValid) errs.username = 'Username: 3-20 chars, letters/numbers/underscores.';
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) errs.username = 'Username: 3-20 chars, letters/numbers/underscores.';
     if (password.length < 6) errs.password = 'Minimum 6 characters.';
     if (password !== confirmPw) errs.confirmPw = 'Passwords do not match.';
     setErrors(errs);
     if (Object.keys(errs).length) return;
-
     setLoading(true);
     try {
       const fd = new FormData();
@@ -146,7 +337,6 @@ export default function Register() {
       fd.append('email', email.trim().toLowerCase());
       fd.append('username', username.toLowerCase());
       fd.append('password', password);
-
       const { data } = await api.post('/auth/register', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       await AsyncStorage.setItem('snaptip_token', data.token);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(data.employee));
@@ -156,16 +346,18 @@ export default function Register() {
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Registration failed.', 'error');
     } finally { setLoading(false); }
-  };
+  }, [username, password, confirmPw, firstName, lastName, email, setUser, showToast]);
 
-  // ── Step 4: Photo + Complete ──
-  const showPhotoOptions = () => {
+  const handleBackToStep2 = useCallback(() => setStep(2), []);
+
+  // ── Step 4 handlers ──
+  const showPhotoOptions = useCallback(() => {
     Alert.alert('Profile Photo', 'Choose an option', [
       { text: '📷 Take Photo', onPress: () => pickImage('camera') },
       { text: '🖼️ Choose from Gallery', onPress: () => pickImage('gallery') },
       { text: 'Cancel', style: 'cancel' },
     ]);
-  };
+  }, []);
 
   const pickImage = async (source: 'camera' | 'gallery') => {
     if (source === 'camera') {
@@ -181,51 +373,39 @@ export default function Register() {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = useCallback(async () => {
     setLoading(true);
     try {
       const body: any = {};
       if (imageBase64) { body.photo_url = imageBase64; body.photo_base64 = imageBase64; }
       if (jobTitle.trim()) body.job_title = jobTitle.trim();
       if (Object.keys(body).length) await api.patch('/employee/profile', body);
-
       showToast('Setup complete! 🚀', 'success');
       setTimeout(() => {
-        if (accountType === 'business') {
-          router.replace('/business/setup');
-        } else {
-          router.replace('/(tabs)/home');
-        }
+        if (accountType === 'business') router.replace('/business/setup');
+        else router.replace('/(tabs)/home');
       }, 500);
     } catch {
       showToast('Failed to save. Try again.', 'error');
     } finally { setLoading(false); }
-  };
+  }, [imageBase64, jobTitle, accountType, router, showToast]);
 
-  const handleSkip = () => {
-    if (accountType === 'business') {
-      router.replace('/business/setup');
-    } else {
-      router.replace('/(tabs)/home');
-    }
-  };
-
-  // ── Reusable Input ──
-  const InputField = ({ icon, placeholder, value, onChangeText, error, ...props }: any) => (
-    <View style={{ marginBottom: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: error ? 'rgba(239,68,68,0.4)' : BORDER }}>
-        <Ionicons name={icon} size={18} color="rgba(255,255,255,0.4)" />
-        <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder={placeholder} placeholderTextColor="rgba(255,255,255,0.2)" value={value} onChangeText={(t: string) => { onChangeText(t); if (error) clearError(props.errorKey); }} autoCapitalize="none" {...props} />
-        {props.right}
-      </View>
-      {error ? <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, marginLeft: 4 }}>{error}</Text> : null}
-    </View>
-  );
+  const handleSkip = useCallback(() => {
+    if (accountType === 'business') router.replace('/business/setup');
+    else router.replace('/(tabs)/home');
+  }, [accountType, router]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }} keyboardShouldPersistTaps="handled">
-
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: BG }}
+      keyboardVerticalOffset={0}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+        contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }}
+      >
         {/* ── Progress Bar ── */}
         <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 16 }}>
           <View style={{ width: `${progress}%`, height: '100%', backgroundColor: GREEN, borderRadius: 2 }} />
@@ -233,7 +413,6 @@ export default function Register() {
 
         {/* ── Step Indicator ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 24, position: 'relative' }}>
-          {/* Connector line */}
           <View style={{ position: 'absolute', top: 20, left: '15%', right: '15%', height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
           {STEPS.map((s, i) => {
             const si = i + 1;
@@ -245,13 +424,8 @@ export default function Register() {
                   width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center',
                   backgroundColor: active ? 'rgba(0,200,150,0.15)' : done ? 'rgba(0,200,150,0.1)' : 'rgba(255,255,255,0.06)',
                   borderWidth: 2, borderColor: active || done ? GREEN : 'transparent',
-                  shadowColor: active ? GREEN : 'transparent', shadowOpacity: active ? 0.6 : 0, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: active ? 8 : 0,
                 }}>
-                  {done ? (
-                    <Ionicons name="checkmark" size={18} color={GREEN} />
-                  ) : (
-                    <Ionicons name={s.icon as any} size={16} color={active ? GREEN : 'rgba(255,255,255,0.3)'} />
-                  )}
+                  {done ? <Ionicons name="checkmark" size={18} color={GREEN} /> : <Ionicons name={s.icon as any} size={16} color={active ? GREEN : 'rgba(255,255,255,0.3)'} />}
                 </View>
                 <Text style={{ fontSize: 10, fontWeight: active ? '700' : '500', color: active || done ? GREEN : 'rgba(255,255,255,0.3)', marginTop: 4 }}>{s.label}</Text>
               </View>
@@ -261,167 +435,36 @@ export default function Register() {
 
         {/* ── Card ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: BORDER }}>
-
-          {/* ═══ STEP 1: Personal Info ═══ */}
           {step === 1 && (
-            <>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
-              <InputField icon="person-outline" placeholder="First name" value={firstName} onChangeText={setFirstName} error={errors.firstName} errorKey="firstName" />
-              <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={setLastName} error={errors.lastName} errorKey="lastName" />
-              <InputField icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={setEmail} error={errors.email} errorKey="email" keyboardType="email-address" />
-              <TouchableOpacity onPress={handleStep1} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-                {loading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 10 }}>🔒 Secure & encrypted</Text>
-            </>
+            <Step1
+              firstName={firstName} lastName={lastName} email={email} errors={errors}
+              onFirstName={handleFirstNameChange} onLastName={handleLastNameChange} onEmail={handleEmailChange}
+              onNext={handleStep1} loading={loading}
+            />
           )}
-
-          {/* ═══ STEP 2: OTP ═══ */}
           {step === 2 && (
-            <>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 }}>Check your email</Text>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>We sent a 6-digit code to</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email.trim().toLowerCase()}</Text>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-                {otp.map((d, i) => (
-                  <TextInput
-                    key={i}
-                    ref={(el) => { otpRefs.current[i] = el; }}
-                    style={{
-                      width: 48, height: 56, borderRadius: 12, backgroundColor: INPUT_BG, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center',
-                      borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.08)',
-                      shadowColor: d ? GREEN : 'transparent', shadowOpacity: d ? 0.3 : 0, shadowRadius: 8,
-                    }}
-                    maxLength={1}
-                    keyboardType="number-pad"
-                    value={d}
-                    onChangeText={(t) => handleOtpChange(t, i)}
-                    onKeyPress={(e) => handleOtpKey(e, i)}
-                  />
-                ))}
-              </View>
-
-              <TouchableOpacity onPress={() => verifyOtp()} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Verifying...' : 'Verify Code'}</Text>
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-                <TouchableOpacity onPress={() => { setStep(1); setOtp(['', '', '', '', '', '']); }}>
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Change email</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleResend} disabled={loading}>
-                  <Text style={{ fontSize: 13, color: GREEN }}>Resend code</Text>
-                </TouchableOpacity>
-              </View>
-            </>
+            <Step2
+              email={email.trim().toLowerCase()} otp={otp} otpRefs={otpRefs}
+              onOtpChange={handleOtpChange} onOtpKey={handleOtpKey}
+              onVerify={handleVerifyOtp} onResend={handleResend} onBack={handleBackToStep1}
+              loading={loading}
+            />
           )}
-
-          {/* ═══ STEP 3: Credentials ═══ */}
           {step === 3 && (
-            <>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
-
-              {/* Username with validation indicator */}
-              <InputField
-                icon="at-outline"
-                placeholder="username"
-                value={username}
-                onChangeText={(t: string) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20))}
-                error={errors.username}
-                errorKey="username"
-                right={usernameValid !== null ? (
-                  <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} />
-                ) : null}
-              />
-              <InputField
-                icon="lock-closed-outline"
-                placeholder="Password (min 6 characters)"
-                value={password}
-                onChangeText={setPassword}
-                error={errors.password}
-                errorKey="password"
-                secureTextEntry={!showPw}
-                right={
-                  <TouchableOpacity onPress={() => setShowPw(!showPw)}>
-                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" />
-                  </TouchableOpacity>
-                }
-              />
-              <InputField
-                icon="lock-closed-outline"
-                placeholder="Confirm password"
-                value={confirmPw}
-                onChangeText={setConfirmPw}
-                error={errors.confirmPw}
-                errorKey="confirmPw"
-                secureTextEntry={!showPw}
-              />
-
-              {/* Account Type */}
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-                {[
-                  { key: 'individual' as const, emoji: '👤', title: 'Individual', desc: 'I work alone' },
-                  { key: 'business' as const, emoji: '🏢', title: 'Business', desc: 'I manage a team' },
-                ].map((opt) => {
-                  const sel = accountType === opt.key;
-                  return (
-                    <TouchableOpacity key={opt.key} onPress={() => setAccountType(opt.key)} activeOpacity={0.8} style={{
-                      flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
-                      borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
-                      shadowColor: sel ? ACCENT : 'transparent', shadowOpacity: sel ? 0.3 : 0, shadowRadius: 10,
-                    }}>
-                      <Text style={{ fontSize: 24, marginBottom: 6 }}>{opt.emoji}</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <TouchableOpacity onPress={handleStep3} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-                {loading && <ActivityIndicator color="#fff" size="small" />}
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setStep(2)} style={{ marginTop: 12, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
-              </TouchableOpacity>
-            </>
+            <Step3
+              username={username} password={password} confirmPw={confirmPw} showPw={showPw}
+              accountType={accountType} usernameValid={usernameValid} errors={errors}
+              onUsername={handleUsernameChange} onPassword={handlePasswordChange} onConfirmPw={handleConfirmPwChange}
+              onTogglePw={handleTogglePw} onAccountType={handleAccountType}
+              onNext={handleStep3} onBack={handleBackToStep2} loading={loading}
+            />
           )}
-
-          {/* ═══ STEP 4: Photo ═══ */}
           {step === 4 && (
-            <>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done! 🎉</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
-
-              <TouchableOpacity onPress={showPhotoOptions} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
-                <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: imageUri ? GREEN : 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.06)' }}>
-                  {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={{ width: 100, height: 100 }} />
-                  ) : (
-                    <Ionicons name="camera-outline" size={36} color={GREEN} />
-                  )}
-                </View>
-                <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>
-                  {imageUri ? 'Change photo' : 'Add photo'}
-                </Text>
-              </TouchableOpacity>
-
-              <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide, Driver)" value={jobTitle} onChangeText={setJobTitle} />
-
-              <TouchableOpacity onPress={handleComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-                {loading && <ActivityIndicator color="#fff" size="small" />}
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup ✓'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleSkip} style={{ marginTop: 12, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Skip for now</Text>
-              </TouchableOpacity>
-            </>
+            <Step4
+              imageUri={imageUri} jobTitle={jobTitle}
+              onPickPhoto={showPhotoOptions} onJobTitle={handleJobTitleChange}
+              onComplete={handleComplete} onSkip={handleSkip} loading={loading}
+            />
           )}
         </View>
 
