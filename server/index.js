@@ -12,6 +12,7 @@ const withdrawalRoutes = require('./routes/withdrawals');
 const analyticsRoutes = require('./routes/analytics');
 const businessRoutes = require('./routes/business');
 const paymentsRoutes = require('./routes/payments');
+const joinRoutes = require('./routes/join');
 
 const path = require('path');
 
@@ -26,7 +27,10 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Serve uploaded profile images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// Web page routes (before API routes)
+app.use('/join', joinRoutes);
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
