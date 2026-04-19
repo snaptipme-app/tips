@@ -51,8 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Immediately fetch full profile from dashboard to get account_type etc.
     try {
       const dashRes = await api.get('/dashboard', { headers: { Authorization: `Bearer ${data.token}` } });
-      const fullUser = { ...data.employee, ...dashRes.data.employee, balance: dashRes.data.employee?.balance ?? data.employee.balance };
+      const fullUser = {
+        ...data.employee,
+        ...dashRes.data.employee,
+        account_type: dashRes.data.employee?.account_type || data.employee.account_type || 'individual',
+        balance: dashRes.data.employee?.balance ?? data.employee.balance,
+      };
       console.log('account_type:', fullUser.account_type);
+      console.log('FULL USER SAVED:', JSON.stringify(fullUser));
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(fullUser));
       setUser(fullUser);
     } catch {
@@ -73,7 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       const { data } = await api.get('/dashboard');
-      const updated = { ...user, ...data.employee, balance: data.balance ?? user?.balance };
+      const updated = {
+        ...user,
+        ...data.employee,
+        account_type: data.employee?.account_type || user?.account_type || 'individual',
+        balance: data.employee?.balance ?? data.balance ?? user?.balance,
+      };
       setUser(updated as User);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(updated));
     } catch {}

@@ -14,6 +14,7 @@ const ACCENT = '#6c6cff';
 
 export default function Home() {
   const { user } = useAuth();
+  console.log('USER IN HOME:', JSON.stringify(user));
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [balance, setBalance] = useState(0);

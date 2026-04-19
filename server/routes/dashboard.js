@@ -53,6 +53,7 @@ router.get('/', authMiddleware, (req, res) => {
     const emp = {
       ...employee,
       balance: Number(employee.balance) || 0,
+      account_type: employee.account_type || 'individual',
     };
     const tipsOut = recentTips.map((t) => ({ ...t, amount: Number(t.amount) || 0 }));
     const wOut = recentWithdrawals.map((w) => ({ ...w, amount: Number(w.amount) || 0 }));
