@@ -10,6 +10,8 @@ const dashboardRoutes = require('./routes/dashboard');
 const tipsRoutes = require('./routes/tips');
 const withdrawalRoutes = require('./routes/withdrawals');
 const analyticsRoutes = require('./routes/analytics');
+const businessRoutes = require('./routes/business');
+const paymentsRoutes = require('./routes/payments');
 
 const path = require('path');
 
@@ -30,6 +32,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/tips', tipsRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/business', businessRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

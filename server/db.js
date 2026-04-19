@@ -113,6 +113,55 @@ async function initDB() {
     )
   `);
 
+  // ── Business Account tables ─────────────────────────────────────────
+  db.run(`
+    CREATE TABLE IF NOT EXISTS businesses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_id INTEGER NOT NULL REFERENCES employees(id),
+      business_name TEXT NOT NULL,
+      business_type TEXT NOT NULL,
+      logo_url TEXT DEFAULT '',
+      address TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS team_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL REFERENCES businesses(id),
+      employee_id INTEGER NOT NULL REFERENCES employees(id),
+      role TEXT DEFAULT 'member',
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS invitations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL REFERENCES businesses(id),
+      email TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id INTEGER NOT NULL REFERENCES employees(id),
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'USD',
+      payment_method TEXT DEFAULT 'mock',
+      status TEXT DEFAULT 'completed',
+      stripe_payment_id TEXT DEFAULT NULL,
+      tourist_email TEXT DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  // ────────────────────────────────────────────────────────────────────
+
   saveDB();
   console.log('Database initialized (SQLite via sql.js)');
 }
