@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -18,12 +19,15 @@ export default function Tips() {
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { toast, showToast } = useToast();
 
   const fetchTips = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
       setTips(data.tips || []);
-    } catch {} finally {
+    } catch {
+      showToast('Failed to load tips.', 'error');
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -70,6 +74,7 @@ export default function Tips() {
         ListEmptyComponent={!loading ? <EmptyState /> : null}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6c6cff" />}
       />
+      <Toast {...toast} />
     </View>
   );
 }
