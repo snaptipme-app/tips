@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+		
       const t = await AsyncStorage.getItem('snaptip_token');
       const u = await AsyncStorage.getItem('snaptip_user');
       if (t && u) {

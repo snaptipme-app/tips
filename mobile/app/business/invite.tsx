@@ -36,34 +36,50 @@ export default function InviteMember() {
   // Fetch business info + invite link on mount
   useEffect(() => {
     (async () => {
+      // Fetch business info first
       try {
-        const [linkRes, bizRes] = await Promise.all([
-          api.get('/business/invite-link'),
-          api.get('/business/me'),
-        ]);
-        setInviteUrl(linkRes.data.invite_url);
+        const bizRes = await api.get('/business/me');
+        console.log('[invite] business/me response:', JSON.stringify(bizRes.data));
         setBusinessName(bizRes.data.business?.business_name || 'My Team');
-      } catch {
-        showToast('Failed to load invite link.', 'error');
-      } finally { setLinkLoading(false); }
+      } catch (e: any) {
+        console.warn('[invite] Failed to fetch business info:', e.response?.data || e.message);
+      }
+
+      // Fetch invite link
+      try {
+        const linkRes = await api.get('/business/invite-link');
+        console.log('[invite] invite-link response:', JSON.stringify(linkRes.data));
+        if (linkRes.data.invite_url) {
+          setInviteUrl(linkRes.data.invite_url);
+        } else {
+          console.warn('[invite] invite_url is empty in response');
+          showToast('Failed to generate invite link.', 'error');
+        }
+      } catch (e: any) {
+        console.error('[invite] Failed to fetch invite link:', e.response?.status, e.response?.data || e.message);
+        showToast(e.response?.data?.error || 'Failed to load invite link.', 'error');
+      }
+
+      setLinkLoading(false);
     })();
   }, []);
 
   // ── Copy link ──
   const copyLink = useCallback(async () => {
+    if (!inviteUrl) { showToast('No invite link available.', 'error'); return; }
     await Clipboard.setStringAsync(inviteUrl);
     showToast('Link copied! 📋', 'success');
   }, [inviteUrl, showToast]);
 
   // ── Share link ──
   const shareLink = useCallback(async () => {
+    if (!inviteUrl) { showToast('No invite link available.', 'error'); return; }
     try {
       await Share.share({
         message: `You're invited to join ${businessName} on SnapTip! Click the link to accept: ${inviteUrl}`,
-        url: inviteUrl,
       });
     } catch {}
-  }, [inviteUrl, businessName]);
+  }, [inviteUrl, businessName, showToast]);
 
   // ── Refresh link ──
   const refreshLink = useCallback(async () => {
@@ -87,6 +103,7 @@ export default function InviteMember() {
       showToast(`Invitation sent to ${email.trim()} 📨`, 'success');
       setEmail('');
     } catch (e: any) {
+      console.error('[invite] Email invite error:', e.response?.status, e.response?.data || e.message);
       showToast(e.response?.data?.error || 'Failed to send invitation.', 'error');
     } finally { setSendingEmail(false); }
   }, [email, showToast]);

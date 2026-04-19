@@ -173,7 +173,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
     console.log(`[business/invite] Invited ${normalizedEmail} to business_id=${business.id}, token=${token}`);
     res.json({ success: true, message: `Invitation sent to ${normalizedEmail}`, token });
   } catch (err) {
-    console.error('[business/invite]', err.message);
+    console.error('[business/invite] FULL ERROR:', err);
     res.status(500).json({ error: 'Server error sending invitation.' });
   }
 });
