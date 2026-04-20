@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Linking,
 } from 'react-native';
@@ -8,9 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
-import PrintableQRCard, {
-  PrintableQRCardBusiness,
-} from '../../components/PrintableQRCard';
+import PrintableQRCard, { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
 
 const BG = '#080818';
@@ -22,7 +20,6 @@ export default function MemberQR() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast, showToast } = useToast();
-  const cardRef = useRef<View>(null);
 
   const [business, setBusiness] = useState<PrintableQRCardBusiness>(null);
   const [capturing, setCapturing] = useState(false);
@@ -30,7 +27,6 @@ export default function MemberQR() {
   const username = user?.username || '';
   const tipUrl = `https://snaptip.me/${username}`;
 
-  // Build employee object for the card
   const employee = {
     username,
     full_name: user?.full_name || '',
@@ -38,7 +34,6 @@ export default function MemberQR() {
     job_title: user?.job_title || '',
   };
 
-  // Fetch the business this member belongs to
   useEffect(() => {
     api.get('/business/member-business')
       .then(res => setBusiness(res.data.business || null))
@@ -48,10 +43,10 @@ export default function MemberQR() {
   const handleDownload = async () => {
     setCapturing(true);
     await downloadAndShareQRCard(
-      cardRef,
-      username,
-      () => showToast('Card saved to gallery!', 'success'),
-      () => showToast('Failed to capture card.', 'error'),
+      employee,
+      business,
+      () => showToast('QR Card ready!', 'success'),
+      () => showToast('Failed to generate card.', 'error'),
     );
     setCapturing(false);
   };
@@ -93,7 +88,7 @@ export default function MemberQR() {
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Dark container housing the white card ── */}
+        {/* ── Dark container housing the white card (display only) ── */}
         <View style={{
           backgroundColor: CARD_DARK,
           borderRadius: 28,
@@ -108,11 +103,7 @@ export default function MemberQR() {
           shadowRadius: 24,
           elevation: 10,
         }}>
-          <PrintableQRCard
-            ref={cardRef}
-            employee={employee}
-            business={business}
-          />
+          <PrintableQRCard employee={employee} business={business} />
         </View>
 
         {/* ── Download & Share (Primary) ── */}
@@ -127,12 +118,8 @@ export default function MemberQR() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{
-              height: 52,
-              borderRadius: 50,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 10,
+              height: 52, borderRadius: 50,
+              flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
               shadowColor: '#6c6cff',
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: capturing ? 0 : 0.35,
@@ -156,38 +143,29 @@ export default function MemberQR() {
           onPress={handlePreview}
           activeOpacity={0.8}
           style={{
-            height: 48,
-            borderRadius: 50,
+            height: 48, borderRadius: 50,
             backgroundColor: 'rgba(108,108,255,0.1)',
-            borderWidth: 1,
-            borderColor: 'rgba(108,108,255,0.3)',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 10,
+            borderWidth: 1, borderColor: 'rgba(108,108,255,0.3)',
+            flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
             marginBottom: 28,
           }}
         >
           <Ionicons name="eye-outline" size={20} color={ACCENT} />
-          <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>
-            Preview Tourist Page
-          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>Preview Tourist Page</Text>
         </TouchableOpacity>
 
         {/* ── Info ── */}
         <View style={{
           backgroundColor: 'rgba(108,108,255,0.06)',
-          borderRadius: 16,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: 'rgba(108,108,255,0.12)',
+          borderRadius: 16, padding: 16,
+          borderWidth: 1, borderColor: 'rgba(108,108,255,0.12)',
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <Ionicons name="print-outline" size={16} color={ACCENT} />
             <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>Printing tip</Text>
           </View>
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 20 }}>
-            Download the card and print it for your table. Customers scan the QR to tip you — no app needed.
+            Download the card as a PDF and print it for your table. Customers scan the QR to tip you — no app needed.
           </Text>
         </View>
       </ScrollView>

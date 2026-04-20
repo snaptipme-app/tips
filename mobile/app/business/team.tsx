@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Alert,
   RefreshControl, Modal, ActivityIndicator, Image, Linking,
@@ -9,10 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
-import PrintableQRCard, {
-  PrintableQRCardBusiness,
-  PrintableQRCardEmployee,
-} from '../../components/PrintableQRCard';
+import { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
 
 const BG = '#080818';
@@ -40,7 +37,6 @@ interface Member {
 export default function TeamManagement() {
   const router = useRouter();
   const { toast, showToast } = useToast();
-  const hiddenCardRef = useRef<View>(null);
 
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,9 +47,6 @@ export default function TeamManagement() {
   const [showSheet, setShowSheet] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [inviteUrl, setInviteUrl] = useState('');
-
-  // QR download state
-  const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
   const [capturingQR, setCapturingQR] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -132,29 +125,27 @@ export default function TeamManagement() {
     setShowSheet(false);
   };
 
-  // ── Download QR for a specific member ──────────────────────────────────
+  // ── Download QR card for a specific member via PDF ────────────────────
   const handleDownloadQR = async (member: Member) => {
     setShowSheet(false);
-    showToast('Preparing QR card...', 'info');
     setCapturingQR(true);
-    // Set the member whose card we need to render
-    setSelectedMemberForQR(member);
-
-    // Wait 700ms for the hidden card to mount and render
-    await new Promise<void>((resolve) => setTimeout(resolve, 700));
+    showToast('Preparing QR card...', 'info');
 
     await downloadAndShareQRCard(
-      hiddenCardRef,
-      member.username,
+      {
+        username: member.username,
+        full_name: member.full_name,
+        photo_url: member.profile_image_url || '',
+        job_title: member.job_title || '',
+      },
+      business,
       () => {
         showToast('QR Card ready to share!', 'success');
         setCapturingQR(false);
-        setSelectedMemberForQR(null);
       },
       () => {
         showToast('Failed to generate QR card.', 'error');
         setCapturingQR(false);
-        setSelectedMemberForQR(null);
       }
     );
   };
@@ -171,14 +162,9 @@ export default function TeamManagement() {
         onPress={() => openMemberSheet(item)}
         activeOpacity={0.85}
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: CARD,
-          borderRadius: 18,
-          padding: 16,
-          marginBottom: 10,
-          borderWidth: 1,
-          borderColor: BORDER,
+          flexDirection: 'row', alignItems: 'center',
+          backgroundColor: CARD, borderRadius: 18, padding: 16,
+          marginBottom: 10, borderWidth: 1, borderColor: BORDER,
         }}
       >
         {/* Avatar */}
@@ -218,29 +204,8 @@ export default function TeamManagement() {
     );
   };
 
-  // Build employee object for the hidden printable card
-  const qrEmployee: PrintableQRCardEmployee | null = selectedMemberForQR
-    ? {
-        username: selectedMemberForQR.username,
-        full_name: selectedMemberForQR.full_name,
-        photo_url: selectedMemberForQR.profile_image_url || '',
-        job_title: selectedMemberForQR.job_title || '',
-      }
-    : null;
-
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-
-      {/* ── Hidden off-screen PrintableQRCard for capture ── */}
-      {qrEmployee && (
-        <View style={{ position: 'absolute', top: -9999, left: -9999, opacity: 0 }}>
-          <PrintableQRCard
-            ref={hiddenCardRef}
-            employee={qrEmployee}
-            business={business}
-          />
-        </View>
-      )}
 
       {/* Capturing overlay */}
       {capturingQR && (
