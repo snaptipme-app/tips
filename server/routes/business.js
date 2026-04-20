@@ -633,5 +633,58 @@ router.get('/member-business', authMiddleware, (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/public/:username
+// Public — no auth required
+// Returns business info for the employee with that username
+// Used by tourist tip page to show business branding
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/public/:username', (req, res) => {
+  try {
+    const { username } = req.params;
+    const db = getDB();
+
+    // Find employee by username
+    const employee = rowToObj(
+      db.exec('SELECT id, business_id FROM employees WHERE username = ?', [username])
+    );
+
+    if (!employee) {
+      return res.json({ business: null });
+    }
+
+    // Check direct business_id on employee first
+    let business = null;
+    if (employee.business_id) {
+      business = rowToObj(
+        db.exec(
+          'SELECT id, business_name, logo_url, logo_base64, thank_you_message FROM businesses WHERE id = ?',
+          [employee.business_id]
+        )
+      );
+    }
+
+    // Also check team_members table
+    if (!business) {
+      business = rowToObj(
+        db.exec(
+          `SELECT b.id, b.business_name, b.logo_url, b.logo_base64, b.thank_you_message
+           FROM businesses b
+           JOIN team_members tm ON tm.business_id = b.id
+           WHERE tm.employee_id = ?
+           LIMIT 1`,
+          [employee.id]
+        )
+      );
+    }
+
+    res.json({ business: business || null });
+  } catch (err) {
+    console.error('[business/public]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
 module.exports = router;
+
 

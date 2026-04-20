@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { getDB, saveDB } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { processSuccessfulPayment } = require('../lib/processPayment');
 
-/* ── Helper ── */
+/* ── Helpers ── */
 function rowsToObjs(result) {
   if (!result || result.length === 0) return [];
   const { columns, values } = result[0];
@@ -20,8 +21,8 @@ function rowToObj(result) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/payments/mock
-// Public — no auth required
-// Body: { employee_username, amount, tourist_email, payment_method }
+// Public — no auth required (tourist pays without account)
+// Body: { employee_username, amount, tourist_email?, payment_method? }
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/mock', (req, res) => {
   try {
@@ -32,80 +33,107 @@ router.post('/mock', (req, res) => {
       payment_method = 'mock',
     } = req.body;
 
-    if (!employee_username || !amount) {
-      return res.status(400).json({ error: 'employee_username and amount are required.' });
+    // Validation
+    if (!employee_username || amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'employee_username and amount are required.',
+      });
     }
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ error: 'amount must be a positive number.' });
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number.',
+      });
     }
 
     const db = getDB();
 
+    // Find employee
     const employee = rowToObj(
-      db.exec('SELECT id, full_name, balance FROM employees WHERE username = ?', [employee_username])
+      db.exec(
+        'SELECT id, full_name, balance FROM employees WHERE username = ?',
+        [employee_username]
+      )
     );
+
     if (!employee) {
-      return res.status(404).json({ error: `Employee "${employee_username}" not found.` });
+      return res.status(404).json({
+        success: false,
+        error: `Employee "${employee_username}" not found.`,
+      });
     }
 
-    // 1. Insert payment record
-    db.run(
-      `INSERT INTO payments (employee_id, amount, currency, payment_method, status, stripe_payment_id, tourist_email)
-       VALUES (?, ?, 'USD', ?, 'completed', NULL, ?)`,
-      [employee.id, parsedAmount, payment_method, tourist_email]
-    );
-
-    // 2. Update employee balance
-    db.run('UPDATE employees SET balance = balance + ? WHERE id = ?', [parsedAmount, employee.id]);
-
-    // 3. Also insert into tips table (keeps existing dashboard working)
-    db.run(
-      "INSERT INTO tips (employee_id, amount, status) VALUES (?, ?, 'completed')",
-      [employee.id, parsedAmount]
+    // Process payment using shared function
+    const payment = processSuccessfulPayment(
+      db,
+      employee.id,
+      parsedAmount,
+      'mock',
+      null,
+      tourist_email
     );
 
     saveDB();
 
-    // Get the new payment id
-    const paymentIdRes = db.exec('SELECT last_insert_rowid() as id');
-    // last_insert_rowid returns the tips row — get the payments row directly
-    const p = rowToObj(
-      db.exec(
-        'SELECT id FROM payments WHERE employee_id = ? ORDER BY id DESC LIMIT 1',
-        [employee.id]
-      )
-    );
-
     console.log(
-      `[payments/mock] $${parsedAmount} → ${employee_username} (employee_id=${employee.id}), payment_id=${p?.id}`
+      `[payments/mock] $${parsedAmount} → ${employee_username} (employee_id=${employee.id}), payment_id=${payment.id}`
     );
 
     res.status(201).json({
       success: true,
-      payment_id: p?.id,
-      employee_name: employee.full_name,
-      amount: parsedAmount,
+      data: {
+        payment_id: payment.id,
+        employee_name: employee.full_name,
+        amount: parsedAmount,
+      },
+      message: `Successfully tipped $${parsedAmount.toFixed(2)} to ${employee.full_name}`,
     });
   } catch (err) {
     console.error('[payments/mock]', err.message);
-    res.status(500).json({ error: 'Server error processing payment.' });
+    res.status(500).json({
+      success: false,
+      error: 'Server error processing payment.',
+    });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/payments/history/:employeeId
-// Auth required
+// GET /api/payments/history
+// Protected — returns all payments for the logged-in employee
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/history', authMiddleware, (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+    const db = getDB();
+
+    const payments = rowsToObjs(
+      db.exec(
+        'SELECT id, amount, payment_method, status, tourist_email, created_at FROM payments WHERE employee_id = ? ORDER BY created_at DESC',
+        [employeeId]
+      )
+    );
+
+    console.log(`[payments/history] employee_id=${employeeId}, count=${payments.length}`);
+    res.json({ success: true, data: { payments } });
+  } catch (err) {
+    console.error('[payments/history]', err.message);
+    res.status(500).json({ success: false, error: 'Server error fetching payment history.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/payments/history/:employeeId  (legacy — kept for backwards compat)
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/history/:employeeId', authMiddleware, (req, res) => {
   try {
     const { employeeId } = req.params;
     const db = getDB();
 
-    // Allow employee to see their own history; admins can see any
     if (String(req.employee.id) !== String(employeeId) && !req.employee.is_admin) {
-      return res.status(403).json({ error: 'Access denied.' });
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     const payments = rowsToObjs(
@@ -115,12 +143,43 @@ router.get('/history/:employeeId', authMiddleware, (req, res) => {
       )
     );
 
-    console.log(`[payments/history] employee_id=${employeeId}, count=${payments.length}`);
-    res.json({ payments });
+    res.json({ success: true, data: { payments } });
   } catch (err) {
     console.error('[payments/history]', err.message);
-    res.status(500).json({ error: 'Server error fetching payment history.' });
+    res.status(500).json({ success: false, error: 'Server error fetching payment history.' });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/payments/create-intent
+// TODO: Create Stripe PaymentIntent
+// When ready:
+//   1. const { amount, currency, employee_id } = req.body
+//   2. const intent = await stripe.paymentIntents.create({ amount, currency })
+//   3. Return { client_secret: intent.client_secret }
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/create-intent', (req, res) => {
+  // TODO: Implement Stripe PaymentIntent creation
+  res.status(501).json({
+    success: false,
+    error: 'Stripe integration coming soon. Use /api/payments/mock for now.',
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/payments/webhook
+// TODO: Receive Stripe webhook events
+// When ready:
+//   1. Verify webhook signature with stripe.webhooks.constructEvent()
+//   2. Handle 'payment_intent.succeeded' event
+//   3. Extract employee_id, amount, transaction_id from metadata
+//   4. Call processSuccessfulPayment(db, employee_id, amount, 'stripe', transaction_id, email)
+//   5. saveDB()
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  // TODO: Implement Stripe webhook handler
+  console.log('[payments/webhook] Stripe webhook received (not yet implemented)');
+  res.json({ received: true });
 });
 
 module.exports = router;

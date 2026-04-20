@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Share, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,7 @@ export default function Home() {
   const [totalTips, setTotalTips] = useState(0);
   const [tipCount, setTipCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const prevBalanceRef = useRef<number | null>(null);
 
   // Business owners go to their manager dashboard
   useEffect(() => {
@@ -59,6 +60,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 30-second polling for real-time balance updates
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get('/dashboard');
+        const d = res.data;
+        const newBalance = d.employee?.balance ?? d.balance ?? 0;
+
+        if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
+          const diff = newBalance - prevBalanceRef.current;
+          showToast(`You received a $${diff.toFixed(2)} tip! 💸`, 'success');
+        }
+        prevBalanceRef.current = newBalance;
+
+        setBalance(newBalance);
+        setTotalTips(d.total_tips ?? 0);
+        setTipCount(d.tip_count ?? 0);
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(tipUrl);
@@ -104,6 +127,10 @@ export default function Home() {
               <Ionicons name="wallet" size={18} color={GREEN} />
             </View>
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('available_balance')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
+              <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>Live</Text>
+            </View>
           </View>
           <Text style={{ fontSize: 40, fontWeight: '800', color: GREEN, marginBottom: 16, letterSpacing: -1 }}>${balance.toFixed(2)}</Text>
 

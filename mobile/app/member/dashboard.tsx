@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Image,
   RefreshControl, ActivityIndicator,
@@ -40,6 +40,7 @@ export default function MemberDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bizName, setBizName] = useState('');
+  const prevBalanceRef = useRef<number | null>(null);
 
   const initials = (user?.full_name || 'M').charAt(0).toUpperCase();
   const photoSrc = user?.photo_base64 || user?.profile_image_url || '';
@@ -72,6 +73,33 @@ export default function MemberDashboard() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 30-second polling for real-time balance updates
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get('/dashboard');
+        const d = res.data;
+        const newBalance = d.employee?.balance ?? d.balance ?? 0;
+        const newTipCount = d.tip_count ?? 0;
+
+        // Detect new tip
+        if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
+          const diff = newBalance - prevBalanceRef.current;
+          showToast(`You received a $${diff.toFixed(2)} tip! 💸`, 'success');
+        }
+        prevBalanceRef.current = newBalance;
+
+        setData({
+          balance: newBalance,
+          total_tips: d.total_tips ?? 0,
+          tip_count: newTipCount,
+          recent_tips: d.recent_tips ?? [],
+        });
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -122,6 +150,10 @@ export default function MemberDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Ionicons name="wallet" size={18} color={GREEN} />
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>{t('available_balance')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
+                  <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>Live</Text>
+                </View>
               </View>
               <Text style={{ fontSize: 48, fontWeight: '800', color: GREEN, letterSpacing: -2, marginBottom: 4 }}>
                 ${(data?.balance ?? 0).toFixed(2)}
