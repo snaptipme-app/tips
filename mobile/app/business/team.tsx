@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Alert,
-  RefreshControl, Modal, ActivityIndicator, Image,
+  RefreshControl, Modal, ActivityIndicator, Image, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
@@ -16,7 +17,6 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 const RED = '#ef4444';
-const YELLOW = '#f59e0b';
 
 interface Member {
   member_id: number;
@@ -41,15 +41,18 @@ export default function TeamManagement() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
-      const [membersRes, bizRes] = await Promise.all([
+      const [membersRes, bizRes, linkRes] = await Promise.all([
         api.get('/business/members'),
         api.get('/business/me'),
+        api.get('/business/invite-link'),
       ]);
       setMembers(membersRes.data.members || []);
       setBusinessName(bizRes.data.business?.business_name || 'My Team');
+      if (linkRes.data.invite_url) setInviteUrl(linkRes.data.invite_url);
     } catch (e: any) {
       if (e.response?.status === 403 || e.response?.status === 404) {
         router.replace('/business/setup');
@@ -74,7 +77,7 @@ export default function TeamManagement() {
     setShowSheet(false);
     Alert.alert(
       'Remove Member',
-      `Remove ${selectedMember.full_name} from the team? Their account_type will be reset.`,
+      `Remove ${selectedMember.full_name} from the team? Their account will be reset.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -96,6 +99,22 @@ export default function TeamManagement() {
         },
       ]
     );
+  };
+
+  const handleCopyLink = async () => {
+    if (!inviteUrl) { showToast('No invite link available.', 'error'); return; }
+    await Clipboard.setStringAsync(inviteUrl);
+    showToast('Invite link copied!', 'success');
+    setShowSheet(false);
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!inviteUrl) { showToast('No invite link available.', 'error'); return; }
+    const msg = encodeURIComponent(`You're invited to join ${businessName} on SnapTip! Accept here: ${inviteUrl}`);
+    Linking.openURL(`whatsapp://send?text=${msg}`).catch(() => {
+      showToast('WhatsApp is not installed.', 'error');
+    });
+    setShowSheet(false);
   };
 
   const renderMember = ({ item }: { item: Member }) => {
@@ -242,22 +261,41 @@ export default function TeamManagement() {
 
                 {/* Actions */}
                 <View style={{ paddingTop: 8 }}>
+                  {/* Copy Invite Link */}
                   <TouchableOpacity
-                    onPress={() => { setShowSheet(false); router.push('/business/invite'); }}
+                    onPress={handleCopyLink}
                     activeOpacity={0.8}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 16 }}
                   >
                     <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-                      <Ionicons name="share-outline" size={22} color={ACCENT} />
+                      <Ionicons name="copy-outline" size={22} color={ACCENT} />
                     </View>
                     <View>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Share QR Invite</Text>
-                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Copy & share the team invite link</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Copy Invite Link</Text>
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Copy team invite link to clipboard</Text>
                     </View>
                   </TouchableOpacity>
 
                   <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 24 }} />
 
+                  {/* Share via WhatsApp */}
+                  <TouchableOpacity
+                    onPress={handleShareWhatsApp}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 16 }}
+                  >
+                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(37,211,102,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Share via WhatsApp</Text>
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Send invite through WhatsApp</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 24 }} />
+
+                  {/* Remove Member */}
                   <TouchableOpacity
                     onPress={handleRemove}
                     activeOpacity={0.8}

@@ -164,6 +164,14 @@ export default function BusinessDashboard() {
                 ))}
               </View>
 
+              {/* ── Free Badge ── */}
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.08)', borderWidth: 1, borderColor: GREEN }}>
+                  <Ionicons name="checkmark-circle" size={16} color={GREEN} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: GREEN }}>100% Free for your business</Text>
+                </View>
+              </View>
+
               {/* ── Top Performers Leaderboard ── */}
               <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
                 Top Performers

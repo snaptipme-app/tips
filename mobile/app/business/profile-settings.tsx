@@ -17,6 +17,13 @@ const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
+const BIZ_TYPES = [
+  { id: 'Restaurant', icon: 'restaurant-outline' as const },
+  { id: 'Hotel', icon: 'bed-outline' as const },
+  { id: 'Guide', icon: 'compass-outline' as const },
+  { id: 'Transport', icon: 'car-outline' as const },
+];
+
 interface Business {
   id: number;
   business_name: string;
@@ -33,10 +40,10 @@ export default function BusinessProfileSettings() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   // Editable fields
   const [name, setName] = useState('');
+  const [bizType, setBizType] = useState('');
   const [address, setAddress] = useState('');
   const [thankYou, setThankYou] = useState('');
   const [logoBase64, setLogoBase64] = useState('');
@@ -49,6 +56,7 @@ export default function BusinessProfileSettings() {
         const biz: Business = data.business;
         setBusiness(biz);
         setName(biz.business_name || '');
+        setBizType(biz.business_type || '');
         setAddress(biz.address || '');
         setThankYou(biz.thank_you_message || '');
         setLogoBase64(biz.logo_base64 || '');
@@ -84,6 +92,7 @@ export default function BusinessProfileSettings() {
     try {
       const payload: Record<string, string> = {
         business_name: name.trim(),
+        business_type: bizType,
         address: address.trim(),
         thank_you_message: thankYou.trim(),
       };
@@ -141,9 +150,7 @@ export default function BusinessProfileSettings() {
               {logoSrc ? (
                 <Image source={{ uri: logoSrc }} style={{ width: 100, height: 100 }} />
               ) : (
-                <>
-                  <Ionicons name="business-outline" size={36} color="rgba(108,108,255,0.5)" />
-                </>
+                <Ionicons name="business-outline" size={36} color="rgba(108,108,255,0.5)" />
               )}
             </View>
             <View style={{ position: 'absolute', bottom: 2, right: 2, width: 30, height: 30, borderRadius: 15, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG }}>
@@ -172,15 +179,34 @@ export default function BusinessProfileSettings() {
             </View>
           </View>
 
-          {/* Business Type (read-only) */}
+          {/* Business Type — pill selector */}
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>Business Type</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER }}>
-              <Ionicons name="layers-outline" size={18} color="rgba(255,255,255,0.25)" />
-              <Text style={{ flex: 1, color: 'rgba(255,255,255,0.4)', fontSize: 15, marginLeft: 10 }}>
-                {business?.business_type || '—'}
-              </Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Read-only</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginBottom: 10 }}>Business Type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {BIZ_TYPES.map((bt) => {
+                const sel = bizType === bt.id;
+                return (
+                  <TouchableOpacity
+                    key={bt.id}
+                    onPress={() => setBizType(bt.id)}
+                    activeOpacity={0.8}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 50,
+                      backgroundColor: sel ? 'rgba(108,108,255,0.12)' : 'rgba(255,255,255,0.05)',
+                      borderWidth: 1.5,
+                      borderColor: sel ? ACCENT : 'rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <Ionicons name={bt.icon} size={16} color={sel ? ACCENT : 'rgba(255,255,255,0.4)'} />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: sel ? ACCENT : 'rgba(255,255,255,0.5)' }}>{bt.id}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -259,7 +285,7 @@ export default function BusinessProfileSettings() {
           </Text>
         </TouchableOpacity>
 
-        {/* Danger Zone */}
+        {/* Navigation */}
         <View style={{ marginTop: 32 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.25)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
             Navigation

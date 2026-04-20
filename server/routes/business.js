@@ -549,7 +549,7 @@ router.get('/transactions', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.patch('/update', authMiddleware, (req, res) => {
   try {
-    const { business_name, address, thank_you_message, logo_base64, logo_url } = req.body;
+    const { business_name, business_type, address, thank_you_message, logo_base64, logo_url } = req.body;
     const db = getDB();
     const business = getOwnedBusiness(db, req.employee.id);
     if (!business) return res.status(403).json({ error: 'You do not own a business.' });
@@ -558,6 +558,7 @@ router.patch('/update', authMiddleware, (req, res) => {
     const values = [];
 
     if (business_name?.trim()) { updates.push('business_name = ?'); values.push(business_name.trim()); }
+    if (business_type?.trim()) { updates.push('business_type = ?'); values.push(business_type.trim()); }
     if (address !== undefined)  { updates.push('address = ?'); values.push(address.trim()); }
     if (thank_you_message !== undefined) { updates.push('thank_you_message = ?'); values.push(thank_you_message.trim()); }
     if (logo_base64 !== undefined) { updates.push('logo_base64 = ?'); values.push(logo_base64); }
