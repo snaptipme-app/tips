@@ -278,6 +278,9 @@ router.get('/members', authMiddleware, (req, res) => {
          e.full_name,
          e.email,
          e.balance,
+         e.job_title,
+         e.photo_url,
+         e.photo_base64,
          e.profile_image_url,
          COALESCE((SELECT SUM(amount) FROM payments WHERE employee_id = e.id), 0) as total_tips
        FROM team_members tm

@@ -30,6 +30,8 @@ interface Member {
   total_tips: number;
   role: string;
   joined_at: string;
+  photo_url?: string;
+  photo_base64?: string;
   profile_image_url?: string;
   job_title?: string;
 }
@@ -159,8 +161,12 @@ export default function TeamManagement() {
 
   const renderMember = ({ item }: { item: Member }) => {
     const initials = (item.full_name || 'U').charAt(0).toUpperCase();
-    const rawPhoto = item.profile_image_url || '';
-    const photo = rawPhoto ? `${rawPhoto}${rawPhoto.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
+    // photo_base64 takes priority (set via profile edit), then URL-based columns
+    const photoBase64 = item.photo_base64 || '';
+    const rawUrl = item.profile_image_url || item.photo_url || '';
+    // Add cache-buster to URL photos so stale images are never shown
+    const photoUrl = rawUrl ? `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
+    const photo = photoBase64 || photoUrl;
     const joinedDate = new Date(item.joined_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
     });
