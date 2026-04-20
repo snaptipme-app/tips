@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
@@ -39,6 +40,7 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; icon: any }> = 
 export default function MemberWithdraw() {
   const router = useRouter();
   const { user, setUser } = useAuth();
+  const { t } = useLanguage();
   const { toast, showToast } = useToast();
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [balance, setBalance] = useState(0);
@@ -127,15 +129,15 @@ export default function MemberWithdraw() {
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Withdraw Earnings</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Request your payout</Text>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('withdraw_title')}</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{t('request_payout')}</Text>
           </View>
         </View>
 
         {/* Balance Summary */}
         <LinearGradient colors={['#0a2a20', '#0d3025']} style={{ borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>Available Balance</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{t('available_balance')}</Text>
             <Text style={{ fontSize: 32, fontWeight: '800', color: GREEN }}>${balance.toFixed(2)}</Text>
           </View>
           <TouchableOpacity
@@ -144,7 +146,7 @@ export default function MemberWithdraw() {
             style={{ backgroundColor: GREEN, borderRadius: 50, paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}
           >
             <Ionicons name="arrow-up-circle" size={18} color="#fff" />
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Cash Out</Text>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{t('cash_out')}</Text>
           </TouchableOpacity>
         </LinearGradient>
       </LinearGradient>
@@ -161,15 +163,15 @@ export default function MemberWithdraw() {
           ListHeaderComponent={
             withdrawals.length > 0 ? (
               <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Withdrawal History</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.8 }}>{t('withdrawal_history')}</Text>
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 80 }}>
               <Ionicons name="receipt-outline" size={44} color="rgba(255,255,255,0.1)" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>No withdrawals yet</Text>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>Your withdrawal history will appear here</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>{t('no_withdrawals')}</Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', marginTop: 6 }}>{t('no_withdrawals_desc')}</Text>
             </View>
           }
           refreshControl={
@@ -189,13 +191,13 @@ export default function MemberWithdraw() {
               </View>
 
               <View style={{ paddingHorizontal: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 4 }}>Cash Out</Text>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 4 }}>{t('cash_out')}</Text>
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>
-                  Available: <Text style={{ color: GREEN, fontWeight: '700' }}>${balance.toFixed(2)}</Text>
+                  {t('available')} <Text style={{ color: GREEN, fontWeight: '700' }}>${balance.toFixed(2)}</Text>
                 </Text>
 
                 {/* Amount */}
-                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Amount</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('amount')}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, height: 52, paddingHorizontal: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
                   <Text style={{ fontSize: 20, fontWeight: '700', color: GREEN, marginRight: 8 }}>$</Text>
                   <TextInput
@@ -214,13 +216,13 @@ export default function MemberWithdraw() {
                 {amount && parseFloat(amount) > 0 && (
                   <View style={{ backgroundColor: 'rgba(0,200,150,0.06)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(0,200,150,0.15)', marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-                      You will receive: <Text style={{ color: GREEN, fontWeight: '700' }}>${parseFloat(amount || '0').toFixed(2)}</Text>
+                      {t('you_will_receive')} <Text style={{ color: GREEN, fontWeight: '700' }}>${parseFloat(amount || '0').toFixed(2)}</Text>
                     </Text>
                   </View>
                 )}
 
                 {/* Method */}
-                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Method</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('method')}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                   {METHODS.map((m) => (
                     <TouchableOpacity
@@ -235,7 +237,7 @@ export default function MemberWithdraw() {
                 </View>
 
                 {/* Account Details */}
-                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>RIB / Account Number</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('rib_account')}</Text>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, height: 52, paddingHorizontal: 16, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', marginBottom: 20 }}>
                   <TextInput
                     style={{ color: '#fff', fontSize: 15 }}
@@ -254,7 +256,7 @@ export default function MemberWithdraw() {
                   style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting ? 0.6 : 1 }}
                 >
                   {submitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? t('submitting') : t('submit_request')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

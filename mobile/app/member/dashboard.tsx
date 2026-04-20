@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
@@ -32,6 +33,7 @@ interface DashData {
 
 export default function MemberDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [data, setData] = useState<DashData | null>(null);
@@ -119,15 +121,15 @@ export default function MemberDashboard() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Ionicons name="wallet" size={18} color={GREEN} />
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Available Balance</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>{t('available_balance')}</Text>
               </View>
               <Text style={{ fontSize: 48, fontWeight: '800', color: GREEN, letterSpacing: -2, marginBottom: 4 }}>
                 ${(data?.balance ?? 0).toFixed(2)}
               </Text>
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>
-                Total earned: <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>${(data?.total_tips ?? 0).toFixed(2)}</Text>
+                {t('total_earned')}: <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>${(data?.total_tips ?? 0).toFixed(2)}</Text>
                 {'  '}·{'  '}
-                <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{data?.tip_count ?? 0}</Text> tips
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{data?.tip_count ?? 0}</Text> {t('tips')}
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -137,7 +139,7 @@ export default function MemberDashboard() {
                   style={{ flex: 1, height: 46, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
                 >
                   <Ionicons name="arrow-up-circle" size={20} color="#fff" />
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Cash Out</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('cash_out')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push('/member/qr')}
@@ -145,7 +147,7 @@ export default function MemberDashboard() {
                   style={{ height: 46, paddingHorizontal: 18, borderRadius: 50, borderWidth: 1.5, borderColor: 'rgba(0,200,150,0.4)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
                 >
                   <Ionicons name="qr-code-outline" size={18} color={GREEN} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN }}>My QR</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN }}>{t('my_qr')}</Text>
                 </TouchableOpacity>
               </View>
             </LinearGradient>
@@ -156,11 +158,11 @@ export default function MemberDashboard() {
           {/* ── Recent Tips ── */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Recent Tips
+              {t('recent_tips')}
             </Text>
             {(data?.tip_count ?? 0) > 0 && (
               <TouchableOpacity onPress={() => router.push('/member/withdraw')}>
-                <Text style={{ fontSize: 13, color: ACCENT, fontWeight: '600' }}>View All</Text>
+                <Text style={{ fontSize: 13, color: ACCENT, fontWeight: '600' }}>{t('view_all')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -170,9 +172,9 @@ export default function MemberDashboard() {
           ) : data?.recent_tips.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 48, backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="wallet-outline" size={44} color="rgba(255,255,255,0.1)" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>No tips yet</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>{t('no_tips_yet')}</Text>
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', marginTop: 6, textAlign: 'center', paddingHorizontal: 32 }}>
-                Share your QR code to start receiving tips from customers
+                {t('no_tips_desc')}
               </Text>
               <TouchableOpacity
                 onPress={() => router.push('/member/qr')}
@@ -180,7 +182,7 @@ export default function MemberDashboard() {
                 style={{ marginTop: 20, backgroundColor: ACCENT, borderRadius: 50, paddingHorizontal: 24, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}
               >
                 <Ionicons name="qr-code-outline" size={16} color="#fff" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Show My QR</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{t('show_my_qr')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -200,7 +202,7 @@ export default function MemberDashboard() {
                     <Ionicons name="arrow-down" size={18} color={GREEN} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Tip received</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('tip_received')}</Text>
                     <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(tip.created_at)}</Text>
                   </View>
                   <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+${Number(tip.amount).toFixed(2)}</Text>
@@ -211,12 +213,12 @@ export default function MemberDashboard() {
 
           {/* ── Quick Nav ── */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 28, marginBottom: 12 }}>
-            Quick Actions
+            {t('quick_actions')}
           </Text>
           {[
-            { label: 'My QR Code', sub: 'Share & download your tip QR', icon: 'qr-code' as const, color: ACCENT, route: '/member/qr' },
-            { label: 'Withdraw Earnings', sub: 'Request your earnings payout', icon: 'cash' as const, color: GREEN, route: '/member/withdraw' },
-            { label: 'Profile & Settings', sub: 'Photo, name, language', icon: 'person' as const, color: '#a855f7', route: '/member/profile' },
+            { label: t('my_qr_code_action'), sub: t('share_download_qr'), icon: 'qr-code' as const, color: ACCENT, route: '/member/qr' },
+            { label: t('withdraw_earnings'), sub: t('request_earnings_payout'), icon: 'cash' as const, color: GREEN, route: '/member/withdraw' },
+            { label: t('profile_settings'), sub: t('photo_name_language'), icon: 'person' as const, color: '#a855f7', route: '/member/profile' },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}

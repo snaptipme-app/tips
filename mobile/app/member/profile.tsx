@@ -31,7 +31,7 @@ const LANGS = [
 
 export default function MemberProfile() {
   const { user, setUser, logout } = useAuth();
-  const { language, changeLanguage } = useLanguage();
+  const { language, changeLanguage, t } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
 
@@ -135,8 +135,8 @@ export default function MemberProfile() {
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>My Profile</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Settings & preferences</Text>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('my_profile')}</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{t('settings_preferences')}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -158,10 +158,10 @@ export default function MemberProfile() {
 
         {/* ── Profile Section ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, gap: 16, marginBottom: 16 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase' }}>Personal Info</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('personal_info')}</Text>
 
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Full Name</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('full_name')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.35)" />
               <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder="Full name" placeholderTextColor="rgba(255,255,255,0.2)" value={fullName} onChangeText={setFullName} />
@@ -169,7 +169,7 @@ export default function MemberProfile() {
           </View>
 
           <View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Job Title</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('job_title')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="briefcase-outline" size={18} color="rgba(255,255,255,0.35)" />
               <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder="e.g. Waiter, Guide, Driver" placeholderTextColor="rgba(255,255,255,0.2)" value={jobTitle} onChangeText={setJobTitle} />
@@ -183,37 +183,37 @@ export default function MemberProfile() {
             style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: saving ? 0.6 : 1 }}
           >
             {saving ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{saving ? 'Saving...' : 'Save Profile'}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{saving ? t('saving') : t('save_profile')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Business Info (Read-Only) ── */}
         {bizName ? (
           <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>Your Workplace</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('your_workplace')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <View style={{ width: 48, height: 48, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
                 {bizLogo ? <Image source={{ uri: bizLogo }} style={{ width: 48, height: 48 }} /> : <Ionicons name="business-outline" size={22} color="rgba(255,255,255,0.3)" />}
               </View>
               <View>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{bizName}</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Member account</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{t('member_account')}</Text>
               </View>
               <View style={{ flex: 1, alignItems: 'flex-end' }}>
                 <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.1)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: GREEN }}>Active</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: GREEN }}>{t('active')}</Text>
                 </View>
               </View>
             </View>
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 14, textAlign: 'center' }}>
-              Your workplace can only be changed by your manager
+              {t('workplace_note')}
             </Text>
           </View>
         ) : null}
 
         {/* ── Withdrawal Settings ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>Withdrawal Settings</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('withdrawal_settings')}</Text>
           <TouchableOpacity
             onPress={() => setShowWithdrawSheet(true)}
             activeOpacity={0.8}
@@ -223,8 +223,8 @@ export default function MemberProfile() {
               <Ionicons name="card-outline" size={20} color={GREEN} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Update Payment Method</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>CIH Bank · Cash Plus · Wafa Cash</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('update_payment')}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{t('payment_methods_desc')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
           </TouchableOpacity>
@@ -232,7 +232,7 @@ export default function MemberProfile() {
 
         {/* ── Language ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>Language</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('language')}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {LANGS.map((l) => (
               <TouchableOpacity
@@ -249,7 +249,7 @@ export default function MemberProfile() {
 
         {/* ── Security ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>Security</Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('security')}</Text>
           <TouchableOpacity
             onPress={() => setShowPasswordSheet(true)}
             activeOpacity={0.8}
@@ -258,7 +258,7 @@ export default function MemberProfile() {
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="lock-closed-outline" size={20} color={ACCENT} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff', flex: 1 }}>Change Password</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff', flex: 1 }}>{t('change_password')}</Text>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
           </TouchableOpacity>
         </View>
@@ -270,7 +270,7 @@ export default function MemberProfile() {
           style={{ height: 52, borderRadius: 50, backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10 }}
         >
           <Ionicons name="log-out-outline" size={20} color={RED} />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: RED }}>Log Out</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: RED }}>{t('logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -282,11 +282,11 @@ export default function MemberProfile() {
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
                 <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
               </View>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 20 }}>Change Password</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 20 }}>{t('change_password')}</Text>
               {[
-                { label: 'Current Password', val: currentPw, set: setCurrentPw },
-                { label: 'New Password', val: newPw, set: setNewPw },
-                { label: 'Confirm New Password', val: confirmPw, set: setConfirmPw },
+                { label: t('current_password'), val: currentPw, set: setCurrentPw },
+                { label: t('new_password'), val: newPw, set: setNewPw },
+                { label: t('confirm_password'), val: confirmPw, set: setConfirmPw },
               ].map((f) => (
                 <View key={f.label} style={{ marginBottom: 14 }}>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{f.label}</Text>
@@ -297,7 +297,7 @@ export default function MemberProfile() {
               ))}
               <TouchableOpacity onPress={handleChangePassword} disabled={changingPw} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: changingPw ? 0.6 : 1, marginTop: 6 }}>
                 {changingPw ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{changingPw ? 'Saving...' : 'Save Password'}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{changingPw ? t('saving') : t('save_password')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -311,7 +311,7 @@ export default function MemberProfile() {
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 20 }}>Payment Method</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 20 }}>{t('payment_method')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
               {METHODS.map((m) => (
                 <TouchableOpacity key={m} onPress={() => setWMethod(m)} activeOpacity={0.8} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 50, borderWidth: 1.5, borderColor: wMethod === m ? GREEN : 'rgba(255,255,255,0.1)', backgroundColor: wMethod === m ? 'rgba(0,200,150,0.1)' : 'transparent' }}>
@@ -319,13 +319,13 @@ export default function MemberProfile() {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>RIB / Account Number</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{t('rib_account')}</Text>
             <View style={{ backgroundColor: INPUT_BG, borderRadius: 12, height: 50, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', marginBottom: 20 }}>
               <TextInput style={{ color: '#fff', fontSize: 15 }} placeholder="Enter account number" placeholderTextColor="rgba(255,255,255,0.2)" value={wAccount} onChangeText={setWAccount} keyboardType="numeric" />
             </View>
             <TouchableOpacity onPress={handleSaveWithdrawal} disabled={savingWithdraw} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: savingWithdraw ? 0.6 : 1 }}>
               {savingWithdraw ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Save Method</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('save_method')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import PrintableQRCard, { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
@@ -18,6 +19,7 @@ const ACCENT = '#6c6cff';
 
 export default function MemberQR() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
 
@@ -76,9 +78,9 @@ export default function MemberQR() {
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>My QR Card</Text>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('my_qr_card')}</Text>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-              Download &amp; share your printable tip card
+              {t('download_share_subtitle')}
             </Text>
           </View>
         </View>
@@ -133,7 +135,7 @@ export default function MemberQR() {
               <Ionicons name="download-outline" size={20} color="#fff" />
             )}
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-              {capturing ? 'Preparing...' : 'Download & Share Card'}
+              {capturing ? t('preparing') : t('download_share_card')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -151,7 +153,7 @@ export default function MemberQR() {
           }}
         >
           <Ionicons name="eye-outline" size={20} color={ACCENT} />
-          <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>Preview Tourist Page</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>{t('preview_tourist_page')}</Text>
         </TouchableOpacity>
 
         {/* ── Info ── */}
@@ -162,10 +164,10 @@ export default function MemberQR() {
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <Ionicons name="print-outline" size={16} color={ACCENT} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>Printing tip</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>{t('printing_tip')}</Text>
           </View>
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 20 }}>
-            Download the card as a PDF and print it for your table. Customers scan the QR to tip you — no app needed.
+            {t('printing_tip_desc')}
           </Text>
         </View>
       </ScrollView>
