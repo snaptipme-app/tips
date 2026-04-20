@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -224,6 +224,7 @@ export default function Register() {
   const [imageUri, setImageUri] = useState('');
   const [imageBase64, setImageBase64] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
   const progress = (step / 4) * 100;
 
@@ -356,14 +357,11 @@ export default function Register() {
 
   // ── Step 4 handlers ──
   const showPhotoOptions = useCallback(() => {
-    Alert.alert('Profile Photo', 'Choose an option', [
-      { text: '📷 Take Photo', onPress: () => pickImage('camera') },
-      { text: '🖼️ Choose from Gallery', onPress: () => pickImage('gallery') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setShowPhotoSheet(true);
   }, []);
 
   const pickImage = async (source: 'camera' | 'gallery') => {
+    setShowPhotoSheet(false);
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') { showToast('Camera permission required.', 'error'); return; }
@@ -384,7 +382,7 @@ export default function Register() {
       if (imageBase64) { body.photo_url = imageBase64; body.photo_base64 = imageBase64; }
       if (jobTitle.trim()) body.job_title = jobTitle.trim();
       if (Object.keys(body).length) await api.patch('/employee/profile', body);
-      showToast('Setup complete! 🚀', 'success');
+      showToast('Setup complete!', 'success');
       setTimeout(() => {
         if (accountType === 'business') router.replace('/business/setup');
         else router.replace('/(tabs)/home');
@@ -483,6 +481,33 @@ export default function Register() {
         )}
       </ScrollView>
       <Toast {...toast} />
+
+      {/* Photo Picker Bottom Sheet */}
+      <Modal visible={showPhotoSheet} animationType="slide" transparent>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowPhotoSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Profile Photo</Text>
+            <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="camera-outline" size={22} color={ACCENT} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Take Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => pickImage('gallery')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="images-outline" size={22} color={GREEN} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Choose from Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowPhotoSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

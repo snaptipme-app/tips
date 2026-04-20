@@ -5,7 +5,9 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
-const CARD = 'rgba(255,255,255,0.05)';
+const CARD = '#0f0f2e';
+const BORDER = 'rgba(255,255,255,0.06)';
+const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
 interface Tip {
@@ -17,6 +19,7 @@ interface Tip {
 
 export default function Tips() {
   const [tips, setTips] = useState<Tip[]>([]);
+  const [totalTips, setTotalTips] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { toast, showToast } = useToast();
@@ -24,7 +27,8 @@ export default function Tips() {
   const fetchTips = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
-      setTips(data.tips || []);
+      setTips(data.recent_tips || data.tips || []);
+      setTotalTips(data.total_tips ?? 0);
     } catch {
       showToast('Failed to load tips.', 'error');
     } finally {
@@ -42,25 +46,68 @@ export default function Tips() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderTip = ({ item }: { item: Tip }) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 16, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
-      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-        <Ionicons name="cash-outline" size={20} color={GREEN} />
+  const renderTip = ({ item, index }: { item: Tip; index: number }) => (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: CARD,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: BORDER,
+    }}>
+      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+        <Ionicons name="arrow-down-outline" size={20} color={GREEN} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Tip Received</Text>
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(item.created_at)}</Text>
       </View>
-      <Text style={{ fontSize: 16, fontWeight: '700', color: GREEN }}>+${item.amount.toFixed(2)}</Text>
+      <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+${item.amount.toFixed(2)}</Text>
     </View>
   );
 
   const EmptyState = () => (
-    <View style={{ alignItems: 'center', paddingTop: 80 }}>
-      <Ionicons name="wallet-outline" size={48} color="rgba(255,255,255,0.15)" />
-      <Text style={{ fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.3)', marginTop: 16 }}>No tips yet</Text>
-      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>Share your QR code to start receiving tips!</Text>
+    <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 }}>
+      <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(108,108,255,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)' }}>
+        <Ionicons name="wallet-outline" size={36} color="rgba(108,108,255,0.4)" />
+      </View>
+      <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>No tips yet</Text>
+      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 20 }}>
+        Share your QR code with customers to start receiving tips instantly!
+      </Text>
     </View>
+  );
+
+  const HeaderComponent = () => (
+    <>
+      {/* Summary Card */}
+      {tips.length > 0 && (
+        <View style={{
+          backgroundColor: CARD,
+          borderRadius: 16,
+          padding: 18,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: BORDER,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+        }}>
+          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="trending-up" size={22} color={GREEN} />
+          </View>
+          <View>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>Total Earned</Text>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: GREEN }}>${totalTips.toFixed(2)}</Text>
+          </View>
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>{tips.length} tips</Text>
+          </View>
+        </View>
+      )}
+    </>
   );
 
   return (
@@ -70,9 +117,10 @@ export default function Tips() {
         data={tips}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderTip}
+        ListHeaderComponent={<HeaderComponent />}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, flexGrow: 1 }}
         ListEmptyComponent={!loading ? <EmptyState /> : null}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6c6cff" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
       />
       <Toast {...toast} />
     </View>

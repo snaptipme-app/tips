@@ -147,25 +147,25 @@ export default function InviteMember() {
                   flex: 1, height: 44, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
                   justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6,
                 }}>
-                  <Text style={{ fontSize: 14 }}>📋</Text>
+                  <Ionicons name="copy-outline" size={16} color="#fff" />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Copy Link</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={shareLink} activeOpacity={0.8} style={{
                   flex: 1, height: 44, borderRadius: 50, backgroundColor: ACCENT,
                   justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6,
                 }}>
-                  <Text style={{ fontSize: 14 }}>📤</Text>
+                  <Ionicons name="share-social-outline" size={16} color="#fff" />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Share</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Expiry info + Refresh */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flex: 1 }}>⏱ Link expires in 48h • Tap refresh to generate new link</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flex: 1 }}>Link expires in 48h - Tap refresh to generate new link</Text>
                 <TouchableOpacity onPress={refreshLink} disabled={refreshing} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 10 }}>
                   {refreshing
                     ? <ActivityIndicator size="small" color={ACCENT} />
-                    : <Text style={{ fontSize: 12 }}>🔄</Text>
+                    : <Ionicons name="refresh" size={14} color={ACCENT} />
                   }
                   <Text style={{ fontSize: 12, color: ACCENT, fontWeight: '600' }}>Refresh</Text>
                 </TouchableOpacity>
@@ -195,7 +195,7 @@ export default function InviteMember() {
 
           <TouchableOpacity onPress={handleEmailInvite} disabled={sendingEmail} activeOpacity={0.8} style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: sendingEmail ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
             {sendingEmail ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{sendingEmail ? 'Sending...' : 'Send Invitation 📨'}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{sendingEmail ? 'Sending...' : 'Send Invitation'}</Text>
           </TouchableOpacity>
         </View>
 

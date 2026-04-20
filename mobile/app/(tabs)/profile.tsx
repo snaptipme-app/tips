@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
@@ -8,7 +9,7 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
-const CARD = 'rgba(255,255,255,0.05)';
+const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#6c6cff';
@@ -16,10 +17,10 @@ const GREEN = '#00C896';
 const RED = '#ef4444';
 
 const METHODS = [
-  { id: 'cih', label: 'CIH Bank', icon: 'card-outline' as const },
-  { id: 'cashplus', label: 'Cash Plus', icon: 'cash-outline' as const },
-  { id: 'wafacash', label: 'Wafa Cash', icon: 'wallet-outline' as const },
-  { id: 'other', label: 'Other Bank', icon: 'business-outline' as const },
+  { id: 'cih', label: 'CIH Bank', icon: 'card-outline' as const, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { id: 'cashplus', label: 'Cash Plus', icon: 'cash-outline' as const, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { id: 'wafacash', label: 'Wafa Cash', icon: 'wallet-outline' as const, color: '#00C896', bg: 'rgba(0,200,150,0.12)' },
+  { id: 'other', label: 'Other Bank', icon: 'business-outline' as const, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
 ];
 
 interface Withdrawal {
@@ -43,6 +44,7 @@ export default function Profile() {
   // Withdraw modal
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState('');
+  const [selectedMethodLabel, setSelectedMethodLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [accountDetails, setAccountDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +53,9 @@ export default function Profile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.full_name || '');
   const [editSaving, setEditSaving] = useState(false);
+
+  // Photo picker bottom sheet
+  const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 
@@ -64,23 +69,16 @@ export default function Profile() {
   const fetchData = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
-      setBalance(data.balance ?? 0);
-      setWithdrawals(data.withdrawals || []);
+      setBalance(data.employee?.balance ?? data.balance ?? 0);
+      setWithdrawals(data.recent_withdrawals || data.withdrawals || []);
     } catch {} finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Photo Picker ──
-  const showPhotoOptions = () => {
-    Alert.alert('Change Photo', 'Choose an option', [
-      { text: '📷 Take Photo', onPress: () => pickImage('camera') },
-      { text: '🖼️ Choose from Gallery', onPress: () => pickImage('gallery') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
+  // ── Photo Picker (Bottom Sheet) ──
   const pickImage = async (source: 'camera' | 'gallery') => {
+    setShowPhotoSheet(false);
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -90,19 +88,8 @@ export default function Profile() {
     }
 
     const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.5,
-          base64: true,
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.5,
-          base64: true,
-        });
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
@@ -120,7 +107,7 @@ export default function Profile() {
         const updated = { ...user, photo_base64: base64Image, profile_image_url: base64Image };
         setUser(updated);
       }
-      showToast('Profile photo updated! 🎉', 'success');
+      showToast('Profile photo updated!', 'success');
     } catch {
       showToast('Failed to upload. Try again.', 'error');
       setLocalPhotoUri('');
@@ -137,7 +124,7 @@ export default function Profile() {
       await api.patch('/employee/profile', { full_name: editName.trim() });
       if (user) setUser({ ...user, full_name: editName.trim() });
       setShowEditModal(false);
-      showToast('Profile updated successfully! ✨', 'success');
+      showToast('Profile updated!', 'success');
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to update.', 'error');
     } finally { setEditSaving(false); }
@@ -152,7 +139,7 @@ export default function Profile() {
     setSubmitting(true);
     try {
       await api.post('/withdrawals/request', { amount: a, method: selectedMethod, account_details: accountDetails.trim() });
-      showToast('Withdrawal submitted! 💸', 'success');
+      showToast('Withdrawal submitted!', 'success');
       setShowWithdrawModal(false);
       setAmount('');
       setAccountDetails('');
@@ -181,10 +168,10 @@ export default function Profile() {
         <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 20 }}>Account Settings</Text>
 
         {/* ── Profile Card ── */}
-        <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: BORDER, marginBottom: 20 }}>
+        <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>
           {/* Avatar */}
           <View style={{ width: 96, height: 96, marginBottom: 14 }}>
-            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)', opacity: uploading ? 0.5 : 1 }}>
+            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2.5, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)', opacity: uploading ? 0.5 : 1 }}>
               {photoSrc ? (
                 <Image source={{ uri: photoSrc }} style={{ width: 96, height: 96 }} />
               ) : (
@@ -197,10 +184,10 @@ export default function Profile() {
               </View>
             )}
             <TouchableOpacity
-              onPress={showPhotoOptions}
+              onPress={() => setShowPhotoSheet(true)}
               disabled={uploading}
               activeOpacity={0.8}
-              style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#0d0d24' }}
+              style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: CARD }}
             >
               <Ionicons name="camera" size={14} color="#fff" />
             </TouchableOpacity>
@@ -223,7 +210,7 @@ export default function Profile() {
         {user?.account_type === 'business' && (
           <>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Business Settings</Text>
-            <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 20, overflow: 'hidden' }}>
+            <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
               <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
                 <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="people-outline" size={18} color={ACCENT} />
@@ -235,8 +222,8 @@ export default function Profile() {
                 <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push('/business/invite')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
-                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Ionicons name="person-add-outline" size={18} color={ACCENT} />
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="person-add-outline" size={18} color={GREEN} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Invite Members</Text>
@@ -252,8 +239,15 @@ export default function Profile() {
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Withdraw Funds</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
           {METHODS.map((m) => (
-            <TouchableOpacity key={m.id} onPress={() => { setSelectedMethod(m.id); setShowWithdrawModal(true); }} style={{ width: '47%', backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }} activeOpacity={0.8}>
-              <Ionicons name={m.icon} size={24} color={ACCENT} />
+            <TouchableOpacity
+              key={m.id}
+              onPress={() => { setSelectedMethod(m.id); setSelectedMethodLabel(m.label); setShowWithdrawModal(true); }}
+              style={{ width: '47%', backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
+              activeOpacity={0.8}
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: m.bg, justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name={m.icon} size={22} color={m.color} />
+              </View>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{m.label}</Text>
             </TouchableOpacity>
           ))}
@@ -264,9 +258,12 @@ export default function Profile() {
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Recent Withdrawals</Text>
             {withdrawals.slice(0, 10).map((w) => (
-              <View key={w.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}>
+              <View key={w.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}>
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Ionicons name="arrow-up-outline" size={18} color={ACCENT} />
+                </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>${w.amount.toFixed(2)}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>${w.amount.toFixed(2)}</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{w.method || 'N/A'}</Text>
                 </View>
                 <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 50, backgroundColor: `${statusColor(w.status)}15` }}>
@@ -278,18 +275,52 @@ export default function Profile() {
         )}
 
         {/* ── Logout ── */}
-        <TouchableOpacity onPress={handleLogout} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity onPress={handleLogout} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.06)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
           <Ionicons name="log-out-outline" size={18} color={RED} />
           <Text style={{ fontSize: 15, fontWeight: '600', color: RED }}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
 
+      {/* ═══ Photo Picker Bottom Sheet ═══ */}
+      <Modal visible={showPhotoSheet} animationType="slide" transparent>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowPhotoSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+            {/* Drag Handle */}
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Change Photo</Text>
+
+            <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="camera-outline" size={22} color={ACCENT} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Take Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => pickImage('gallery')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="images-outline" size={22} color={GREEN} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Choose from Gallery</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setShowPhotoSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ═══ Withdraw Modal ═══ */}
       <Modal visible={showWithdrawModal} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>Withdraw via {selectedMethod}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>Withdraw via {selectedMethodLabel}</Text>
               <TouchableOpacity onPress={() => setShowWithdrawModal(false)}>
                 <Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
@@ -308,6 +339,9 @@ export default function Profile() {
       <Modal visible={showEditModal} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>Edit Profile</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
