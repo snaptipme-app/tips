@@ -17,12 +17,14 @@ const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const METHODS = [
-  { id: 'cih', label: 'CIH Bank', icon: 'card-outline' as const, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  { id: 'cashplus', label: 'Cash Plus', icon: 'cash-outline' as const, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { id: 'wafacash', label: 'Wafa Cash', icon: 'wallet-outline' as const, color: '#00C896', bg: 'rgba(0,200,150,0.12)' },
-  { id: 'other', label: 'Other Bank', icon: 'business-outline' as const, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+  { id: 'cih', label: 'CIH Bank', logo: require('../../assets/images/cih_icon.png'), color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { id: 'cashplus', label: 'Cash Plus', logo: require('../../assets/images/cashplus_icon.png'), color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { id: 'wafacash', label: 'Wafa Cash', logo: require('../../assets/images/wafacash_icon.png'), color: '#00C896', bg: 'rgba(0,200,150,0.12)' },
+  { id: 'other', label: 'Other Bank', logo: null, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
 ];
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 interface Withdrawal {
   id: number;
@@ -255,7 +257,9 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Withdraw ── */}
+        {/* ── Withdraw (members only) ── */}
+        {user?.account_type !== 'business' && (
+        <>
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('withdraw_funds')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
           {METHODS.map((m) => (
@@ -266,15 +270,21 @@ export default function Profile() {
               activeOpacity={0.8}
             >
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: m.bg, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name={m.icon} size={22} color={m.color} />
+                {m.logo ? (
+                  <Image source={m.logo} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                ) : (
+                  <Ionicons name="business-outline" size={22} color={m.color} />
+                )}
               </View>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{m.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        </>
+        )}
 
         {/* ── History ── */}
-        {withdrawals.length > 0 && (
+        {user?.account_type !== 'business' && withdrawals.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('recent_withdrawals')}</Text>
             {withdrawals.slice(0, 10).map((w) => (

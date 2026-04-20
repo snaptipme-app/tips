@@ -527,7 +527,8 @@ router.get('/transactions', authMiddleware, (req, res) => {
 
     const transactions = rowsToObjs(db.exec(
       `SELECT p.id, p.amount, p.status, p.created_at,
-              e.full_name as employee_name, e.username as employee_username
+              e.full_name as employee_name, e.username as employee_username,
+              e.photo_url, e.photo_base64, e.profile_image_url
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
        INNER JOIN employees e ON e.id = p.employee_id

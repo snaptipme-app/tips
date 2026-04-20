@@ -5,13 +5,14 @@
     "slug": "snaptip",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/snaptip_icon.png",
     "scheme": "snaptip",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "me.snaptip.app",
+      "icon": "./assets/images/snaptip_icon.png",
       "infoPlist": {
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos."
@@ -19,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/snaptip_icon.png",
         "backgroundColor": "#080818"
       },
       "package": "me.snaptip.app"
@@ -32,7 +33,8 @@
     "plugins": [
       "expo-router",
       "expo-image-picker",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-av"
     ],
     "experiments": {
       "typedRoutes": true

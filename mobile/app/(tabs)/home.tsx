@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import { playTipSound } from '../../lib/tipSound';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -71,6 +72,7 @@ export default function Home() {
 
         if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
           const diff = newBalance - prevBalanceRef.current;
+          playTipSound();
           showToast(`You received a $${diff.toFixed(2)} tip! 💸`, 'success');
         }
         prevBalanceRef.current = newBalance;

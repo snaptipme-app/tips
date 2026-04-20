@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList, RefreshControl, ActivityIndicator,
+  View, Text, TouchableOpacity, FlatList, RefreshControl, ActivityIndicator, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,9 @@ interface Transaction {
   created_at: string;
   employee_name: string;
   employee_username: string;
+  photo_url?: string;
+  photo_base64?: string;
+  profile_image_url?: string;
 }
 
 const FILTERS: { key: Filter; label: string }[] = [
@@ -93,6 +96,7 @@ export default function Transactions() {
 
   const renderTx = ({ item }: { item: Transaction }) => {
     const initials = (item.employee_name || 'U').charAt(0).toUpperCase();
+    const photoSrc = item.photo_base64 || item.profile_image_url || item.photo_url || '';
     return (
       <View
         style={{
@@ -107,8 +111,12 @@ export default function Transactions() {
         }}
       >
         {/* Avatar */}
-        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: ACCENT }}>{initials}</Text>
+        <View style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1.5, borderColor: 'rgba(108,108,255,0.25)' }}>
+          {photoSrc ? (
+            <Image source={{ uri: photoSrc }} style={{ width: 42, height: 42 }} />
+          ) : (
+            <Text style={{ fontSize: 16, fontWeight: '700', color: ACCENT }}>{initials}</Text>
+          )}
         </View>
 
         {/* Info */}

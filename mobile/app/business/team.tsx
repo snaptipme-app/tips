@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, FlatList, Alert,
   RefreshControl, Modal, ActivityIndicator, Image, Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -74,6 +74,13 @@ export default function TeamManagement() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Re-fetch every time screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
   const openMemberSheet = (m: Member) => {
     setSelectedMember(m);
@@ -152,7 +159,8 @@ export default function TeamManagement() {
 
   const renderMember = ({ item }: { item: Member }) => {
     const initials = (item.full_name || 'U').charAt(0).toUpperCase();
-    const photo = item.profile_image_url || '';
+    const rawPhoto = item.profile_image_url || '';
+    const photo = rawPhoto ? `${rawPhoto}${rawPhoto.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
     const joinedDate = new Date(item.joined_at).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
     });
