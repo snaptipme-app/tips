@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
-import { useLanguage, Lang } from '../../lib/LanguageContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
@@ -34,7 +34,7 @@ interface Withdrawal {
 
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
-  const { lang, setLang, t, langLabel, LANG_LABELS } = useLanguage();
+  const { language, changeLanguage, t, languageLabel, LANG_INFO } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [balance, setBalance] = useState(0);
@@ -249,7 +249,7 @@ export default function Profile() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('language')}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{langLabel}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{languageLabel}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
           </TouchableOpacity>
@@ -310,18 +310,18 @@ export default function Profile() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('select_language')}</Text>
-            {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
+            {Object.keys(LANG_INFO).map((l) => (
               <TouchableOpacity
                 key={l}
-                onPress={() => { setLang(l); setShowLangModal(false); }}
+                onPress={() => { changeLanguage(l); setShowLangModal(false); }}
                 activeOpacity={0.8}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}
               >
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: lang === l ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: lang === l ? 1.5 : 0, borderColor: ACCENT }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: lang === l ? ACCENT : 'rgba(255,255,255,0.5)' }}>{l.toUpperCase()}</Text>
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: language === l ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: language === l ? 1.5 : 0, borderColor: ACCENT }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: language === l ? ACCENT : 'rgba(255,255,255,0.5)' }}>{l.toUpperCase()}</Text>
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: lang === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_LABELS[l]}</Text>
-                {lang === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} style={{ marginLeft: 'auto' }} />}
+                <Text style={{ fontSize: 16, fontWeight: '600', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_INFO[l].label}</Text>
+                {language === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} style={{ marginLeft: 'auto' }} />}
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowLangModal(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>

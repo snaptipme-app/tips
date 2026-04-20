@@ -31,7 +31,7 @@ const LANGS = [
 
 export default function MemberProfile() {
   const { user, setUser, logout } = useAuth();
-  const { lang, setLang } = useLanguage();
+  const { language, changeLanguage } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
 
@@ -237,11 +237,11 @@ export default function MemberProfile() {
             {LANGS.map((l) => (
               <TouchableOpacity
                 key={l.code}
-                onPress={() => setLang(l.code as any)}
+                onPress={() => changeLanguage(l.code)}
                 activeOpacity={0.8}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 50, borderWidth: 1.5, borderColor: lang === l.code ? ACCENT : 'rgba(255,255,255,0.08)', backgroundColor: lang === l.code ? 'rgba(108,108,255,0.12)' : 'rgba(255,255,255,0.04)' }}
+                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 50, borderWidth: 1.5, borderColor: language === l.code ? ACCENT : 'rgba(255,255,255,0.08)', backgroundColor: language === l.code ? 'rgba(108,108,255,0.12)' : 'rgba(255,255,255,0.04)' }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: lang === l.code ? ACCENT : 'rgba(255,255,255,0.4)' }}>{l.flag}  {l.label}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: language === l.code ? ACCENT : 'rgba(255,255,255,0.4)' }}>{l.flag}  {l.label}</Text>
               </TouchableOpacity>
             ))}
           </View>

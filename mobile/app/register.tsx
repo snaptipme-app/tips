@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
-import { useLanguage, Lang } from '../lib/LanguageContext';
+import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
 
 const BG = '#080818';
@@ -50,7 +50,7 @@ const InputField = memo(({ icon, placeholder, value, onChangeText, error, right,
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 1 — Personal Info
    ═══════════════════════════════════════════════════════════════════════════ */
-const LANGS: { key: Lang; label: string }[] = [
+const LANGS: { key: string; label: string }[] = [
   { key: 'en', label: 'EN' },
   { key: 'fr', label: 'FR' },
   { key: 'ar', label: 'AR' },
@@ -229,7 +229,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
 export default function Register() {
   const router = useRouter();
   const { setUser } = useAuth();
-  const { lang, setLang } = useLanguage();
+  const { language, changeLanguage } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -474,7 +474,7 @@ export default function Register() {
               firstName={firstName} lastName={lastName} email={email} errors={errors}
               onFirstName={handleFirstNameChange} onLastName={handleLastNameChange} onEmail={handleEmailChange}
               onNext={handleStep1} loading={loading}
-              currentLang={lang} onLangChange={setLang}
+              currentLang={language} onLangChange={changeLanguage}
             />
           )}
           {step === 2 && (

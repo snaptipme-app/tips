@@ -1,12 +1,20 @@
+import { useEffect } from 'react';
+import { I18nManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/AuthContext';
-import { LanguageProvider } from '../lib/LanguageContext';
+import { LanguageProvider, useLanguage } from '../lib/LanguageContext';
 
-export default function RootLayout() {
+function InnerLayout() {
+  const { isRTL } = useLanguage();
+
+  useEffect(() => {
+    I18nManager.allowRTL(isRTL);
+    I18nManager.forceRTL(isRTL);
+  }, [isRTL]);
+
   return (
-    <LanguageProvider>
-    <AuthProvider>
+    <>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -31,7 +39,16 @@ export default function RootLayout() {
         <Stack.Screen name="member/profile" />
         <Stack.Screen name="join/[token]" />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <LanguageProvider>
+        <InnerLayout />
+      </LanguageProvider>
     </AuthProvider>
-    </LanguageProvider>
   );
 }
