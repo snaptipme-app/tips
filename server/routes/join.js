@@ -196,7 +196,7 @@ router.get('/:token', (req, res) => {
 </head>
 <body>
   <div class="container">
-    <div class="brand"><h1>⚡ SnapTip</h1></div>
+    <div class="brand"><h1>&#9889; SnapTip</h1></div>
 
     <!-- Loading -->
     <div id="loading" class="active">
@@ -209,7 +209,7 @@ router.get('/:token', (req, res) => {
     <!-- Error -->
     <div id="error-state">
       <div class="card">
-        <div class="error-icon">❌</div>
+        <div class="error-icon" style="font-size:48px;color:#ef4444;">&#10007;</div>
         <div class="error-title">Invitation Error</div>
         <div class="error-msg" id="error-msg">This invitation link is invalid or has expired.</div>
         <a href="/" class="btn btn-outline">Go to SnapTip</a>
@@ -219,8 +219,8 @@ router.get('/:token', (req, res) => {
     <!-- Success -->
     <div id="success-state">
       <div class="card">
-        <div class="success-icon">✅</div>
-        <div class="success-title">You're in! 🎉</div>
+        <div class="success-icon" style="font-size:48px;color:#00C896;">&#10003;</div>
+        <div class="success-title">You're in!</div>
         <div class="success-sub">You've successfully joined</div>
         <div class="success-biz" id="success-biz-name"></div>
         <a href="/" class="btn btn-accent">Open SnapTip</a>
@@ -234,7 +234,7 @@ router.get('/:token', (req, res) => {
     <!-- Preview -->
     <div id="preview">
       <div class="card">
-        <div class="avatar" id="biz-emoji">🏢</div>
+        <div class="avatar" id="biz-emoji" style="font-size:36px;color:#6c6cff;">&#9733;</div>
         <div class="biz-name" id="biz-name"></div>
         <div class="biz-type" id="biz-type"></div>
         <div class="invite-msg">has invited you to join their team on SnapTip and start receiving digital tips.</div>
@@ -282,8 +282,8 @@ router.get('/:token', (req, res) => {
         const data = await res.json();
 
         // Populate preview
-        const typeMap = { Restaurant: '🍽️', Hotel: '🏨', Transport: '🚗' };
-        $('biz-emoji').textContent = typeMap[data.business_type] || '🏢';
+        const typeMap = { Restaurant: '&#127860;', Hotel: '&#127976;', Transport: '&#128663;' };
+        $('biz-emoji').innerHTML = typeMap[data.business_type] || '&#9733;';
         $('biz-name').textContent = data.business_name || 'Unknown Business';
         $('biz-type').textContent = data.business_type || '';
 
@@ -304,7 +304,7 @@ router.get('/:token', (req, res) => {
         // Logged in
         acts.innerHTML = 
           '<div class="joining-as">Joining as <strong>' + (user.full_name || user.username || '') + '</strong></div>' +
-          '<button class="btn btn-primary" id="join-btn">✅ Join ' + (bizName || 'Team') + '</button>' +
+          '<button class="btn btn-primary" id="join-btn">&#10003; Join ' + (bizName || 'Team') + '</button>' +
           '<a href="/" class="btn btn-outline">Decline</a>';
 
         $('join-btn').addEventListener('click', handleJoin);
@@ -312,8 +312,8 @@ router.get('/:token', (req, res) => {
         // Not logged in
         const redirectUrl = encodeURIComponent('/join/' + TOKEN);
         acts.innerHTML = 
-          '<a href="/login?redirect=' + redirectUrl + '" class="btn btn-primary">🔑 Log in to Accept</a>' +
-          '<a href="/register?redirect=' + redirectUrl + '" class="btn btn-secondary">👤 Create Account</a>' +
+          '<a href="/login?redirect=' + redirectUrl + '" class="btn btn-primary">Log in to Accept</a>' +
+          '<a href="/register?redirect=' + redirectUrl + '" class="btn btn-secondary">Create Account</a>' +
           '<div class="helper">You need a SnapTip account to join the team</div>';
       }
     }
@@ -338,8 +338,8 @@ router.get('/:token', (req, res) => {
         show('success-state');
       } catch (e) {
         btn.disabled = false;
-        btn.textContent = '❌ ' + e.message;
-        setTimeout(() => { btn.textContent = '✅ Join Team'; }, 3000);
+        btn.textContent = 'Error: ' + e.message;
+        setTimeout(() => { btn.textContent = 'Join Team'; }, 3000);
       }
     }
 

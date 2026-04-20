@@ -131,11 +131,11 @@ router.post('/invite', authMiddleware, async (req, res) => {
 <body style="margin:0;padding:0;background-color:#080818;font-family:Arial,sans-serif;">
   <div style="max-width:500px;margin:40px auto;background:linear-gradient(135deg,#1a1a3e,#0d0d2b);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
     <div style="background:linear-gradient(135deg,#6c6cff,#a855f7);padding:32px;text-align:center;">
-      <h1 style="color:white;margin:0;font-size:28px;">⚡ SnapTip</h1>
+      <h1 style="color:white;margin:0;font-size:28px;">&#9889; SnapTip</h1>
       <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Digital Tipping Platform</p>
     </div>
     <div style="padding:32px;">
-      <h2 style="color:white;font-size:22px;margin:0 0 12px;">You're invited! 🎉</h2>
+      <h2 style="color:white;font-size:22px;margin:0 0 12px;">You're invited!</h2>
       <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.6;margin:0 0 8px;">
         <strong style="color:white;">${business.business_name}</strong> has invited you to join their team on SnapTip and start receiving digital tips from tourists.
       </p>
@@ -143,7 +143,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
         Click the button below to accept the invitation and create your account.
       </p>
       <div style="text-align:center;margin:28px 0;">
-        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#4facfe,#a855f7);color:white;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:bold;letter-spacing:0.5px;">✅ Accept Invitation</a>
+        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#4facfe,#a855f7);color:white;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:bold;letter-spacing:0.5px;">&#10003; Accept Invitation</a>
       </div>
       <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;margin:16px 0 0;">
         Or copy this link:<br>
@@ -151,9 +151,9 @@ router.post('/invite', authMiddleware, async (req, res) => {
       </p>
       <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin:24px 0 0;border:1px solid rgba(255,255,255,0.08);">
         <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;line-height:1.6;">
-          🔒 This invitation link expires in <strong style="color:white;">48 hours</strong><br>
-          💡 You'll need a SnapTip account to accept this invitation<br>
-          ❓ If you didn't expect this email, you can safely ignore it
+          &#128274; This invitation link expires in <strong style="color:white;">48 hours</strong><br>
+          &#8226; You'll need a SnapTip account to accept this invitation<br>
+          &#8226; If you didn't expect this email, you can safely ignore it
         </p>
       </div>
     </div>
@@ -165,7 +165,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
 </html>`;
 
     try {
-      await sendEmail(normalizedEmail, `You're invited to join ${business.business_name} on SnapTip ⚡`, htmlBody);
+      await sendEmail(normalizedEmail, `You're invited to join ${business.business_name} on SnapTip`, htmlBody);
     } catch (emailErr) {
       console.warn('[business/invite] Email send failed:', emailErr.message);
     }
@@ -350,13 +350,18 @@ router.post('/join/:token', authMiddleware, (req, res) => {
     const db = getDB();
     const employeeId = req.employee.id;
 
+    console.log(`[business/join] Employee ${employeeId} attempting to join with token: ${token}`);
+
     const invitation = rowToObj(
       db.exec("SELECT * FROM invitations WHERE token = ? AND status IN ('pending', 'active')", [token])
     );
 
     if (!invitation) {
+      console.log('[business/join] Invitation not found or already used');
       return res.status(404).json({ error: 'Invitation not found or already used.' });
     }
+
+    console.log(`[business/join] Found invitation: business_id=${invitation.business_id}, email=${invitation.email}`);
 
     // Check expiry
     if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
@@ -374,10 +379,18 @@ router.post('/join/:token', authMiddleware, (req, res) => {
       return res.status(409).json({ error: 'You are already a member of this business.' });
     }
 
+    // Insert into team_members
     db.run(
       'INSERT INTO team_members (business_id, employee_id, role) VALUES (?, ?, ?)',
       [invitation.business_id, employeeId, 'member']
     );
+
+    // Update employee record — set business_id and account_type
+    db.run(
+      "UPDATE employees SET business_id = ?, account_type = 'member' WHERE id = ?",
+      [invitation.business_id, employeeId]
+    );
+
     // Only mark email invites as accepted; link invites stay active (reusable)
     if (invitation.email !== 'link_invite') {
       db.run(
@@ -392,10 +405,20 @@ router.post('/join/:token', authMiddleware, (req, res) => {
       db.exec('SELECT business_name FROM businesses WHERE id = ?', [invitation.business_id])
     );
 
-    console.log(`[business/join] Employee ${employeeId} joined business_id=${invitation.business_id}`);
-    res.json({ success: true, message: 'You have joined the business successfully.', business_name: business?.business_name || '' });
+    // Get updated employee data to return
+    const updatedEmployee = rowToObj(
+      db.exec('SELECT id, username, full_name, email, account_type, business_id, balance, photo_url, photo_base64, profile_image_url FROM employees WHERE id = ?', [employeeId])
+    );
+
+    console.log(`[business/join] SUCCESS: Employee ${employeeId} joined business_id=${invitation.business_id}, account_type=member`);
+    res.json({
+      success: true,
+      message: 'You have joined the business successfully.',
+      business_name: business?.business_name || '',
+      employee: updatedEmployee,
+    });
   } catch (err) {
-    console.error('[business/join]', err.message);
+    console.error('[business/join]', err.message, err.stack);
     res.status(500).json({ error: 'Server error joining business.' });
   }
 });

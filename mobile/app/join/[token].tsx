@@ -16,7 +16,7 @@ const RED = '#ef4444';
 export default function JoinBusiness() {
   const params = useLocalSearchParams();
   const inviteToken = params.token as string;
-  const { token: authToken, user } = useAuth();
+  const { token: authToken, user, setUser } = useAuth();
   const router = useRouter();
   const { toast, showToast } = useToast();
 
@@ -72,6 +72,19 @@ export default function JoinBusiness() {
       console.log('[join] join response:', JSON.stringify(data));
       setJoined(true);
       setBusinessName(data.business_name || businessName);
+
+      // Update user context with new account_type from server
+      if (data.employee && user) {
+        setUser({
+          ...user,
+          ...data.employee,
+          account_type: data.employee.account_type || 'member',
+          business_id: data.employee.business_id,
+        });
+      } else if (user) {
+        setUser({ ...user, account_type: 'member' });
+      }
+
       showToast('Welcome to the team!', 'success');
     } catch (e: any) {
       console.error('[join] join error:', e.response?.status, e.response?.data || e.message);

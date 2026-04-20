@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Text } from 'react-native';
+import { Animated, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -15,10 +16,10 @@ const COLORS: Record<ToastType, string> = {
   info: '#6c6cff',
 };
 
-const ICONS: Record<ToastType, string> = {
-  success: '✅',
-  error: '❌',
-  info: 'ℹ️',
+const ICON_NAMES: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
+  success: 'checkmark-circle',
+  error: 'close-circle',
+  info: 'information-circle',
 };
 
 export function Toast({ message, type, visible }: ToastProps) {
@@ -61,7 +62,7 @@ export function Toast({ message, type, visible }: ToastProps) {
         elevation: 8,
       }}
     >
-      <Text style={{ fontSize: 18 }}>{ICONS[type]}</Text>
+      <Ionicons name={ICON_NAMES[type]} size={20} color="#fff" />
       <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, flex: 1 }}>{message}</Text>
     </Animated.View>
   );

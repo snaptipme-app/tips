@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Updates from 'expo-updates';
 
 export type Lang = 'en' | 'fr' | 'ar' | 'es';
 
@@ -35,6 +36,8 @@ const translations: Record<string, Record<Lang, string>> = {
   change_photo: { en: 'Change Photo', fr: 'Changer la photo', ar: 'تغيير الصورة', es: 'Cambiar foto' },
   take_photo: { en: 'Take Photo', fr: 'Prendre une photo', ar: 'التقاط صورة', es: 'Tomar foto' },
   choose_gallery: { en: 'Choose from Gallery', fr: 'Choisir depuis la galerie', ar: 'اختيار من المعرض', es: 'Elegir de galería' },
+  settings: { en: 'Settings', fr: 'Paramètres', ar: 'الإعدادات', es: 'Ajustes' },
+  select_language: { en: 'Select Language', fr: 'Choisir la langue', ar: 'اختر اللغة', es: 'Seleccionar idioma' },
 
   // Common
   save: { en: 'Save', fr: 'Enregistrer', ar: 'حفظ', es: 'Guardar' },
@@ -63,6 +66,7 @@ interface LangContextType {
   t: (key: string) => string;
   langLabel: string;
   LANG_LABELS: Record<Lang, string>;
+  ready: boolean;
 }
 
 const LanguageContext = createContext<LangContextType>({
@@ -71,27 +75,41 @@ const LanguageContext = createContext<LangContextType>({
   t: (key) => key,
   langLabel: 'English',
   LANG_LABELS,
+  ready: false,
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('en');
+  const [ready, setReady] = useState(false);
 
+  // Load saved language on mount
   useEffect(() => {
     (async () => {
-      const saved = await AsyncStorage.getItem('snaptip_lang');
-      if (saved && ['en', 'fr', 'ar', 'es'].includes(saved)) {
-        setLangState(saved as Lang);
-      }
+      try {
+        const saved = await AsyncStorage.getItem('snaptip_lang');
+        if (saved && ['en', 'fr', 'ar', 'es'].includes(saved)) {
+          setLangState(saved as Lang);
+        }
+      } catch {}
+      setReady(true);
     })();
   }, []);
 
   const setLang = useCallback(async (l: Lang) => {
     setLangState(l);
     await AsyncStorage.setItem('snaptip_lang', l);
+
+    // Handle RTL for Arabic
     const shouldRTL = l === 'ar';
     if (I18nManager.isRTL !== shouldRTL) {
       I18nManager.forceRTL(shouldRTL);
       I18nManager.allowRTL(shouldRTL);
+      // Need to reload the app for RTL change to take effect
+      Alert.alert(
+        'Restart Required',
+        'The app needs to restart to apply the language change.',
+        [{ text: 'OK', onPress: () => { try { Updates.reloadAsync(); } catch {} } }]
+      );
     }
   }, []);
 
@@ -100,7 +118,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [lang]);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t, langLabel: LANG_LABELS[lang], LANG_LABELS }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, langLabel: LANG_LABELS[lang], LANG_LABELS, ready }}>
       {children}
     </LanguageContext.Provider>
   );

@@ -29,7 +29,7 @@ async function sendOTPEmail(email, code) {
     text: `Your verification code is: ${code}\n\nThis code expires in 5 minutes. Do not share it with anyone.`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;border-radius:16px;background:#0a0f1e;color:#ffffff;">
-        <h2 style="color:#00C896;margin-bottom:8px;">⚡ SnapTip</h2>
+        <h2 style="color:#00C896;margin-bottom:8px;">&#9889; SnapTip</h2>
         <p style="color:#94a3b8;margin-bottom:24px;">Here is your verification code:</p>
         <div style="background:#ffffff12;border:1px solid #ffffff20;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
           <span style="font-size:40px;font-weight:700;letter-spacing:12px;color:#00C896;">${code}</span>
