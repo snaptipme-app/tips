@@ -7,17 +7,17 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
-const CARD = 'rgba(255,255,255,0.05)';
+const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
 const TYPES = [
-  { id: 'Restaurant', emoji: '🍽️' },
-  { id: 'Hotel', emoji: '🏨' },
-  { id: 'Transport', emoji: '🚗' },
-  { id: 'Other', emoji: '🎯' },
+  { id: 'Restaurant', icon: 'restaurant-outline' as const, color: '#f59e0b' },
+  { id: 'Hotel', icon: 'bed-outline' as const, color: '#3b82f6' },
+  { id: 'Transport', icon: 'car-outline' as const, color: '#00C896' },
+  { id: 'Other', icon: 'grid-outline' as const, color: '#94a3b8' },
 ];
 
 export default function BusinessSetup() {
@@ -25,6 +25,7 @@ export default function BusinessSetup() {
   const { toast, showToast } = useToast();
   const [name, setName] = useState('');
   const [type, setType] = useState('');
+  const [customType, setCustomType] = useState('');
   const [address, setAddress] = useState('');
   const [logoUri, setLogoUri] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,10 +38,13 @@ export default function BusinessSetup() {
   const handleCreate = async () => {
     if (!name.trim()) { showToast('Business name is required.', 'error'); return; }
     if (!type) { showToast('Select a business type.', 'error'); return; }
+    if (type === 'Other' && !customType.trim()) { showToast('Please specify your business type.', 'error'); return; }
+
+    const finalType = type === 'Other' ? customType.trim() : type;
     setLoading(true);
     try {
-      await api.post('/business/create', { business_name: name.trim(), business_type: type, address: address.trim(), logo_url: '' });
-      showToast('Business created! 🎉', 'success');
+      await api.post('/business/create', { business_name: name.trim(), business_type: finalType, address: address.trim(), logo_url: '' });
+      showToast('Business created!', 'success');
       setTimeout(() => router.replace('/business/team'), 500);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to create business.', 'error');
@@ -49,7 +53,7 @@ export default function BusinessSetup() {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 60 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 }}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Back</Text>
@@ -88,12 +92,32 @@ export default function BusinessSetup() {
                   width: '47%', paddingVertical: 16, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
                   borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
                 }}>
-                  <Text style={{ fontSize: 28, marginBottom: 6 }}>{t.emoji}</Text>
+                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: sel ? `${t.color}20` : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
+                    <Ionicons name={t.icon} size={24} color={sel ? t.color : 'rgba(255,255,255,0.4)'} />
+                  </View>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: sel ? ACCENT : '#fff' }}>{t.id}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+
+          {/* Custom Type Input (when "Other" selected) */}
+          {type === 'Other' && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Specify Business Type</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER }}>
+                <Ionicons name="create-outline" size={18} color="rgba(255,255,255,0.4)" />
+                <TextInput
+                  style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }}
+                  placeholder="e.g. Tour Guide, Salon..."
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                  value={customType}
+                  onChangeText={setCustomType}
+                  autoFocus
+                />
+              </View>
+            </View>
+          )}
 
           {/* Address */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Address <Text style={{ color: 'rgba(255,255,255,0.25)' }}>(optional)</Text></Text>

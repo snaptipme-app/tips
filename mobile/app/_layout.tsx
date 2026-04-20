@@ -1,9 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/AuthContext';
+import { LanguageProvider } from '../lib/LanguageContext';
 
 export default function RootLayout() {
   return (
+    <LanguageProvider>
     <AuthProvider>
       <StatusBar style="light" />
       <Stack
@@ -23,5 +25,6 @@ export default function RootLayout() {
         <Stack.Screen name="join/[token]" />
       </Stack>
     </AuthProvider>
+    </LanguageProvider>
   );
 }

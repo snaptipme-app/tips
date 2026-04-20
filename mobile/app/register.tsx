@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
+import { useLanguage, Lang } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
 
 const BG = '#080818';
@@ -49,8 +50,33 @@ const InputField = memo(({ icon, placeholder, value, onChangeText, error, right,
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 1 — Personal Info
    ═══════════════════════════════════════════════════════════════════════════ */
-const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading }: any) => (
+const LANGS: { key: Lang; label: string }[] = [
+  { key: 'en', label: 'EN' },
+  { key: 'fr', label: 'FR' },
+  { key: 'ar', label: 'AR' },
+  { key: 'es', label: 'ES' },
+];
+
+const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading, currentLang, onLangChange }: any) => (
   <>
+    {/* Language Pills */}
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+      {LANGS.map((l) => (
+        <TouchableOpacity
+          key={l.key}
+          onPress={() => onLangChange(l.key)}
+          activeOpacity={0.8}
+          style={{
+            paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50,
+            backgroundColor: currentLang === l.key ? 'rgba(108,108,255,0.15)' : INPUT_BG,
+            borderWidth: 1.5, borderColor: currentLang === l.key ? ACCENT : 'transparent',
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: currentLang === l.key ? ACCENT : 'rgba(255,255,255,0.4)' }}>{l.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+
     <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
     <InputField icon="person-outline" placeholder="First name" value={firstName} onChangeText={onFirstName} error={errors.firstName} />
     <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={onLastName} error={errors.lastName} />
@@ -59,7 +85,10 @@ const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastNam
       {loading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
     </TouchableOpacity>
-    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 10 }}>🔒 Secure & encrypted</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 }}>
+      <Ionicons name="lock-closed" size={12} color="rgba(255,255,255,0.25)" />
+      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Secure & encrypted</Text>
+    </View>
   </>
 ));
 
@@ -132,8 +161,8 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
     <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
     <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
       {[
-        { key: 'individual', emoji: '👤', title: 'Individual', desc: 'I work alone' },
-        { key: 'business', emoji: '🏢', title: 'Business', desc: 'I manage a team' },
+        { key: 'individual', icon: 'person-outline' as const, title: 'Individual', desc: 'I work alone' },
+        { key: 'business', icon: 'business-outline' as const, title: 'Business', desc: 'I manage a team' },
       ].map((opt) => {
         const sel = accountType === opt.key;
         return (
@@ -141,7 +170,9 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
             flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
             borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
           }}>
-            <Text style={{ fontSize: 24, marginBottom: 6 }}>{opt.emoji}</Text>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sel ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
+              <Ionicons name={opt.icon} size={22} color={sel ? ACCENT : 'rgba(255,255,255,0.4)'} />
+            </View>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
           </TouchableOpacity>
@@ -165,7 +196,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
    ═══════════════════════════════════════════════════════════════════════════ */
 const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, onSkip, loading }: any) => (
   <>
-    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done! 🎉</Text>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done!</Text>
     <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
 
     <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
@@ -198,6 +229,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
 export default function Register() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { lang, setLang } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -256,7 +288,7 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
-      showToast(`Code sent to ${email.trim().toLowerCase()} 📧`, 'success');
+      showToast(`Code sent to ${email.trim().toLowerCase()}`, 'success');
       setStep(2);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to send code.', 'error');
@@ -296,7 +328,7 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code });
-      showToast('Email verified! ✅', 'success');
+      showToast('Email verified!', 'success');
       setStep(3);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Verification failed.', 'error');
@@ -314,7 +346,7 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
-      showToast('New code sent! 📧', 'success');
+      showToast('New code sent!', 'success');
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed.', 'error');
     } finally { setLoading(false); }
@@ -346,7 +378,7 @@ export default function Register() {
       await AsyncStorage.setItem('snaptip_token', data.token);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(userData));
       setUser(userData);
-      showToast('Account created! 🎉', 'success');
+      showToast('Account created!', 'success');
       setStep(4);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Registration failed.', 'error');
@@ -442,6 +474,7 @@ export default function Register() {
               firstName={firstName} lastName={lastName} email={email} errors={errors}
               onFirstName={handleFirstNameChange} onLastName={handleLastNameChange} onEmail={handleEmailChange}
               onNext={handleStep1} loading={loading}
+              currentLang={lang} onLangChange={setLang}
             />
           )}
           {step === 2 && (

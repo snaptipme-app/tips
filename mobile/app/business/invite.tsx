@@ -68,7 +68,7 @@ export default function InviteMember() {
   const copyLink = useCallback(async () => {
     if (!inviteUrl) { showToast('No invite link available.', 'error'); return; }
     await Clipboard.setStringAsync(inviteUrl);
-    showToast('Link copied! 📋', 'success');
+    showToast('Link copied!', 'success');
   }, [inviteUrl, showToast]);
 
   // ── Share link ──
@@ -87,7 +87,7 @@ export default function InviteMember() {
     try {
       const { data } = await api.post('/business/refresh-invite-link');
       setInviteUrl(data.invite_url);
-      showToast('New invite link generated! 🔄', 'success');
+      showToast('New invite link generated!', 'success');
     } catch {
       showToast('Failed to refresh link.', 'error');
     } finally { setRefreshing(false); }
@@ -100,7 +100,7 @@ export default function InviteMember() {
     try {
       await api.post('/business/invite', { email: email.trim().toLowerCase() });
       setSent((p) => [{ email: email.trim().toLowerCase(), sentAt: new Date().toISOString() }, ...p]);
-      showToast(`Invitation sent to ${email.trim()} 📨`, 'success');
+      showToast(`Invitation sent to ${email.trim()}`, 'success');
       setEmail('');
     } catch (e: any) {
       console.error('[invite] Email invite error:', e.response?.status, e.response?.data || e.message);

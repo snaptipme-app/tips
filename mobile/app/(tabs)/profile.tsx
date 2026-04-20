@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage, Lang } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 
@@ -33,6 +34,7 @@ interface Withdrawal {
 
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
+  const { lang, setLang, langLabel, LANG_LABELS } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [balance, setBalance] = useState(0);
@@ -56,6 +58,9 @@ export default function Profile() {
 
   // Photo picker bottom sheet
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
+
+  // Language picker
+  const [showLangModal, setShowLangModal] = useState(false);
 
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 
@@ -235,6 +240,21 @@ export default function Profile() {
           </>
         )}
 
+        {/* ── Language & Settings ── */}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Settings</Text>
+        <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
+          <TouchableOpacity onPress={() => setShowLangModal(true)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="language-outline" size={18} color={ACCENT} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Language</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{langLabel}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+          </TouchableOpacity>
+        </View>
+
         {/* ── Withdraw ── */}
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Withdraw Funds</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
@@ -279,7 +299,37 @@ export default function Profile() {
           <Ionicons name="log-out-outline" size={18} color={RED} />
           <Text style={{ fontSize: 15, fontWeight: '600', color: RED }}>Log Out</Text>
         </TouchableOpacity>
+        <Toast {...toast} />
       </ScrollView>
+
+      {/* ═══ Language Picker Modal ═══ */}
+      <Modal visible={showLangModal} animationType="slide" transparent>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowLangModal(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Select Language</Text>
+            {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
+              <TouchableOpacity
+                key={l}
+                onPress={() => { setLang(l); setShowLangModal(false); }}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: lang === l ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: lang === l ? 1.5 : 0, borderColor: ACCENT }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: lang === l ? ACCENT : 'rgba(255,255,255,0.5)' }}>{l.toUpperCase()}</Text>
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: lang === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_LABELS[l]}</Text>
+                {lang === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} style={{ marginLeft: 'auto' }} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setShowLangModal(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ═══ Photo Picker Bottom Sheet ═══ */}
       <Modal visible={showPhotoSheet} animationType="slide" transparent>

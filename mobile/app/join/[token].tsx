@@ -72,7 +72,7 @@ export default function JoinBusiness() {
       console.log('[join] join response:', JSON.stringify(data));
       setJoined(true);
       setBusinessName(data.business_name || businessName);
-      showToast('Welcome to the team! 🎉', 'success');
+      showToast('Welcome to the team!', 'success');
     } catch (e: any) {
       console.error('[join] join error:', e.response?.status, e.response?.data || e.message);
       showToast(e.response?.data?.error || 'Failed to join.', 'error');
@@ -113,7 +113,7 @@ export default function JoinBusiness() {
         <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 24, borderWidth: 2, borderColor: GREEN }}>
           <Ionicons name="checkmark-circle" size={48} color={GREEN} />
         </View>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 8 }}>You're in! 🎉</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 8 }}>You're in!</Text>
         <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>You've successfully joined</Text>
         <Text style={{ fontSize: 16, fontWeight: '700', color: ACCENT, marginBottom: 28 }}>{businessName}</Text>
         <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} activeOpacity={0.8} style={{ height: 52, paddingHorizontal: 40, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center' }}>
@@ -125,14 +125,15 @@ export default function JoinBusiness() {
   }
 
   // ── Join Preview ──
-  const typeEmoji = businessType === 'Restaurant' ? '🍽️' : businessType === 'Hotel' ? '🏨' : businessType === 'Transport' ? '🚗' : '🏢';
+  const typeIconMap: Record<string, string> = { Restaurant: 'restaurant-outline', Hotel: 'bed-outline', Transport: 'car-outline' };
+  const typeIcon = (typeIconMap[businessType] || 'business-outline') as any;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
       {/* Business Preview Card */}
       <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 32, borderWidth: 1, borderColor: BORDER, alignItems: 'center', width: '100%', marginBottom: 24 }}>
         <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 2, borderColor: ACCENT }}>
-          <Text style={{ fontSize: 36 }}>{typeEmoji}</Text>
+          <Ionicons name={typeIcon} size={36} color={ACCENT} />
         </View>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4, textAlign: 'center' }}>{businessName}</Text>
         {businessType ? <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{businessType}</Text> : null}
