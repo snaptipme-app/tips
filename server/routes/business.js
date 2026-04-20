@@ -608,5 +608,30 @@ router.delete('/member/:employeeId', authMiddleware, (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/member-business
+// Returns the business that this logged-in employee belongs to as a member
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/member-business', authMiddleware, (req, res) => {
+  try {
+    const db = getDB();
+    const employeeId = req.employee.id;
+
+    const business = rowToObj(db.exec(
+      `SELECT b.id, b.business_name, b.business_type, b.logo_url, b.logo_base64, b.address, b.thank_you_message
+       FROM businesses b
+       JOIN team_members tm ON tm.business_id = b.id
+       WHERE tm.employee_id = ?
+       LIMIT 1`,
+      [employeeId]
+    ));
+
+    res.json({ business: business || null });
+  } catch (err) {
+    console.error('[business/member-business]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
 module.exports = router;
 
