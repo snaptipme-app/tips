@@ -280,19 +280,19 @@ export default function TipPage() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     try {
-      const { data } = await api.post('/payments/mock', {
+      await api.post('/payments/mock', {
         employee_username: username,
         amount,
         payment_method: paymentMethod,
       });
 
-      if (data.success) {
-        setTipAmount(amount);
-        setShowSuccess(true);
-      }
+      setTipAmount(amount);
+      setShowSuccess(true);
     } catch (err) {
       console.error('Payment failed:', err);
-      // Still show success for mock payment UX
+      // Still show success for mock payment UX — tourist should see confirmation
+      setTipAmount(amount);
+      setShowSuccess(true);
     } finally {
       setSending(false);
     }
