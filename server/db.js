@@ -110,6 +110,10 @@ async function initDB() {
     db.run("ALTER TABLE employees ADD COLUMN job_title TEXT DEFAULT ''");
   } catch (_) { /* already exists */ }
 
+  try {
+    db.run("ALTER TABLE employees ADD COLUMN business_id INTEGER DEFAULT NULL");
+  } catch (_) { /* already exists */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS analytics (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

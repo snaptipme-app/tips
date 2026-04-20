@@ -17,6 +17,7 @@ router.patch('/profile', authMiddleware, (req, res) => {
     if (photo_base64) { updates.push('photo_base64 = ?'); values.push(photo_base64); }
     if (photo_url) { updates.push('profile_image_url = ?'); values.push(photo_url); }
     if (full_name) { updates.push('full_name = ?'); values.push(full_name.trim()); }
+    if (job_title !== undefined) { updates.push('job_title = ?'); values.push(job_title.trim()); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Nothing to update.' });

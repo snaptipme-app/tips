@@ -29,7 +29,7 @@ router.get('/', authMiddleware, (req, res) => {
 
     const employee = rowToObj(
       db.exec(
-        'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, email, balance, account_type, job_title, created_at FROM employees WHERE id = ?',
+        'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, email, balance, account_type, job_title, business_id, created_at FROM employees WHERE id = ?',
         [employeeId]
       )
     );

@@ -30,7 +30,7 @@ router.post('/create', (req, res) => {
     const tipIdResult = db.exec('SELECT last_insert_rowid() as id');
     const tipId = tipIdResult[0].values[0][0];
 
-    console.log(`💰 Tip of $${amount} sent to @${employee_username}`);
+    console.log(`[tips] Tip of $${amount} sent to @${employee_username}`);
 
     res.status(201).json({
       message: 'Tip sent successfully!',

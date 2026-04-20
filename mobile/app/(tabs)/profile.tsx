@@ -34,7 +34,7 @@ interface Withdrawal {
 
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
-  const { lang, setLang, langLabel, LANG_LABELS } = useLanguage();
+  const { lang, setLang, t, langLabel, LANG_LABELS } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [balance, setBalance] = useState(0);
@@ -155,9 +155,9 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
+    Alert.alert(t('logout'), 'Are you sure?', [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('logout'), style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
     ]);
   };
 
@@ -170,7 +170,7 @@ export default function Profile() {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 40 }}>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 20 }}>Account Settings</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 20 }}>{t('account_settings')}</Text>
 
         {/* ── Profile Card ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>
@@ -207,22 +207,22 @@ export default function Profile() {
             style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: INPUT_BG, borderRadius: 50, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: BORDER }}
           >
             <Ionicons name="create-outline" size={14} color="rgba(255,255,255,0.5)" />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>Edit Profile</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('edit_profile')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Business Settings (owner only) ── */}
         {user?.account_type === 'business' && (
           <>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Business Settings</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('business_settings')}</Text>
             <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
               <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
                 <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="people-outline" size={18} color={ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>My Team</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Manage team members</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('my_team')}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{t('manage_members')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
               </TouchableOpacity>
@@ -231,8 +231,8 @@ export default function Profile() {
                   <Ionicons name="person-add-outline" size={18} color={GREEN} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Invite Members</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Send invitations</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('invite_members')}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{t('send_invitations')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
               </TouchableOpacity>
@@ -241,14 +241,14 @@ export default function Profile() {
         )}
 
         {/* ── Language & Settings ── */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Settings</Text>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('settings')}</Text>
         <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
           <TouchableOpacity onPress={() => setShowLangModal(true)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
             <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="language-outline" size={18} color={ACCENT} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Language</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('language')}</Text>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{langLabel}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
@@ -256,7 +256,7 @@ export default function Profile() {
         </View>
 
         {/* ── Withdraw ── */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Withdraw Funds</Text>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('withdraw_funds')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
           {METHODS.map((m) => (
             <TouchableOpacity
@@ -276,7 +276,7 @@ export default function Profile() {
         {/* ── History ── */}
         {withdrawals.length > 0 && (
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Recent Withdrawals</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('recent_withdrawals')}</Text>
             {withdrawals.slice(0, 10).map((w) => (
               <View key={w.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}>
                 <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
@@ -297,7 +297,7 @@ export default function Profile() {
         {/* ── Logout ── */}
         <TouchableOpacity onPress={handleLogout} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.06)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
           <Ionicons name="log-out-outline" size={18} color={RED} />
-          <Text style={{ fontSize: 15, fontWeight: '600', color: RED }}>Log Out</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: RED }}>{t('logout')}</Text>
         </TouchableOpacity>
         <Toast {...toast} />
       </ScrollView>
@@ -309,7 +309,7 @@ export default function Profile() {
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Select Language</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('select_language')}</Text>
             {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
               <TouchableOpacity
                 key={l}
@@ -325,7 +325,7 @@ export default function Profile() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowLangModal(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -339,24 +339,24 @@ export default function Profile() {
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Change Photo</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('change_photo')}</Text>
 
             <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="camera-outline" size={22} color={ACCENT} />
               </View>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Take Photo</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>{t('take_photo')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => pickImage('gallery')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="images-outline" size={22} color={GREEN} />
               </View>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Choose from Gallery</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>{t('choose_gallery')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setShowPhotoSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

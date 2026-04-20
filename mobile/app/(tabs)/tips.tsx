@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
@@ -23,6 +24,7 @@ export default function Tips() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { toast, showToast } = useToast();
+  const { t } = useLanguage();
 
   const fetchTips = useCallback(async () => {
     try {
@@ -61,7 +63,7 @@ export default function Tips() {
         <Ionicons name="arrow-down-outline" size={20} color={GREEN} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Tip Received</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('tip_received')}</Text>
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(item.created_at)}</Text>
       </View>
       <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+${item.amount.toFixed(2)}</Text>
@@ -73,9 +75,9 @@ export default function Tips() {
       <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(108,108,255,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)' }}>
         <Ionicons name="wallet-outline" size={36} color="rgba(108,108,255,0.4)" />
       </View>
-      <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>No tips yet</Text>
+      <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('no_tips')}</Text>
       <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 20 }}>
-        Share your QR code with customers to start receiving tips instantly!
+        {t('share_qr_tips')}
       </Text>
     </View>
   );
@@ -99,7 +101,7 @@ export default function Tips() {
             <Ionicons name="trending-up" size={22} color={GREEN} />
           </View>
           <View>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>Total Earned</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>{t('total_earned')}</Text>
             <Text style={{ fontSize: 22, fontWeight: '800', color: GREEN }}>${totalTips.toFixed(2)}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
@@ -112,7 +114,7 @@ export default function Tips() {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG, paddingTop: 56 }}>
-      <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', paddingHorizontal: 16, marginBottom: 16 }}>Tip Transactions</Text>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', paddingHorizontal: 16, marginBottom: 16 }}>{t('tip_transactions')}</Text>
       <FlatList
         data={tips}
         keyExtractor={(item) => String(item.id)}

@@ -2,11 +2,14 @@ import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../../lib/LanguageContext';
 
 const ACCENT = '#6c6cff';
 const INACTIVE = 'rgba(255,255,255,0.3)';
 
 export default function TabLayout() {
+  const { t } = useLanguage();
+
   return (
     <Tabs
       screenOptions={{
@@ -38,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: t('home'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
@@ -47,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tips"
         options={{
-          title: 'Tips',
+          title: t('tips'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={22} color={color} />
           ),
@@ -56,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
           ),

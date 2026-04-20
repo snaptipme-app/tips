@@ -261,9 +261,14 @@ router.post('/login', async (req, res) => {
         username: employee.username,
         full_name: employee.full_name,
         email: employee.email,
+        photo_url: employee.photo_url || '',
         photo_base64: employee.photo_base64 || '',
+        profile_image_url: employee.profile_image_url || '',
+        balance: Number(employee.balance) || 0,
         is_admin: employee.is_admin || 0,
         account_type: employee.account_type || 'individual',
+        job_title: employee.job_title || '',
+        business_id: employee.business_id || null,
       },
     });
   } catch (err) {
