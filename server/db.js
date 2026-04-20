@@ -186,6 +186,9 @@ async function initDB() {
   try { db.run("ALTER TABLE employees ADD COLUMN withdrawal_method TEXT DEFAULT ''"); } catch (_) {}
   try { db.run("ALTER TABLE employees ADD COLUMN withdrawal_account TEXT DEFAULT ''"); } catch (_) {}
 
+  // Migration: add profile_photo_base64 for direct base64 photo storage
+  try { db.run("ALTER TABLE employees ADD COLUMN profile_photo_base64 TEXT DEFAULT ''"); } catch (_) {}
+
   // ────────────────────────────────────────────────────────────────────
 
   saveDB();
