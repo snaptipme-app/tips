@@ -30,6 +30,8 @@ export default function Home() {
   useEffect(() => {
     if (user?.account_type === 'business') {
       router.replace('/business/dashboard');
+    } else if (user?.account_type === 'member') {
+      router.replace('/member/dashboard');
     }
   }, [user?.account_type]);
 

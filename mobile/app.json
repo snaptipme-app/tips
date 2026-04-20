@@ -1,6 +1,6 @@
 {
   "expo": {
-	"main": "expo-router/entry",
+    "main": "expo-router/entry",
     "name": "SnapTip",
     "slug": "snaptip",
     "version": "1.0.0",
@@ -31,7 +31,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

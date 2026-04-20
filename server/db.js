@@ -182,6 +182,10 @@ async function initDB() {
   try { db.run("ALTER TABLE businesses ADD COLUMN thank_you_message TEXT DEFAULT ''"); } catch (_) {}
   try { db.run("ALTER TABLE businesses ADD COLUMN logo_base64 TEXT DEFAULT ''"); } catch (_) {}
 
+  // Migration: add withdrawal settings to employees
+  try { db.run("ALTER TABLE employees ADD COLUMN withdrawal_method TEXT DEFAULT ''"); } catch (_) {}
+  try { db.run("ALTER TABLE employees ADD COLUMN withdrawal_account TEXT DEFAULT ''"); } catch (_) {}
+
   // ────────────────────────────────────────────────────────────────────
 
   saveDB();

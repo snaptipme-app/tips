@@ -62,4 +62,52 @@ router.get('/:username', (req, res) => {
   }
 });
 
+// ── PATCH /api/employee/withdrawal-method ─────────────────────────────────────
+router.patch('/withdrawal-method', authMiddleware, (req, res) => {
+  try {
+    const { method, account } = req.body;
+    if (!method) return res.status(400).json({ error: 'Withdrawal method is required.' });
+
+    const db = getDB();
+    db.run(
+      'UPDATE employees SET withdrawal_method = ?, withdrawal_account = ? WHERE id = ?',
+      [method.trim(), (account || '').trim(), req.employee.id]
+    );
+    saveDB();
+    res.json({ success: true, message: 'Withdrawal settings updated.' });
+  } catch (err) {
+    console.error('[employee/withdrawal-method]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// ── GET /api/employee/my-business ─────────────────────────────────────────────
+// Members use this to fetch their business info (logo, name)
+router.get('/my-business', authMiddleware, (req, res) => {
+  try {
+    const db = getDB();
+    const emp = db.exec('SELECT business_id FROM employees WHERE id = ?', [req.employee.id]);
+    if (!emp || emp.length === 0 || !emp[0].values[0][0]) {
+      return res.status(404).json({ error: 'No business linked to this account.' });
+    }
+    const businessId = emp[0].values[0][0];
+
+    const rows = db.exec(
+      'SELECT id, business_name, business_type, logo_url, logo_base64, address, thank_you_message FROM businesses WHERE id = ?',
+      [businessId]
+    );
+    if (!rows || rows.length === 0 || rows[0].values.length === 0) {
+      return res.status(404).json({ error: 'Business not found.' });
+    }
+    const cols = rows[0].columns;
+    const vals = rows[0].values[0];
+    const business = {};
+    cols.forEach((c, i) => { business[c] = vals[i]; });
+    res.json({ business });
+  } catch (err) {
+    console.error('[employee/my-business]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
 module.exports = router;

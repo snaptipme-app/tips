@@ -25,6 +25,10 @@ export default function RootLayout() {
         <Stack.Screen name="business/dashboard" />
         <Stack.Screen name="business/transactions" />
         <Stack.Screen name="business/profile-settings" />
+        <Stack.Screen name="member/dashboard" />
+        <Stack.Screen name="member/qr" />
+        <Stack.Screen name="member/withdraw" />
+        <Stack.Screen name="member/profile" />
         <Stack.Screen name="join/[token]" />
       </Stack>
     </AuthProvider>
