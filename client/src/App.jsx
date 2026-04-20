@@ -10,6 +10,7 @@ import Home from './pages/dashboard/Home';
 import Tips from './pages/dashboard/Tips';
 import Profile from './pages/dashboard/Profile';
 import AdminStats from './pages/AdminStats';
+import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
@@ -19,7 +20,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterMultiStep />} />
 
-          {/* Admin route — must be above /:username catch-all */}
+          {/* Admin panel — self-managed auth (no ProtectedRoute) */}
+          <Route path="/admin" element={<AdminPage />} />
+
+          {/* Admin stats — must be above /:username catch-all */}
           <Route
             path="/admin/stats"
             element={

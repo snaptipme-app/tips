@@ -13,6 +13,7 @@ const analyticsRoutes = require('./routes/analytics');
 const businessRoutes = require('./routes/business');
 const paymentsRoutes = require('./routes/payments');
 const joinRoutes = require('./routes/join');
+const adminRoutes = require('./routes/admin');
 
 const path = require('path');
 
@@ -39,6 +40,7 @@ app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -81,6 +81,9 @@ async function initDB() {
   const withdrawalMigrations = [
     "ALTER TABLE withdrawals ADD COLUMN method TEXT DEFAULT ''",
     "ALTER TABLE withdrawals ADD COLUMN account_details TEXT DEFAULT ''",
+    "ALTER TABLE withdrawals ADD COLUMN fee REAL DEFAULT 0",
+    "ALTER TABLE withdrawals ADD COLUMN net_amount REAL DEFAULT 0",
+    "ALTER TABLE withdrawals ADD COLUMN contact_phone TEXT DEFAULT ''",
   ];
   for (const sql of withdrawalMigrations) {
     try { db.run(sql); } catch (_) { /* column already exists */ }
