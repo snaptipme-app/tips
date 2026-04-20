@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Alert,
   RefreshControl, Modal, ActivityIndicator, Image, Linking,
@@ -9,6 +9,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import PrintableQRCard, {
+  PrintableQRCardBusiness,
+  PrintableQRCardEmployee,
+} from '../../components/PrintableQRCard';
+import { downloadAndShareQRCard } from '../../lib/captureQRCard';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -29,19 +34,27 @@ interface Member {
   role: string;
   joined_at: string;
   profile_image_url?: string;
+  job_title?: string;
 }
 
 export default function TeamManagement() {
   const router = useRouter();
   const { toast, showToast } = useToast();
+  const hiddenCardRef = useRef<View>(null);
+
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [businessName, setBusinessName] = useState('My Team');
+  const [business, setBusiness] = useState<PrintableQRCardBusiness>(null);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [inviteUrl, setInviteUrl] = useState('');
+
+  // QR download state
+  const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
+  const [capturingQR, setCapturingQR] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -51,7 +64,9 @@ export default function TeamManagement() {
         api.get('/business/invite-link'),
       ]);
       setMembers(membersRes.data.members || []);
-      setBusinessName(bizRes.data.business?.business_name || 'My Team');
+      const biz = bizRes.data.business;
+      setBusinessName(biz?.business_name || 'My Team');
+      setBusiness(biz || null);
       if (linkRes.data.invite_url) setInviteUrl(linkRes.data.invite_url);
     } catch (e: any) {
       if (e.response?.status === 403 || e.response?.status === 404) {
@@ -117,10 +132,39 @@ export default function TeamManagement() {
     setShowSheet(false);
   };
 
+  // ── Download QR for a specific member ──────────────────────────────────
+  const handleDownloadQR = async (member: Member) => {
+    setShowSheet(false);
+    showToast('Preparing QR card...', 'info');
+    setCapturingQR(true);
+    // Set the member whose card we need to render
+    setSelectedMemberForQR(member);
+
+    // Wait 700ms for the hidden card to mount and render
+    await new Promise<void>((resolve) => setTimeout(resolve, 700));
+
+    await downloadAndShareQRCard(
+      hiddenCardRef,
+      member.username,
+      () => {
+        showToast('QR Card ready to share!', 'success');
+        setCapturingQR(false);
+        setSelectedMemberForQR(null);
+      },
+      () => {
+        showToast('Failed to generate QR card.', 'error');
+        setCapturingQR(false);
+        setSelectedMemberForQR(null);
+      }
+    );
+  };
+
   const renderMember = ({ item }: { item: Member }) => {
     const initials = (item.full_name || 'U').charAt(0).toUpperCase();
     const photo = item.profile_image_url || '';
-    const joinedDate = new Date(item.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const joinedDate = new Date(item.joined_at).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
 
     return (
       <TouchableOpacity
@@ -138,7 +182,12 @@ export default function TeamManagement() {
         }}
       >
         {/* Avatar */}
-        <View style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.12)', marginRight: 14 }}>
+        <View style={{
+          width: 48, height: 48, borderRadius: 24, overflow: 'hidden',
+          borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)',
+          justifyContent: 'center', alignItems: 'center',
+          backgroundColor: 'rgba(108,108,255,0.12)', marginRight: 14,
+        }}>
           {photo ? (
             <Image source={{ uri: photo }} style={{ width: 48, height: 48 }} />
           ) : (
@@ -156,7 +205,10 @@ export default function TeamManagement() {
         {/* Tips + Status */}
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>${Number(item.total_tips).toFixed(2)}</Text>
-          <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.12)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
+          <View style={{
+            paddingHorizontal: 8, paddingVertical: 3, borderRadius: 50,
+            backgroundColor: 'rgba(0,200,150,0.12)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)',
+          }}>
             <Text style={{ fontSize: 10, fontWeight: '700', color: GREEN }}>Active</Text>
           </View>
         </View>
@@ -166,12 +218,54 @@ export default function TeamManagement() {
     );
   };
 
+  // Build employee object for the hidden printable card
+  const qrEmployee: PrintableQRCardEmployee | null = selectedMemberForQR
+    ? {
+        username: selectedMemberForQR.username,
+        full_name: selectedMemberForQR.full_name,
+        photo_url: selectedMemberForQR.profile_image_url || '',
+        job_title: selectedMemberForQR.job_title || '',
+      }
+    : null;
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
+
+      {/* ── Hidden off-screen PrintableQRCard for capture ── */}
+      {qrEmployee && (
+        <View style={{ position: 'absolute', top: -9999, left: -9999, opacity: 0 }}>
+          <PrintableQRCard
+            ref={hiddenCardRef}
+            employee={qrEmployee}
+            business={business}
+          />
+        </View>
+      )}
+
+      {/* Capturing overlay */}
+      {capturingQR && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999,
+          justifyContent: 'center', alignItems: 'center',
+        }}>
+          <View style={{
+            backgroundColor: CARD, borderRadius: 20, padding: 28,
+            alignItems: 'center', gap: 14, borderWidth: 1, borderColor: BORDER,
+          }}>
+            <ActivityIndicator color={ACCENT} size="large" />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Preparing QR card...</Text>
+          </View>
+        </View>
+      )}
+
       {/* Header */}
       <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}
+          >
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -201,7 +295,12 @@ export default function TeamManagement() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, flexGrow: 1 }}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 80 }}>
-              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(108,108,255,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(108,108,255,0.1)' }}>
+              <View style={{
+                width: 80, height: 80, borderRadius: 40,
+                backgroundColor: 'rgba(108,108,255,0.08)',
+                justifyContent: 'center', alignItems: 'center',
+                marginBottom: 16, borderWidth: 1, borderColor: 'rgba(108,108,255,0.1)',
+              }}>
                 <Ionicons name="people-outline" size={36} color="rgba(255,255,255,0.15)" />
               </View>
               <Text style={{ fontSize: 17, fontWeight: '700', color: 'rgba(255,255,255,0.3)' }}>No team members yet</Text>
@@ -241,11 +340,20 @@ export default function TeamManagement() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
             </View>
 
-            {/* Member info header */}
             {selectedMember && (
               <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)' }}>
+                {/* Member info header */}
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 14,
+                  paddingHorizontal: 24, paddingBottom: 20,
+                  borderBottomWidth: 1, borderBottomColor: BORDER,
+                }}>
+                  <View style={{
+                    width: 52, height: 52, borderRadius: 26,
+                    backgroundColor: 'rgba(108,108,255,0.12)',
+                    justifyContent: 'center', alignItems: 'center',
+                    borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)',
+                  }}>
                     <Text style={{ fontSize: 20, fontWeight: '700', color: ACCENT }}>
                       {(selectedMember.full_name || 'U').charAt(0).toUpperCase()}
                     </Text>
@@ -261,6 +369,24 @@ export default function TeamManagement() {
 
                 {/* Actions */}
                 <View style={{ paddingTop: 8 }}>
+
+                  {/* Download QR Card */}
+                  <TouchableOpacity
+                    onPress={() => handleDownloadQR(selectedMember)}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 16 }}
+                  >
+                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="qr-code-outline" size={22} color={ACCENT} />
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Download QR Card</Text>
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Generate &amp; share printable tip card</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 24 }} />
+
                   {/* Copy Invite Link */}
                   <TouchableOpacity
                     onPress={handleCopyLink}
@@ -314,7 +440,11 @@ export default function TeamManagement() {
                 <TouchableOpacity
                   onPress={() => setShowSheet(false)}
                   activeOpacity={0.8}
-                  style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}
+                  style={{
+                    marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50,
+                    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}
                 >
                   <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
                 </TouchableOpacity>
