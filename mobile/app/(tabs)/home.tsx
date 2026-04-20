@@ -26,6 +26,13 @@ export default function Home() {
   const [tipCount, setTipCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Business owners go to their manager dashboard
+  useEffect(() => {
+    if (user?.account_type === 'business') {
+      router.replace('/business/dashboard');
+    }
+  }, [user?.account_type]);
+
   const tipUrl = `https://snaptip.me/${user?.username}`;
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 

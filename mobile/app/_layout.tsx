@@ -22,6 +22,9 @@ export default function RootLayout() {
         <Stack.Screen name="business/setup" options={{ presentation: 'modal' }} />
         <Stack.Screen name="business/team" />
         <Stack.Screen name="business/invite" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="business/dashboard" />
+        <Stack.Screen name="business/transactions" />
+        <Stack.Screen name="business/profile-settings" />
         <Stack.Screen name="join/[token]" />
       </Stack>
     </AuthProvider>

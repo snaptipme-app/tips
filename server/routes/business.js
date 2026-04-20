@@ -460,4 +460,152 @@ router.delete('/members/:employeeId', authMiddleware, (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/stats  — KPI cards + top performers leaderboard
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/stats', authMiddleware, (req, res) => {
+  try {
+    const db = getDB();
+    const business = getOwnedBusiness(db, req.employee.id);
+    if (!business) return res.status(403).json({ error: 'You do not own a business.' });
+
+    const totalTipsRow = rowToObj(db.exec(
+      `SELECT COALESCE(SUM(p.amount), 0) as total
+       FROM payments p
+       INNER JOIN team_members tm ON tm.employee_id = p.employee_id
+       WHERE tm.business_id = ?`,
+      [business.id]
+    ));
+
+    const totalTxRow = rowToObj(db.exec(
+      `SELECT COUNT(*) as count
+       FROM payments p
+       INNER JOIN team_members tm ON tm.employee_id = p.employee_id
+       WHERE tm.business_id = ?`,
+      [business.id]
+    ));
+
+    const activeMembersRow = rowToObj(db.exec(
+      'SELECT COUNT(*) as count FROM team_members WHERE business_id = ?',
+      [business.id]
+    ));
+
+    const topPerformers = rowsToObjs(db.exec(
+      `SELECT e.id, e.full_name, e.username, e.photo_base64, e.profile_image_url,
+              COALESCE(SUM(p.amount), 0) as total_tips
+       FROM team_members tm
+       INNER JOIN employees e ON e.id = tm.employee_id
+       LEFT JOIN payments p ON p.employee_id = e.id
+       WHERE tm.business_id = ?
+       GROUP BY e.id
+       ORDER BY total_tips DESC
+       LIMIT 3`,
+      [business.id]
+    ));
+
+    res.json({
+      total_tips: Number(totalTipsRow?.total) || 0,
+      total_transactions: Number(totalTxRow?.count) || 0,
+      active_members: Number(activeMembersRow?.count) || 0,
+      top_performers: topPerformers,
+      business_name: business.business_name,
+    });
+  } catch (err) {
+    console.error('[business/stats]', err.message);
+    res.status(500).json({ error: 'Server error fetching stats.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/transactions  — all payments to all employees in business
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/transactions', authMiddleware, (req, res) => {
+  try {
+    const db = getDB();
+    const business = getOwnedBusiness(db, req.employee.id);
+    if (!business) return res.status(403).json({ error: 'You do not own a business.' });
+
+    const transactions = rowsToObjs(db.exec(
+      `SELECT p.id, p.amount, p.status, p.created_at,
+              e.full_name as employee_name, e.username as employee_username
+       FROM payments p
+       INNER JOIN team_members tm ON tm.employee_id = p.employee_id
+       INNER JOIN employees e ON e.id = p.employee_id
+       WHERE tm.business_id = ?
+       ORDER BY p.created_at DESC
+       LIMIT 200`,
+      [business.id]
+    ));
+
+    res.json({ transactions });
+  } catch (err) {
+    console.error('[business/transactions]', err.message);
+    res.status(500).json({ error: 'Server error fetching transactions.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/business/update  — update business profile
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch('/update', authMiddleware, (req, res) => {
+  try {
+    const { business_name, address, thank_you_message, logo_base64, logo_url } = req.body;
+    const db = getDB();
+    const business = getOwnedBusiness(db, req.employee.id);
+    if (!business) return res.status(403).json({ error: 'You do not own a business.' });
+
+    const updates = [];
+    const values = [];
+
+    if (business_name?.trim()) { updates.push('business_name = ?'); values.push(business_name.trim()); }
+    if (address !== undefined)  { updates.push('address = ?'); values.push(address.trim()); }
+    if (thank_you_message !== undefined) { updates.push('thank_you_message = ?'); values.push(thank_you_message.trim()); }
+    if (logo_base64 !== undefined) { updates.push('logo_base64 = ?'); values.push(logo_base64); }
+    if (logo_url !== undefined)    { updates.push('logo_url = ?'); values.push(logo_url); }
+
+    if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update.' });
+
+    values.push(business.id);
+    db.run(`UPDATE businesses SET ${updates.join(', ')} WHERE id = ?`, values);
+    saveDB();
+
+    const updated = rowToObj(db.exec('SELECT * FROM businesses WHERE id = ?', [business.id]));
+    console.log(`[business/update] Updated business_id=${business.id}`);
+    res.json({ success: true, business: updated });
+  } catch (err) {
+    console.error('[business/update]', err.message);
+    res.status(500).json({ error: 'Server error updating business.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/business/member/:employeeId  (alias for /members/:employeeId)
+// ─────────────────────────────────────────────────────────────────────────────
+router.delete('/member/:employeeId', authMiddleware, (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const db = getDB();
+    const business = getOwnedBusiness(db, req.employee.id);
+    if (!business) return res.status(403).json({ error: 'You do not own a business.' });
+
+    const member = rowToObj(db.exec(
+      'SELECT id FROM team_members WHERE business_id = ? AND employee_id = ?',
+      [business.id, employeeId]
+    ));
+    if (!member) return res.status(404).json({ error: 'Member not found.' });
+
+    db.run('DELETE FROM team_members WHERE business_id = ? AND employee_id = ?', [business.id, employeeId]);
+    // Reset employee's business linkage
+    db.run("UPDATE employees SET business_id = NULL, account_type = 'individual' WHERE id = ?", [employeeId]);
+    saveDB();
+
+    console.log(`[business/member] Removed employee_id=${employeeId} from business_id=${business.id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[business/member DELETE]', err.message);
+    res.status(500).json({ error: 'Server error removing member.' });
+  }
+});
+
 module.exports = router;
+

@@ -178,6 +178,10 @@ async function initDB() {
     db.run("ALTER TABLE invitations ADD COLUMN expires_at DATETIME DEFAULT (datetime('now', '+48 hours'))");
   } catch (_) { /* column already exists */ }
 
+  // Migration: add thank_you_message and logo_base64 to businesses
+  try { db.run("ALTER TABLE businesses ADD COLUMN thank_you_message TEXT DEFAULT ''"); } catch (_) {}
+  try { db.run("ALTER TABLE businesses ADD COLUMN logo_base64 TEXT DEFAULT ''"); } catch (_) {}
+
   // ────────────────────────────────────────────────────────────────────
 
   saveDB();
