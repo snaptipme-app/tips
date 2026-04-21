@@ -63,7 +63,7 @@ export default function BusinessDashboard() {
   const kpiCards = stats ? [
     {
       label: 'Total Tips',
-      value: `$${stats.total_tips.toFixed(2)}`,
+      value: `${stats.total_tips.toFixed(2)} ${user?.currency || 'MAD'}`,
       icon: 'cash-outline' as const,
       color: GREEN,
       bg: 'rgba(0,200,150,0.1)',
@@ -217,7 +217,7 @@ export default function BusinessDashboard() {
                       </View>
                       {/* Amount */}
                       <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: rankColor }}>${Number(perf.total_tips).toFixed(2)}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: rankColor }}>{Number(perf.total_tips).toFixed(2)} {user?.currency || 'MAD'}</Text>
                         <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>in tips</Text>
                       </View>
                     </View>

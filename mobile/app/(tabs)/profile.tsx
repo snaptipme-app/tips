@@ -283,7 +283,7 @@ export default function Profile() {
                   <Ionicons name="arrow-up-outline" size={18} color={ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>${w.amount.toFixed(2)}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{w.amount.toFixed(2)} {user?.currency || 'MAD'}</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{w.method || 'N/A'}</Text>
                 </View>
                 <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 50, backgroundColor: `${statusColor(w.status)}15` }}>

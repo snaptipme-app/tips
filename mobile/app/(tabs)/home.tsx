@@ -73,7 +73,7 @@ export default function Home() {
         if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
           const diff = newBalance - prevBalanceRef.current;
           playTipSound();
-          showToast(`You received a $${diff.toFixed(2)} tip! 💸`, 'success');
+          showToast(`You received a ${diff.toFixed(2)} ${user?.currency || 'MAD'} tip! 💸`, 'success');
         }
         prevBalanceRef.current = newBalance;
 
@@ -134,12 +134,12 @@ export default function Home() {
               <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>Live</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 40, fontWeight: '800', color: GREEN, marginBottom: 16, letterSpacing: -1 }}>${balance.toFixed(2)}</Text>
+          <Text style={{ fontSize: 40, fontWeight: '800', color: GREEN, marginBottom: 16, letterSpacing: -1 }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
 
           <View style={{ flexDirection: 'row', gap: 20 }}>
             <View>
               <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>{t('total_earned')}</Text>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>${totalTips.toFixed(2)}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{totalTips.toFixed(2)} {user?.currency || 'MAD'}</Text>
             </View>
             <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
             <View>

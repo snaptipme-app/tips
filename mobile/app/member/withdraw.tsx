@@ -66,7 +66,6 @@ interface MainMethod {
   directMethod?: SubMethod;
 }
 
-/* eslint-disable @typescript-eslint/no-require-imports */
 const MOROCCAN_METHODS: MainMethod[] = [
   {
     id: 'cashplus', label: 'Cash Plus',

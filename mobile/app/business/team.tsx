@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import api from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 import { Toast, useToast } from '../../components/Toast';
 import { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
@@ -38,6 +39,7 @@ interface Member {
 
 export default function TeamManagement() {
   const router = useRouter();
+  const { user } = useAuth();
   const { toast, showToast } = useToast();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -204,7 +206,7 @@ export default function TeamManagement() {
 
         {/* Tips + Status */}
         <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>${Number(item.total_tips).toFixed(2)}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{Number(item.total_tips).toFixed(2)} {user?.currency || 'MAD'}</Text>
           <View style={{
             paddingHorizontal: 8, paddingVertical: 3, borderRadius: 50,
             backgroundColor: 'rgba(0,200,150,0.12)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)',
@@ -341,7 +343,7 @@ export default function TeamManagement() {
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{selectedMember.full_name}</Text>
                     <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>@{selectedMember.username}</Text>
                     <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600' }}>
-                      ${Number(selectedMember.total_tips).toFixed(2)} earned
+                      {Number(selectedMember.total_tips).toFixed(2)} {user?.currency || 'MAD'} earned
                     </Text>
                   </View>
                 </View>

@@ -88,7 +88,7 @@ export default function MemberDashboard() {
         if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
           const diff = newBalance - prevBalanceRef.current;
           playTipSound();
-          showToast(`You received a $${diff.toFixed(2)} tip! 💸`, 'success');
+          showToast(`You received a ${diff.toFixed(2)} ${user?.currency || 'MAD'} tip! 💸`, 'success');
         }
         prevBalanceRef.current = newBalance;
 
@@ -158,10 +158,10 @@ export default function MemberDashboard() {
                 </View>
               </View>
               <Text style={{ fontSize: 48, fontWeight: '800', color: GREEN, letterSpacing: -2, marginBottom: 4 }}>
-                ${(data?.balance ?? 0).toFixed(2)}
+                {(data?.balance ?? 0).toFixed(2)} {user?.currency || 'MAD'}
               </Text>
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>
-                {t('total_earned')}: <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>${(data?.total_tips ?? 0).toFixed(2)}</Text>
+                {t('total_earned')}: <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{(data?.total_tips ?? 0).toFixed(2)} {user?.currency || 'MAD'}</Text>
                 {'  '}·{'  '}
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{data?.tip_count ?? 0}</Text> {t('tips')}
               </Text>
@@ -239,7 +239,7 @@ export default function MemberDashboard() {
                     <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('tip_received')}</Text>
                     <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(tip.created_at)}</Text>
                   </View>
-                  <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+${Number(tip.amount).toFixed(2)}</Text>
+                  <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+{Number(tip.amount).toFixed(2)} {user?.currency || 'MAD'}</Text>
                 </View>
               ))}
             </View>

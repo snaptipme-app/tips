@@ -19,12 +19,19 @@ function rowToObj(result) {
 
 /* ── Method fee & minimum config ─────────────────────────────────────── */
 const METHOD_CONFIG = {
-  'Cash Plus (Agency)':    { fee: 35, min: 400 },
-  'Cash Plus (App)':       { fee: 0,  min: 400 },
-  'Wafacash (Agency)':     { fee: 35, min: 400 },
-  'Wafacash (Jibi App)':   { fee: 0,  min: 400 },
-  'CIH Bank':              { fee: 0,  min: 100 },
-  'Other Moroccan Bank':   { fee: 16, min: 100 },
+  // New labels from mobile withdraw screen
+  'Cash Plus Agency':        { fee: 35, min: 400 },
+  'Cash Plus App':           { fee: 0,  min: 400 },
+  'Wafacash Agency':         { fee: 35, min: 400 },
+  'Wafacash Jibi App':       { fee: 0,  min: 400 },
+  'CIH Bank':                { fee: 0,  min: 100 },
+  'Other Moroccan Bank':     { fee: 16, min: 100 },
+  'International Bank Transfer': { fee: -1, min: 50 },  // fee = -1 means calculate 0.5%
+  // Legacy aliases (in case old data uses these)
+  'Cash Plus (Agency)':      { fee: 35, min: 400 },
+  'Cash Plus (App)':         { fee: 0,  min: 400 },
+  'Wafacash (Agency)':       { fee: 35, min: 400 },
+  'Wafacash (Jibi App)':     { fee: 0,  min: 400 },
 };
 
 /* ══════════════════════════════════════════════════════
@@ -57,11 +64,12 @@ router.post('/request', authMiddleware, (req, res) => {
 
     if (amt < config.min) {
       return res.status(400).json({
-        error: `Minimum withdrawal for ${method} is $${config.min}.`,
+        error: `Minimum withdrawal for ${method} is ${config.min}.`,
       });
     }
 
-    const fee = config.fee;
+    // For international transfers, fee is 0.5% of amount
+    const fee = config.fee === -1 ? Math.round(amt * 0.005 * 100) / 100 : config.fee;
     const netAmount = amt - fee;
 
     /* ── Check balance ── */

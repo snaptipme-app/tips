@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
 
@@ -25,6 +26,7 @@ export default function Tips() {
   const [refreshing, setRefreshing] = useState(false);
   const { toast, showToast } = useToast();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const fetchTips = useCallback(async () => {
     try {
@@ -66,7 +68,7 @@ export default function Tips() {
         <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('tip_received')}</Text>
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(item.created_at)}</Text>
       </View>
-      <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+${item.amount.toFixed(2)}</Text>
+      <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+{item.amount.toFixed(2)} {user?.currency || 'MAD'}</Text>
     </View>
   );
 
@@ -102,7 +104,7 @@ export default function Tips() {
           </View>
           <View>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>{t('total_earned')}</Text>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: GREEN }}>${totalTips.toFixed(2)}</Text>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: GREEN }}>{totalTips.toFixed(2)} {user?.currency || 'MAD'}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>{tips.length} tips</Text>

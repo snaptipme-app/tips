@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
@@ -62,6 +63,7 @@ function filterTransactions(transactions: Transaction[], filter: Filter): Transa
 
 export default function Transactions() {
   const router = useRouter();
+  const { user } = useAuth();
   const { toast, showToast } = useToast();
   const [allTx, setAllTx] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
@@ -129,7 +131,7 @@ export default function Transactions() {
 
         {/* Amount */}
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>+${Number(item.amount).toFixed(2)}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>+{Number(item.amount).toFixed(2)} {user?.currency || 'MAD'}</Text>
           <View style={{ marginTop: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.1)' }}>
             <Text style={{ fontSize: 10, fontWeight: '700', color: GREEN, textTransform: 'capitalize' }}>{item.status}</Text>
           </View>
@@ -163,7 +165,7 @@ export default function Transactions() {
             </View>
             <View>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>Period Total</Text>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: GREEN }}>${total.toFixed(2)}</Text>
+              <Text style={{ fontSize: 24, fontWeight: '800', color: GREEN }}>{total.toFixed(2)} {user?.currency || 'MAD'}</Text>
             </View>
             <View style={{ flex: 1, alignItems: 'flex-end' }}>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{transactions.length} transactions</Text>
