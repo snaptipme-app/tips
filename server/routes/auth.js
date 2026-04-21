@@ -124,7 +124,7 @@ router.post('/verify-otp', async (req, res) => {
 // POST /api/auth/register
 router.post('/register', upload.single('profileImage'), async (req, res) => {
   try {
-    const { firstName, lastName, email, username: rawUsername, password, account_type } = req.body;
+    const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency } = req.body;
     const db = getDB();
 
     if (!firstName || !lastName || !email || !rawUsername || !password) {
@@ -132,7 +132,9 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
     }
 
     const accountType = account_type === 'business' ? 'business' : 'individual';
-    console.log('Saving employee with account_type:', accountType);
+    const userCountry = country || 'Morocco';
+    const userCurrency = currency || 'MAD';
+    console.log('Saving employee with account_type:', accountType, 'country:', userCountry);
 
     const username = rawUsername.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
@@ -180,10 +182,10 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
 
     db.run(
       `INSERT INTO employees
-         (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
-       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, accountType]
+       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, accountType, userCountry, userCurrency]
     );
     saveDB();
 
@@ -210,6 +212,8 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
         photo_base64: photoBase64,
         is_admin: 0,
         account_type: accountType,
+        country: userCountry,
+        currency: userCurrency,
       },
     });
   } catch (err) {
@@ -269,6 +273,8 @@ router.post('/login', async (req, res) => {
         account_type: employee.account_type || 'individual',
         job_title: employee.job_title || '',
         business_id: employee.business_id || null,
+        country: employee.country || 'Morocco',
+        currency: employee.currency || 'MAD',
       },
     });
   } catch (err) {

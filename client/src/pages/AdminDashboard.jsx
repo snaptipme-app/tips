@@ -11,6 +11,8 @@ const GREEN = '#00C896';
 const YELLOW = '#f59e0b';
 const RED = '#ef4444';
 
+const COUNTRY_FLAGS = { 'Morocco': '🇲🇦', 'United States': '🇺🇸', 'France': '🇫🇷', 'Spain': '🇪🇸', 'UAE': '🇦🇪' };
+
 function adminApi() {
   return axios.create({
     baseURL: '/api/admin',
@@ -109,14 +111,26 @@ export default function AdminDashboard({ onLogout }) {
   });
 
   const formatDetails = (raw) => {
-    if (!raw) return '—';
-    try {
-      const obj = JSON.parse(raw);
-      return Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(' · ');
-    } catch {
-      return raw;
-    }
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
   };
+
+  const getDetailCurrency = (w) => {
+    try {
+      const d = JSON.parse(w.account_details || '{}');
+      return d.Currency || 'MAD';
+    } catch { return 'MAD'; }
+  };
+
+  const getCountryFlag = (w) => {
+    try {
+      const d = JSON.parse(w.account_details || '{}');
+      return COUNTRY_FLAGS[d.Country] || '🇲🇦';
+    } catch { return '🇲🇦'; }
+  };
+
+  const isInternational = (w) =>
+    (w.method || '').toLowerCase().includes('international');
 
   const filtered = withdrawals
     .filter(w => filter === 'all' ? true : w.status === filter)
@@ -266,15 +280,15 @@ export default function AdminDashboard({ onLogout }) {
                   <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{formatDate(w.created_at)}</span>
 
                   <div>
-                    <p style={{ fontWeight: '600', fontSize: '14px' }}>{w.full_name}</p>
+                    <p style={{ fontWeight: '600', fontSize: '14px' }}>{getCountryFlag(w)} {w.full_name}</p>
                     <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>@{w.username}</p>
                     {w.email && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)' }}>{w.email}</p>}
                   </div>
 
                   <span style={{ fontSize: '13px', color: ACCENT, fontWeight: '500' }}>{w.method}</span>
-                  <span style={{ fontSize: '15px', fontWeight: '700' }}>${Number(w.amount).toFixed(2)}</span>
-                  <span style={{ fontSize: '13px', color: YELLOW }}>${Number(w.fee || 0).toFixed(2)}</span>
-                  <span style={{ fontSize: '15px', fontWeight: '700', color: GREEN }}>${Number(w.net_amount || w.amount).toFixed(2)}</span>
+                  <span style={{ fontSize: '15px', fontWeight: '700' }}>{Number(w.amount).toFixed(2)} {getDetailCurrency(w)}</span>
+                  <span style={{ fontSize: '13px', color: YELLOW }}>{Number(w.fee || 0).toFixed(2)} {getDetailCurrency(w)}</span>
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: GREEN }}>{Number(w.net_amount || w.amount).toFixed(2)} {getDetailCurrency(w)}</span>
 
                   <button
                     onClick={() => setExpandedDetails(expandedDetails === w.id ? null : w.id)}
@@ -310,20 +324,47 @@ export default function AdminDashboard({ onLogout }) {
                 </div>
 
                 {/* Expanded Details Panel */}
-                {expandedDetails === w.id && (
+                {expandedDetails === w.id && (() => {
+                  const details = formatDetails(w.account_details);
+                  const intl = isInternational(w);
+                  return (
                   <div style={{
                     padding: '16px 20px 20px',
                     background: 'rgba(108,108,255,0.04)',
                     borderBottom: idx < filtered.length - 1 ? `1px solid ${BORDER}` : 'none',
                     borderLeft: `3px solid ${ACCENT}`,
                   }}>
-                    <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.35)', marginBottom: '8px' }}>Account Details</p>
-                    <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{formatDetails(w.account_details)}</p>
+                    <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px' }}>
+                      {intl ? 'International Transfer Details' : 'Account Details'}
+                    </p>
+                    {details && typeof details === 'object' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+                        {Object.entries(details).filter(([k]) => k !== 'Country' && k !== 'Currency').map(([k, v]) => (
+                          <div key={k}>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '2px' }}>{k}</p>
+                            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', fontFamily: k === 'IBAN' || k === 'SWIFT / BIC Code' || k.includes('RIB') ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{String(v)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>—</p>
+                    )}
                     {w.contact_phone && (
-                      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>📞 Contact: <strong style={{ color: '#fff' }}>{w.contact_phone}</strong></p>
+                      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginTop: '12px' }}>📞 Contact: <strong style={{ color: '#fff' }}>{w.contact_phone}</strong></p>
+                    )}
+                    {intl && (
+                      <a href="https://wise.com/send" target="_blank" rel="noopener noreferrer" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '14px',
+                        background: 'rgba(108,108,255,0.1)', border: `1px solid rgba(108,108,255,0.2)`,
+                        borderRadius: '10px', padding: '8px 16px', color: ACCENT, fontWeight: '600', fontSize: '13px',
+                        textDecoration: 'none', cursor: 'pointer',
+                      }}>
+                        🌐 Open Wise →
+                      </a>
                     )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             ))}
           </div>

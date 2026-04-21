@@ -49,10 +49,16 @@ async function initDB() {
     "ALTER TABLE employees ADD COLUMN profile_image_url TEXT DEFAULT ''",
     "ALTER TABLE employees ADD COLUMN photo_base64 TEXT DEFAULT ''",
     "ALTER TABLE employees ADD COLUMN is_admin INTEGER DEFAULT 0",
+    "ALTER TABLE employees ADD COLUMN country TEXT DEFAULT 'Morocco'",
+    "ALTER TABLE employees ADD COLUMN currency TEXT DEFAULT 'MAD'",
   ];
   for (const sql of columnMigrations) {
     try { db.run(sql); } catch (_) { /* column already exists */ }
   }
+
+  // Backfill existing accounts with Morocco/MAD
+  try { db.run("UPDATE employees SET country = 'Morocco' WHERE country IS NULL OR country = ''"); } catch (_) {}
+  try { db.run("UPDATE employees SET currency = 'MAD' WHERE currency IS NULL OR currency = ''"); } catch (_) {}
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tips (

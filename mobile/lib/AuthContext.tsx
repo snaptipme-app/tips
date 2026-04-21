@@ -15,6 +15,8 @@ interface User {
   account_type?: string;
   job_title?: string;
   business_id?: number;
+  country?: string;
+  currency?: string;
 }
 
 interface AuthCtx {
@@ -78,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         account_type: dashEmp.account_type || loginEmp.account_type || 'individual',
         job_title: dashEmp.job_title || loginEmp.job_title || '',
         business_id: dashEmp.business_id || loginEmp.business_id,
+        country: dashEmp.country || loginEmp.country || 'Morocco',
+        currency: dashEmp.currency || loginEmp.currency || 'MAD',
       };
 
       console.log('[auth] Login: account_type =', fullUser.account_type, '| photo =', fullUser.photo_base64 ? 'yes' : 'no');
@@ -109,12 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updated: User = {
         ...current,
         ...dashEmp,
-        // Explicitly preserve these critical fields — never overwrite with null
         account_type: dashEmp.account_type || current.account_type || 'individual',
         photo_base64: dashEmp.photo_base64 || current.photo_base64 || '',
         photo_url: dashEmp.photo_url || current.photo_url || '',
         profile_image_url: dashEmp.profile_image_url || current.profile_image_url || '',
         balance: Number(dashEmp.balance) ?? Number(current.balance) ?? 0,
+        country: dashEmp.country || current.country || 'Morocco',
+        currency: dashEmp.currency || current.currency || 'MAD',
       };
 
       setUserState(updated);

@@ -138,8 +138,16 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 3 — Credentials
    ═══════════════════════════════════════════════════════════════════════════ */
-const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors,
-  onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onNext, onBack, loading }: any) => (
+const COUNTRY_OPTIONS = [
+  { id: 'Morocco', flag: '🇲🇦', name: 'Morocco', currency: 'MAD' },
+  { id: 'United States', flag: '🇺🇸', name: 'United States', currency: 'USD' },
+  { id: 'France', flag: '🇫🇷', name: 'France', currency: 'EUR' },
+  { id: 'Spain', flag: '🇪🇸', name: 'Spain', currency: 'EUR' },
+  { id: 'UAE', flag: '🇦🇪', name: 'UAE', currency: 'AED' },
+];
+
+const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
+  onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onCountry, onNext, onBack, loading }: any) => (
   <>
     <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
 
@@ -175,6 +183,29 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
             </View>
             <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+
+    {/* Country Selector */}
+    <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Select Your Country</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+      {COUNTRY_OPTIONS.map((c) => {
+        const sel = selectedCountry === c.id;
+        return (
+          <TouchableOpacity key={c.id} onPress={() => onCountry(c.id)} activeOpacity={0.8} style={{
+            width: '47%', flexDirection: 'row', alignItems: 'center', gap: 10,
+            padding: 12, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
+            borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER,
+          }}>
+            <Text style={{ fontSize: 22 }}>{c.flag}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{c.name}</Text>
+              <View style={{ backgroundColor: sel ? 'rgba(108,108,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3, alignSelf: 'flex-start' }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: sel ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
+              </View>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -251,6 +282,7 @@ export default function Register() {
   const [showPw, setShowPw] = useState(false);
   const [accountType, setAccountType] = useState<'individual' | 'business'>('individual');
   const [usernameValid, setUsernameValid] = useState<null | boolean>(null);
+  const [selectedCountry, setSelectedCountry] = useState('Morocco');
 
   // Step 4
   const [imageUri, setImageUri] = useState('');
@@ -276,6 +308,7 @@ export default function Register() {
   const handleJobTitleChange = useCallback((t: string) => setJobTitle(t), []);
   const handleTogglePw = useCallback(() => setShowPw((p) => !p), []);
   const handleAccountType = useCallback((t: 'individual' | 'business') => setAccountType(t), []);
+  const handleCountryChange = useCallback((c: string) => setSelectedCountry(c), []);
 
   // ── Step 1 handler ──
   const handleStep1 = useCallback(async () => {
@@ -364,7 +397,8 @@ export default function Register() {
     if (Object.keys(errs).length) return;
     setLoading(true);
     try {
-      console.log('Registering with account_type:', accountType);
+      const countryInfo = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
+      console.log('Registering with account_type:', accountType, 'country:', selectedCountry);
       const { data } = await api.post('/auth/register', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -372,9 +406,11 @@ export default function Register() {
         username: username.toLowerCase(),
         password,
         account_type: accountType,
+        country: selectedCountry,
+        currency: countryInfo.currency,
       });
       console.log('Register response account_type:', data.employee?.account_type);
-      const userData = { ...data.employee, account_type: accountType };
+      const userData = { ...data.employee, account_type: accountType, country: selectedCountry, currency: countryInfo.currency };
       await AsyncStorage.setItem('snaptip_token', data.token);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(userData));
       setUser(userData);
@@ -383,7 +419,7 @@ export default function Register() {
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Registration failed.', 'error');
     } finally { setLoading(false); }
-  }, [username, password, confirmPw, firstName, lastName, email, accountType, setUser, showToast]);
+  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, setUser, showToast]);
 
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 
@@ -489,8 +525,9 @@ export default function Register() {
             <Step3
               username={username} password={password} confirmPw={confirmPw} showPw={showPw}
               accountType={accountType} usernameValid={usernameValid} errors={errors}
+              selectedCountry={selectedCountry}
               onUsername={handleUsernameChange} onPassword={handlePasswordChange} onConfirmPw={handleConfirmPwChange}
-              onTogglePw={handleTogglePw} onAccountType={handleAccountType}
+              onTogglePw={handleTogglePw} onAccountType={handleAccountType} onCountry={handleCountryChange}
               onNext={handleStep3} onBack={handleBackToStep2} loading={loading}
             />
           )}
