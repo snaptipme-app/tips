@@ -57,8 +57,8 @@ async function initDB() {
   }
 
   // Backfill existing accounts with Morocco/MAD
-  try { db.run("UPDATE employees SET country = 'Morocco' WHERE country IS NULL OR country = ''"); } catch (_) {}
-  try { db.run("UPDATE employees SET currency = 'MAD' WHERE currency IS NULL OR currency = ''"); } catch (_) {}
+  try { db.run("UPDATE employees SET country = 'Morocco' WHERE country IS NULL OR country = '' OR country = 'undefined'"); } catch (_) {}
+  try { db.run("UPDATE employees SET currency = 'MAD' WHERE currency IS NULL OR currency = '' OR currency = 'undefined'"); } catch (_) {}
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tips (

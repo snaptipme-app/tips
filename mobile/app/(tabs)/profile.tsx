@@ -17,14 +17,7 @@ const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const METHODS = [
-  { id: 'cih', label: 'CIH Bank', logo: require('../../assets/images/cih_icon.png'), color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  { id: 'cashplus', label: 'Cash Plus', logo: require('../../assets/images/cashplus_icon.png'), color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { id: 'wafacash', label: 'Wafa Cash', logo: require('../../assets/images/wafacash_icon.png'), color: '#00C896', bg: 'rgba(0,200,150,0.12)' },
-  { id: 'other', label: 'Other Bank', logo: null, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
-];
-/* eslint-enable @typescript-eslint/no-require-imports */
+
 
 interface Withdrawal {
   id: number;
@@ -45,13 +38,7 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [localPhotoUri, setLocalPhotoUri] = useState('');
 
-  // Withdraw modal
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState('');
-  const [selectedMethodLabel, setSelectedMethodLabel] = useState('');
-  const [amount, setAmount] = useState('');
-  const [accountDetails, setAccountDetails] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+
 
   // Edit profile modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -137,24 +124,7 @@ export default function Profile() {
     } finally { setEditSaving(false); }
   };
 
-  // ── Withdrawal ──
-  const handleWithdraw = async () => {
-    const a = parseFloat(amount);
-    if (!a || a <= 0) { showToast('Enter a valid amount.', 'error'); return; }
-    if (a > balance) { showToast('Insufficient balance.', 'error'); return; }
-    if (!accountDetails.trim()) { showToast('Enter account details.', 'error'); return; }
-    setSubmitting(true);
-    try {
-      await api.post('/withdrawals/request', { amount: a, method: selectedMethod, account_details: accountDetails.trim() });
-      showToast('Withdrawal submitted!', 'success');
-      setShowWithdrawModal(false);
-      setAmount('');
-      setAccountDetails('');
-      fetchData();
-    } catch (e: any) {
-      showToast(e.response?.data?.error || 'Withdrawal failed.', 'error');
-    } finally { setSubmitting(false); }
-  };
+
 
   const handleLogout = () => {
     Alert.alert(t('logout'), 'Are you sure?', [
@@ -257,30 +227,25 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Withdraw (members only) ── */}
+        {/* ── Withdraw Funds (non-business only) ── */}
         {user?.account_type !== 'business' && (
-        <>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('withdraw_funds')}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-          {METHODS.map((m) => (
+          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
             <TouchableOpacity
-              key={m.id}
-              onPress={() => { setSelectedMethod(m.id); setSelectedMethodLabel(m.label); setShowWithdrawModal(true); }}
-              style={{ width: '47%', backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
+              onPress={() => router.push('/member/withdraw')}
               activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}
             >
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: m.bg, justifyContent: 'center', alignItems: 'center' }}>
-                {m.logo ? (
-                  <Image source={m.logo} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
-                ) : (
-                  <Ionicons name="business-outline" size={22} color={m.color} />
-                )}
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="cash-outline" size={18} color={GREEN} />
               </View>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{m.label}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds') || 'Withdraw Funds'}</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Cash out your earnings</Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{Math.floor(balance)} {user?.currency || 'MAD'}</Text>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
             </TouchableOpacity>
-          ))}
-        </View>
-        </>
+          </View>
         )}
 
         {/* ── History ── */}
@@ -372,28 +337,7 @@ export default function Profile() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ═══ Withdraw Modal ═══ */}
-      <Modal visible={showWithdrawModal} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
-            <View style={{ alignItems: 'center', marginBottom: 12 }}>
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>Withdraw via {selectedMethodLabel}</Text>
-              <TouchableOpacity onPress={() => setShowWithdrawModal(false)}>
-                <Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" />
-              </TouchableOpacity>
-            </View>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>Available: ${balance.toFixed(2)}</Text>
-            <TextInput style={{ height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 1, borderColor: BORDER, color: '#fff', fontSize: 15, paddingHorizontal: 14, marginBottom: 12 }} placeholder="Amount ($)" placeholderTextColor="rgba(255,255,255,0.2)" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-            <TextInput style={{ height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 1, borderColor: BORDER, color: '#fff', fontSize: 15, paddingHorizontal: 14, marginBottom: 20 }} placeholder="Account number / details" placeholderTextColor="rgba(255,255,255,0.2)" value={accountDetails} onChangeText={setAccountDetails} />
-            <TouchableOpacity onPress={handleWithdraw} disabled={submitting} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: submitting ? 0.5 : 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? 'Submitting...' : 'Confirm Withdrawal'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+
 
       {/* ═══ Edit Profile Modal ═══ */}
       <Modal visible={showEditModal} animationType="slide" transparent>
