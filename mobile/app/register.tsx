@@ -138,13 +138,15 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 3 — Credentials
    ═══════════════════════════════════════════════════════════════════════════ */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const COUNTRY_OPTIONS = [
-  { id: 'Morocco', flag: '🇲🇦', name: 'Morocco', currency: 'MAD' },
-  { id: 'United States', flag: '🇺🇸', name: 'United States', currency: 'USD' },
-  { id: 'France', flag: '🇫🇷', name: 'France', currency: 'EUR' },
-  { id: 'Spain', flag: '🇪🇸', name: 'Spain', currency: 'EUR' },
-  { id: 'UAE', flag: '🇦🇪', name: 'UAE', currency: 'AED' },
+  { id: 'Morocco', icon: require('../assets/images/morocco_icon.png'), name: 'Morocco', currency: 'MAD' },
+  { id: 'United States', icon: require('../assets/images/us_icon.png'), name: 'United States', currency: 'USD' },
+  { id: 'France', icon: require('../assets/images/france_icon.png'), name: 'France', currency: 'EUR' },
+  { id: 'Spain', icon: require('../assets/images/spain_icon.png'), name: 'Spain', currency: 'EUR' },
+  { id: 'UAE', icon: require('../assets/images/uae_icon.png'), name: 'UAE', currency: 'AED' },
 ];
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
   onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onCountry, onNext, onBack, loading }: any) => (
@@ -199,7 +201,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
             padding: 12, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
             borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER,
           }}>
-            <Text style={{ fontSize: 22 }}>{c.flag}</Text>
+            <Image source={c.icon} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{c.name}</Text>
               <View style={{ backgroundColor: sel ? 'rgba(108,108,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3, alignSelf: 'flex-start' }}>

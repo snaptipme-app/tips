@@ -17,6 +17,16 @@ const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+const COUNTRY_FLAG_IMAGES: Record<string, any> = {
+  'Morocco': require('../../assets/images/morocco_icon.png'),
+  'United States': require('../../assets/images/us_icon.png'),
+  'France': require('../../assets/images/france_icon.png'),
+  'Spain': require('../../assets/images/spain_icon.png'),
+  'UAE': require('../../assets/images/uae_icon.png'),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
+
 
 
 interface Withdrawal {
@@ -225,6 +235,21 @@ export default function Profile() {
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
           </TouchableOpacity>
+
+          {/* Country info row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              {COUNTRY_FLAG_IMAGES[user?.country || 'Morocco'] ? (
+                <Image source={COUNTRY_FLAG_IMAGES[user?.country || 'Morocco']} style={{ width: 24, height: 24, borderRadius: 4 }} resizeMode="contain" />
+              ) : (
+                <Ionicons name="flag-outline" size={18} color={GREEN} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Country</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{user?.country || 'Morocco'} · {user?.currency || 'MAD'}</Text>
+            </View>
+          </View>
         </View>
 
         {/* ── Withdraw Funds (non-business only) ── */}

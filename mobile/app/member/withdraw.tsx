@@ -24,8 +24,13 @@ const RED = '#ef4444';
 /* ══════════════════════════════════════════════════════════════════════
    COUNTRY → FLAG MAP
    ══════════════════════════════════════════════════════════════════════ */
-const COUNTRY_FLAGS: Record<string, string> = {
-  'Morocco': '🇲🇦', 'United States': '🇺🇸', 'France': '🇫🇷', 'Spain': '🇪🇸', 'UAE': '🇦🇪',
+/* eslint-disable @typescript-eslint/no-require-imports */
+const COUNTRY_FLAG_IMAGES: Record<string, any> = {
+  'Morocco': require('../../assets/images/morocco_icon.png'),
+  'United States': require('../../assets/images/us_icon.png'),
+  'France': require('../../assets/images/france_icon.png'),
+  'Spain': require('../../assets/images/spain_icon.png'),
+  'UAE': require('../../assets/images/uae_icon.png'),
 };
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -172,7 +177,7 @@ export default function MemberWithdraw() {
   const userCountry = user?.country || 'Morocco';
   const cur = user?.currency || 'MAD';
   const isMorocco = userCountry === 'Morocco';
-  const countryFlag = COUNTRY_FLAGS[userCountry] || '🌍';
+  const countryFlagSource = COUNTRY_FLAG_IMAGES[userCountry] || null;
 
   const [balance, setBalance] = useState(user?.balance ?? 0);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -323,7 +328,10 @@ export default function MemberWithdraw() {
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('withdraw_title') || 'Withdraw Funds'}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{countryFlag} {userCountry} · {cur}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {countryFlagSource && <Image source={countryFlagSource} style={{ width: 18, height: 18, borderRadius: 4 }} resizeMode="contain" />}
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{userCountry} · {cur}</Text>
+              </View>
             </View>
             <View style={{ backgroundColor: 'rgba(0,200,150,0.12)', borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {cur}</Text>
