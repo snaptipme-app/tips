@@ -15,6 +15,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
+const SHEET_BG = '#0d0d24';
 
 const STEPS = [
   { label: 'Info', icon: 'person' },
@@ -48,33 +49,52 @@ const InputField = memo(({ icon, placeholder, value, onChangeText, error, right,
 ));
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   LANGUAGE + COUNTRY DATA
+   ═══════════════════════════════════════════════════════════════════════════ */
+const LANG_FLAGS: Record<string, string> = {
+  en: '🇬🇧',
+  fr: '🇫🇷',
+  ar: '🇸🇦',
+  es: '🇪🇸',
+};
+
+const LANG_NAMES: Record<string, string> = {
+  en: 'English',
+  fr: 'Français',
+  ar: 'العربية',
+  es: 'Español',
+};
+
+/* eslint-disable @typescript-eslint/no-require-imports */
+const COUNTRY_OPTIONS = [
+  { id: 'Morocco', icon: require('../assets/images/morocco_icon.png'), name: 'Morocco', currency: 'MAD' },
+  { id: 'United States', icon: require('../assets/images/us_icon.png'), name: 'United States', currency: 'USD' },
+  { id: 'France', icon: require('../assets/images/france_icon.png'), name: 'France', currency: 'EUR' },
+  { id: 'Spain', icon: require('../assets/images/spain_icon.png'), name: 'Spain', currency: 'EUR' },
+  { id: 'UAE', icon: require('../assets/images/uae_icon.png'), name: 'UAE', currency: 'AED' },
+];
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+/* ═══════════════════════════════════════════════════════════════════════════
    STEP 1 — Personal Info
    ═══════════════════════════════════════════════════════════════════════════ */
-const LANGS: { key: string; label: string }[] = [
-  { key: 'en', label: 'EN' },
-  { key: 'fr', label: 'FR' },
-  { key: 'ar', label: 'AR' },
-  { key: 'es', label: 'ES' },
-];
-
-const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading, currentLang, onLangChange }: any) => (
+const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading, currentLang, onOpenLangSheet }: any) => (
   <>
-    {/* Language Pills */}
-    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-      {LANGS.map((l) => (
-        <TouchableOpacity
-          key={l.key}
-          onPress={() => onLangChange(l.key)}
-          activeOpacity={0.8}
-          style={{
-            paddingHorizontal: 16, paddingVertical: 8, borderRadius: 50,
-            backgroundColor: currentLang === l.key ? 'rgba(108,108,255,0.15)' : INPUT_BG,
-            borderWidth: 1.5, borderColor: currentLang === l.key ? ACCENT : 'transparent',
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: currentLang === l.key ? ACCENT : 'rgba(255,255,255,0.4)' }}>{l.label}</Text>
-        </TouchableOpacity>
-      ))}
+    {/* Language Selector — single compact pill, right-aligned */}
+    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
+      <TouchableOpacity
+        onPress={onOpenLangSheet}
+        activeOpacity={0.8}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 6,
+          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 50,
+          backgroundColor: INPUT_BG, borderWidth: 1.5, borderColor: ACCENT,
+        }}
+      >
+        <Text style={{ fontSize: 16 }}>{LANG_FLAGS[currentLang] || '🌐'}</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>{currentLang.toUpperCase()}</Text>
+        <Ionicons name="chevron-down" size={12} color={ACCENT} />
+      </TouchableOpacity>
     </View>
 
     <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
@@ -138,98 +158,89 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 3 — Credentials
    ═══════════════════════════════════════════════════════════════════════════ */
-/* eslint-disable @typescript-eslint/no-require-imports */
-const COUNTRY_OPTIONS = [
-  { id: 'Morocco', icon: require('../assets/images/morocco_icon.png'), name: 'Morocco', currency: 'MAD' },
-  { id: 'United States', icon: require('../assets/images/us_icon.png'), name: 'United States', currency: 'USD' },
-  { id: 'France', icon: require('../assets/images/france_icon.png'), name: 'France', currency: 'EUR' },
-  { id: 'Spain', icon: require('../assets/images/spain_icon.png'), name: 'Spain', currency: 'EUR' },
-  { id: 'UAE', icon: require('../assets/images/uae_icon.png'), name: 'UAE', currency: 'AED' },
-];
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
-  onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onCountry, onNext, onBack, loading }: any) => (
-  <>
-    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
+  onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onOpenCountrySheet, onNext, onBack, loading }: any) => {
+  const country = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
+  return (
+    <>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
 
-    <InputField
-      icon="at-outline" placeholder="username" value={username} onChangeText={onUsername}
-      error={errors.username}
-      right={usernameValid !== null ? <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} /> : null}
-    />
-    <InputField
-      icon="lock-closed-outline" placeholder="Password (min 6 characters)" value={password} onChangeText={onPassword}
-      error={errors.password} secureTextEntry={!showPw}
-      right={<TouchableOpacity onPress={onTogglePw}><Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" /></TouchableOpacity>}
-    />
-    <InputField
-      icon="lock-closed-outline" placeholder="Confirm password" value={confirmPw} onChangeText={onConfirmPw}
-      error={errors.confirmPw} secureTextEntry={!showPw}
-    />
+      <InputField
+        icon="at-outline" placeholder="username" value={username} onChangeText={onUsername}
+        error={errors.username}
+        right={usernameValid !== null ? <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} /> : null}
+      />
+      <InputField
+        icon="lock-closed-outline" placeholder="Password (min 6 characters)" value={password} onChangeText={onPassword}
+        error={errors.password} secureTextEntry={!showPw}
+        right={<TouchableOpacity onPress={onTogglePw}><Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" /></TouchableOpacity>}
+      />
+      <InputField
+        icon="lock-closed-outline" placeholder="Confirm password" value={confirmPw} onChangeText={onConfirmPw}
+        error={errors.confirmPw} secureTextEntry={!showPw}
+      />
 
-    <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
-    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-      {[
-        { key: 'individual', icon: 'person-outline' as const, title: 'Individual', desc: 'I work alone' },
-        { key: 'business', icon: 'business-outline' as const, title: 'Business', desc: 'I manage a team' },
-      ].map((opt) => {
-        const sel = accountType === opt.key;
-        return (
-          <TouchableOpacity key={opt.key} onPress={() => onAccountType(opt.key)} activeOpacity={0.8} style={{
-            flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
-            borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
-          }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sel ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
-              <Ionicons name={opt.icon} size={22} color={sel ? ACCENT : 'rgba(255,255,255,0.4)'} />
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-
-    {/* Country Selector */}
-    <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Select Your Country</Text>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-      {COUNTRY_OPTIONS.map((c) => {
-        const sel = selectedCountry === c.id;
-        return (
-          <TouchableOpacity key={c.id} onPress={() => onCountry(c.id)} activeOpacity={0.8} style={{
-            width: '47%', flexDirection: 'row', alignItems: 'center', gap: 10,
-            padding: 12, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
-            borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER,
-          }}>
-            <Image source={c.icon} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{c.name}</Text>
-              <View style={{ backgroundColor: sel ? 'rgba(108,108,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3, alignSelf: 'flex-start' }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: sel ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+        {[
+          { key: 'individual', icon: 'person-outline' as const, title: 'Individual', desc: 'I work alone' },
+          { key: 'business', icon: 'business-outline' as const, title: 'Business', desc: 'I manage a team' },
+        ].map((opt) => {
+          const sel = accountType === opt.key;
+          return (
+            <TouchableOpacity key={opt.key} onPress={() => onAccountType(opt.key)} activeOpacity={0.8} style={{
+              flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
+              borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
+            }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sel ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
+                <Ionicons name={opt.icon} size={22} color={sel ? ACCENT : 'rgba(255,255,255,0.4)'} />
               </View>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{opt.desc}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
-    <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-      {loading && <ActivityIndicator color="#fff" size="small" />}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
-    </TouchableOpacity>
+      {/* Country Selector — single dropdown button */}
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Select Your Country</Text>
+      <TouchableOpacity
+        onPress={onOpenCountrySheet}
+        activeOpacity={0.8}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 12,
+          backgroundColor: INPUT_BG, borderRadius: 14, height: 56, paddingHorizontal: 16,
+          borderWidth: 1.5, borderColor: ACCENT, marginBottom: 20,
+        }}
+      >
+        <Image source={country.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{country.name}</Text>
+        </View>
+        <View style={{ backgroundColor: 'rgba(108,108,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>{country.currency}</Text>
+        </View>
+        <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
+      </TouchableOpacity>
 
-    <TouchableOpacity onPress={onBack} style={{ marginTop: 12, alignItems: 'center' }}>
-      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
-    </TouchableOpacity>
-  </>
-));
+      <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+        {loading && <ActivityIndicator color="#fff" size="small" />}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={onBack} style={{ marginTop: 12, alignItems: 'center' }}>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
+      </TouchableOpacity>
+    </>
+  );
+});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 4 — Profile Photo
    ═══════════════════════════════════════════════════════════════════════════ */
 const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, onSkip, loading }: any) => (
   <>
-    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Almost done!</Text>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Add your photo</Text>
     <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
 
     <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
@@ -245,9 +256,9 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
 
     <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide)" value={jobTitle} onChangeText={onJobTitle} />
 
-    <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+    <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
       {loading && <ActivityIndicator color="#fff" size="small" />}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup ✓'}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup'}</Text>
     </TouchableOpacity>
 
     <TouchableOpacity onPress={onSkip} style={{ marginTop: 12, alignItems: 'center' }}>
@@ -292,6 +303,10 @@ export default function Register() {
   const [jobTitle, setJobTitle] = useState('');
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
+  // Bottom sheets
+  const [showLangSheet, setShowLangSheet] = useState(false);
+  const [showCountrySheet, setShowCountrySheet] = useState(false);
+
   const progress = (step / 4) * 100;
 
   // Username validation
@@ -310,7 +325,9 @@ export default function Register() {
   const handleJobTitleChange = useCallback((t: string) => setJobTitle(t), []);
   const handleTogglePw = useCallback(() => setShowPw((p) => !p), []);
   const handleAccountType = useCallback((t: 'individual' | 'business') => setAccountType(t), []);
-  const handleCountryChange = useCallback((c: string) => setSelectedCountry(c), []);
+  const handleCountryChange = useCallback((c: string) => { setSelectedCountry(c); setShowCountrySheet(false); }, []);
+  const handleOpenLangSheet = useCallback(() => setShowLangSheet(true), []);
+  const handleOpenCountrySheet = useCallback(() => setShowCountrySheet(true), []);
 
   // ── Step 1 handler ──
   const handleStep1 = useCallback(async () => {
@@ -362,7 +379,8 @@ export default function Register() {
   const verifyOtpDirect = useCallback(async (code: string) => {
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), code });
+      console.log('Verifying OTP for email:', email.trim().toLowerCase(), 'otp:', code);
+      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), otp: code });
       showToast('Email verified!', 'success');
       setStep(3);
     } catch (e: any) {
@@ -512,7 +530,7 @@ export default function Register() {
               firstName={firstName} lastName={lastName} email={email} errors={errors}
               onFirstName={handleFirstNameChange} onLastName={handleLastNameChange} onEmail={handleEmailChange}
               onNext={handleStep1} loading={loading}
-              currentLang={language} onLangChange={changeLanguage}
+              currentLang={language} onOpenLangSheet={handleOpenLangSheet}
             />
           )}
           {step === 2 && (
@@ -529,7 +547,7 @@ export default function Register() {
               accountType={accountType} usernameValid={usernameValid} errors={errors}
               selectedCountry={selectedCountry}
               onUsername={handleUsernameChange} onPassword={handlePasswordChange} onConfirmPw={handleConfirmPwChange}
-              onTogglePw={handleTogglePw} onAccountType={handleAccountType} onCountry={handleCountryChange}
+              onTogglePw={handleTogglePw} onAccountType={handleAccountType} onOpenCountrySheet={handleOpenCountrySheet}
               onNext={handleStep3} onBack={handleBackToStep2} loading={loading}
             />
           )}
@@ -554,10 +572,70 @@ export default function Register() {
       </ScrollView>
       <Toast {...toast} />
 
+      {/* ═══ Language Bottom Sheet ═══ */}
+      <Modal visible={showLangSheet} animationType="slide" transparent>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowLangSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>Select Language</Text>
+            {Object.keys(LANG_FLAGS).map((l) => (
+              <TouchableOpacity
+                key={l}
+                onPress={() => { changeLanguage(l); setShowLangSheet(false); }}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}
+              >
+                <Text style={{ fontSize: 28 }}>{LANG_FLAGS[l]}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_NAMES[l]}</Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: language === l ? ACCENT : 'rgba(255,255,255,0.3)', marginRight: 8 }}>{l.toUpperCase()}</Text>
+                {language === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setShowLangSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ═══ Country Picker Bottom Sheet ═══ */}
+      <Modal visible={showCountrySheet} animationType="slide" transparent>
+        <TouchableOpacity activeOpacity={1} onPress={() => setShowCountrySheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>Select Country</Text>
+            {COUNTRY_OPTIONS.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                onPress={() => handleCountryChange(c.id)}
+                activeOpacity={0.8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
+              >
+                <Image source={c.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCountry === c.id ? '#fff' : 'rgba(255,255,255,0.5)', flex: 1 }}>{c.name}</Text>
+                <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(108,108,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: selectedCountry === c.id ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
+                </View>
+                {selectedCountry === c.id && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setShowCountrySheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Photo Picker Bottom Sheet */}
       <Modal visible={showPhotoSheet} animationType="slide" transparent>
         <TouchableOpacity activeOpacity={1} onPress={() => setShowPhotoSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor: '#0d0d24', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+          <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, RefreshControl, ActivityIndicator, Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../lib/api';
@@ -84,6 +84,8 @@ export default function Transactions() {
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
+  useFocusEffect(useCallback(() => { fetchTransactions(); }, [fetchTransactions]));
+
   const transactions = filterTransactions(allTx, filter);
 
   const total = transactions.reduce((acc, tx) => acc + Number(tx.amount), 0);
@@ -98,7 +100,9 @@ export default function Transactions() {
 
   const renderTx = ({ item }: { item: Transaction }) => {
     const initials = (item.employee_name || 'U').charAt(0).toUpperCase();
-    const photoSrc = item.photo_base64 || item.profile_image_url || item.photo_url || '';
+    const rawUrl = item.profile_image_url || item.photo_url || '';
+    const photoUrl = rawUrl ? `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
+    const photoSrc = item.photo_base64 || photoUrl;
     return (
       <View
         style={{

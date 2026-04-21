@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Image,
   RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
@@ -59,6 +59,8 @@ export default function BusinessDashboard() {
   }, []);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  useFocusEffect(useCallback(() => { fetchStats(); }, [fetchStats]));
 
   const kpiCards = stats ? [
     {
@@ -186,7 +188,9 @@ export default function BusinessDashboard() {
                 ) : stats?.top_performers.map((perf, idx) => {
                   const rankColor = RANK_COLORS[idx] || 'rgba(255,255,255,0.3)';
                   const initials2 = (perf.full_name || 'U').charAt(0).toUpperCase();
-                  const photo = perf.photo_base64 || perf.profile_image_url || '';
+                  const rawUrl = perf.profile_image_url || '';
+                  const photoUrl = rawUrl ? `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : '';
+                  const photo = perf.photo_base64 || photoUrl;
                   return (
                     <View
                       key={perf.id}

@@ -193,6 +193,27 @@ export default function Profile() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Withdraw Funds (non-business only) ── */}
+        {user?.account_type !== 'business' && (
+          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
+            <TouchableOpacity
+              onPress={() => router.push('/member/withdraw')}
+              activeOpacity={0.8}
+              style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}
+            >
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="cash-outline" size={18} color={GREEN} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds') || 'Withdraw Funds'}</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Cash out your earnings</Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{Math.floor(balance)} {user?.currency || 'MAD'}</Text>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── Business Settings (owner only) ── */}
         {user?.account_type === 'business' && (
           <>
@@ -251,27 +272,6 @@ export default function Profile() {
             </View>
           </View>
         </View>
-
-        {/* ── Withdraw Funds (non-business only) ── */}
-        {user?.account_type !== 'business' && (
-          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
-            <TouchableOpacity
-              onPress={() => router.push('/member/withdraw')}
-              activeOpacity={0.8}
-              style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}
-            >
-              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="cash-outline" size={18} color={GREEN} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds') || 'Withdraw Funds'}</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Cash out your earnings</Text>
-              </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{Math.floor(balance)} {user?.currency || 'MAD'}</Text>
-              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* ── History ── */}
         {user?.account_type !== 'business' && withdrawals.length > 0 && (

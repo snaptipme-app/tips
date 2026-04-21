@@ -326,15 +326,20 @@ export default function MemberWithdraw() {
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('withdraw_title') || 'Withdraw Funds'}</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Withdraw Earnings</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                {countryFlagSource && <Image source={countryFlagSource} style={{ width: 18, height: 18, borderRadius: 4 }} resizeMode="contain" />}
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{userCountry} · {cur}</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Balance deducted immediately on request</Text>
               </View>
             </View>
             <View style={{ backgroundColor: 'rgba(0,200,150,0.12)', borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {cur}</Text>
             </View>
+          </View>
+
+          {/* Country info row — display only, not a selector */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            {countryFlagSource && <Image source={countryFlagSource} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />}
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }}>{userCountry} · {cur}</Text>
           </View>
 
           {/* Balance card */}
@@ -384,13 +389,6 @@ export default function MemberWithdraw() {
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
                   Transfers processed via Wise. Processing time: 1-3 business days. Wise fees (~0.5%) will be deducted from your amount.
                 </Text>
-              </View>
-              <View style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 16 }}>🌍</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: YELLOW }}>Available Soon</Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>We're setting up international transfers. Your request will be processed manually.</Text>
-                </View>
               </View>
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>

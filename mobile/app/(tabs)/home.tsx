@@ -1,45 +1,38 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Share, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import QRCode from 'react-native-qrcode-svg';
-import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../lib/AuthContext';
-import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
 
 const BG = '#080818';
-const CARD = '#0f0f2e';
-const BORDER = 'rgba(255,255,255,0.06)';
+const CARD = 'rgba(255,255,255,0.05)';
+const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
+interface Tip {
+  id: number;
+  amount: number;
+  created_at: string;
+}
+
 export default function Home() {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [balance, setBalance] = useState(0);
-  const [totalTips, setTotalTips] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
   const [tipCount, setTipCount] = useState(0);
+  const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const prevBalanceRef = useRef<number | null>(null);
 
-  // Business owners go to their manager dashboard
-  useEffect(() => {
-    if (user?.account_type === 'business') {
-      router.replace('/business/dashboard');
-    } else if (user?.account_type === 'member') {
-      router.replace('/member/dashboard');
-    }
-  }, [user?.account_type]);
-
-  const tipUrl = `https://snaptip.me/${user?.username}`;
+  const cur = user?.currency || 'MAD';
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
-
   const photoSrc =
     user?.photo_base64 ||
     (user?.profile_image_url && user.profile_image_url.startsWith('/')
@@ -47,171 +40,211 @@ export default function Home() {
       : user?.profile_image_url) ||
     '';
 
+  // Business owners go to manager dashboard
+  useEffect(() => {
+    if (user?.account_type === 'business') {
+      router.replace('/business/dashboard');
+    }
+  }, [user?.account_type]);
+
   const fetchData = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
-      setBalance(data.employee?.balance ?? data.balance ?? 0);
-      setTotalTips(data.total_tips ?? 0);
+      const b = data.employee?.balance ?? data.balance ?? 0;
+
+      if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
+        const diff = b - prevBalanceRef.current;
+        playTipSound();
+        showToast(`+${diff.toFixed(2)} ${cur} tip received!`, 'success');
+      }
+      prevBalanceRef.current = b;
+
+      setBalance(b);
+      setTotalEarned(data.total_tips ?? 0);
       setTipCount(data.tip_count ?? 0);
-    } catch (err: any) {
-      if (err.response?.status !== 401) showToast('Failed to load dashboard.', 'error');
+      setRecentTips((data.recent_tips || data.tips || []).slice(0, 4));
+    } catch {
+      // Silently handle — new users just see empty state, no error toast
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cur, showToast]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useFocusEffect(useCallback(() => {
+    fetchData();
+  }, [fetchData]));
 
   // 30-second polling for real-time balance updates
   useEffect(() => {
+    if (user?.account_type === 'business') return;
     const interval = setInterval(async () => {
       try {
         const res = await api.get('/dashboard');
         const d = res.data;
-        const newBalance = d.employee?.balance ?? d.balance ?? 0;
-
-        if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
-          const diff = newBalance - prevBalanceRef.current;
+        const b = d.employee?.balance ?? d.balance ?? 0;
+        if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
+          const diff = b - prevBalanceRef.current;
           playTipSound();
-          showToast(`You received a ${diff.toFixed(2)} ${user?.currency || 'MAD'} tip! 💸`, 'success');
+          showToast(`+${diff.toFixed(2)} ${cur} tip received!`, 'success');
         }
-        prevBalanceRef.current = newBalance;
-
-        setBalance(newBalance);
-        setTotalTips(d.total_tips ?? 0);
+        prevBalanceRef.current = b;
+        setBalance(b);
+        setTotalEarned(d.total_tips ?? 0);
         setTipCount(d.tip_count ?? 0);
+        setRecentTips((d.recent_tips || d.tips || []).slice(0, 4));
       } catch {}
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.account_type, cur, showToast]);
 
-  const handleCopy = async () => {
-    await Clipboard.setStringAsync(tipUrl);
-    showToast(t('link_copied'), 'success');
-  };
+  if (user?.account_type === 'business') return null;
 
-  const handleShare = async () => {
-    try {
-      await Share.share({ message: `Tip me on SnapTip! ${tipUrl}` });
-    } catch {}
-  };
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 40 }}>
+
         {/* ── Header ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="flash" size={22} color={ACCENT} />
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="flash" size={18} color={ACCENT} />
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
+              <View style={{ backgroundColor: 'rgba(108,108,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 }}>
+              {user?.full_name || 'Welcome'}
+            </Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>@{user?.username}</Text>
-            <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
               {photoSrc ? (
-                <Image source={{ uri: photoSrc }} style={{ width: 40, height: 40 }} />
+                <Image source={{ uri: photoSrc }} style={{ width: 44, height: 44 }} />
               ) : (
-                <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>{initials}</Text>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: ACCENT }}>{initials}</Text>
               )}
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* ── Balance Card ── */}
+        {/* ── Available Balance Card ── */}
         <LinearGradient
-          colors={['#12123a', '#1a1a4e', '#12123a']}
+          colors={['#0a2a20', '#0d3328', '#0a2a20']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 20, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)' }}
+          style={{ borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="wallet" size={18} color={GREEN} />
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('available_balance')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', flex: 1 }}>Available Balance</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
               <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>Live</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 40, fontWeight: '800', color: GREEN, marginBottom: 16, letterSpacing: -1 }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
 
-          <View style={{ flexDirection: 'row', gap: 20 }}>
-            <View>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>{t('total_earned')}</Text>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{totalTips.toFixed(2)} {user?.currency || 'MAD'}</Text>
-            </View>
+          <Text style={{ fontSize: 42, fontWeight: '800', color: GREEN, marginBottom: 16, letterSpacing: -1 }}>
+            {balance.toFixed(2)} {cur}
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 20, marginBottom: 20 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              Total Earned: <Text style={{ fontWeight: '700', color: '#fff' }}>{totalEarned.toFixed(2)} {cur}</Text>
+            </Text>
             <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-            <View>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>{t('tips_received')}</Text>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{tipCount}</Text>
-            </View>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              Tips: <Text style={{ fontWeight: '700', color: '#fff' }}>{tipCount}</Text>
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => router.push('/member/withdraw')}
+              activeOpacity={0.8}
+              style={{ flex: 1, height: 46, borderRadius: 50, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
+            >
+              <Ionicons name="cash-outline" size={16} color="#080818" />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#080818' }}>Cash Out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/member/qr')}
+              activeOpacity={0.8}
+              style={{ flex: 1, height: 46, borderRadius: 50, borderWidth: 1.5, borderColor: 'rgba(0,200,150,0.5)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={GREEN} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>My QR</Text>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
 
-        {/* ── QR Code Section ── */}
-        <View style={{ marginBottom: 24 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
-            <Ionicons name="qr-code-outline" size={16} color={ACCENT} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('tip_link_ready')}</Text>
-          </View>
-
-          <View style={{
-            alignItems: 'center',
-            borderRadius: 20,
-            padding: 24,
-            backgroundColor: CARD,
-            borderWidth: 1,
-            borderColor: 'rgba(108,108,255,0.2)',
-            shadowColor: ACCENT,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.15,
-            shadowRadius: 20,
-            elevation: 8,
-          }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
-              <QRCode value={tipUrl} size={180} color="#000" backgroundColor="#fff" />
-            </View>
-          </View>
-        </View>
-
-        {/* ── URL Pill ── */}
-        <View style={{ borderRadius: 50, padding: 14, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, alignItems: 'center', marginBottom: 12 }}>
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>snaptip.me/{user?.username}</Text>
-        </View>
-
-        {/* ── Copy / Share ── */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-          <TouchableOpacity onPress={handleCopy} activeOpacity={0.8} style={{ flex: 1, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: CARD, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
-            <Ionicons name="copy-outline" size={16} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t('copy_link')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} activeOpacity={0.8} style={{ flex: 1, height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
-            <Ionicons name="share-outline" size={16} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t('share_qr')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Business Team Card ── */}
-        {user?.account_type === 'business' && (
-          <LinearGradient
-            colors={['rgba(108,108,255,0.12)', 'rgba(108,108,255,0.04)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 16, borderWidth: 1, borderColor: 'rgba(108,108,255,0.25)', overflow: 'hidden' }}
-          >
-            <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="people" size={22} color={ACCENT} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('manage_team')}</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{t('add_members')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+        {/* ── Recent Tips ── */}
+        <View style={{ marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Recent Tips</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/tips')} activeOpacity={0.8}>
+              <Text style={{ fontSize: 13, color: ACCENT, fontWeight: '600' }}>View All</Text>
             </TouchableOpacity>
-          </LinearGradient>
-        )}
+          </View>
+
+          {loading ? (
+            <ActivityIndicator color={ACCENT} style={{ marginTop: 20 }} />
+          ) : recentTips.length === 0 ? (
+            <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 32, borderWidth: 1, borderColor: BORDER, alignItems: 'center' }}>
+              <Ionicons name="wallet-outline" size={36} color="rgba(255,255,255,0.12)" />
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 12, textAlign: 'center', lineHeight: 20 }}>
+                No tips yet. Share your QR to start receiving tips!
+              </Text>
+            </View>
+          ) : (
+            recentTips.map((tip) => (
+              <View
+                key={tip.id}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Ionicons name="arrow-down-outline" size={18} color={GREEN} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Tip received</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{formatDate(tip.created_at)}</Text>
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>+{Number(tip.amount).toFixed(2)} {cur}</Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* ── Quick Actions ── */}
+        <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Quick Actions</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/member/qr')}
+            activeOpacity={0.8}
+            style={{ flex: 1, backgroundColor: CARD, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="qr-code-outline" size={22} color={ACCENT} />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>My QR Code</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/member/withdraw')}
+            activeOpacity={0.8}
+            style={{ flex: 1, backgroundColor: CARD, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="cash-outline" size={22} color={GREEN} />
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Withdraw</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
       <Toast {...toast} />
     </View>
