@@ -166,19 +166,19 @@ export default function Home() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
               onPress={() => router.push('/member/withdraw')}
-              activeOpacity={0.8}
-              style={{ flex: 1, height: 46, borderRadius: 50, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
+              activeOpacity={0.85}
+              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 7 }}
             >
-              <Ionicons name="cash-outline" size={16} color="#080818" />
+              <Ionicons name="arrow-up-circle" size={18} color="#080818" />
               <Text style={{ fontSize: 14, fontWeight: '700', color: '#080818' }}>Cash Out</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/member/qr')}
-              activeOpacity={0.8}
-              style={{ flex: 1, height: 46, borderRadius: 50, borderWidth: 1.5, borderColor: 'rgba(0,200,150,0.5)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
+              activeOpacity={0.85}
+              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 7 }}
             >
-              <Ionicons name="qr-code-outline" size={16} color={GREEN} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>My QR</Text>
+              <Ionicons name="qr-code-outline" size={18} color="#00C896" />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#00C896' }}>My QR</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
