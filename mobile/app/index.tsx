@@ -22,7 +22,7 @@ export default function Index() {
     if (user?.account_type === 'business') {
       api.get('/business/me')
         .then(() => {
-          setDestination('/(tabs)/home');
+          setDestination('/business/dashboard');
         })
         .catch(() => {
           // No business yet → go to setup
