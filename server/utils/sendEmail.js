@@ -1,15 +1,19 @@
 const nodemailer = require('nodemailer');
 
+const FROM = () => `SnapTip <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
+
 /**
- * Reusable transporter — reads credentials from env only.
- * To switch providers, change the transport config here.
+ * Reusable transporter — Brevo SMTP relay.
+ * Credentials: EMAIL_USER (Brevo login), EMAIL_PASS (Brevo SMTP key).
  */
 function createTransporter() {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // use an App Password, not your real password
+      pass: process.env.EMAIL_PASS,
     },
   });
 }
@@ -23,7 +27,7 @@ async function sendOTPEmail(email, code) {
   const transporter = createTransporter();
 
   await transporter.sendMail({
-    from: `"SnapTip" <${process.env.EMAIL_USER}>`,
+    from: FROM(),
     to: email,
     subject: 'SnapTip Verification Code',
     text: `Your verification code is: ${code}\n\nThis code expires in 5 minutes. Do not share it with anyone.`,
@@ -49,7 +53,7 @@ async function sendOTPEmail(email, code) {
 async function sendEmail(to, subject, html) {
   const transporter = createTransporter();
   await transporter.sendMail({
-    from: `"SnapTip" <${process.env.EMAIL_USER}>`,
+    from: FROM(),
     to,
     subject,
     html,

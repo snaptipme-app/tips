@@ -21,16 +21,20 @@ function rowToObj(result) {
   return rows[0] || null;
 }
 
-/* ── Nodemailer transporter ── */
+/* ── Nodemailer transporter (Brevo SMTP) ── */
 function getTransporter() {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
   });
 }
+
+const FROM = () => `SnapTip <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
 
 /* ── Email templates ── */
 function buildWithdrawalPaidEmail(employee, withdrawal) {
@@ -118,7 +122,7 @@ async function sendEmail(to, { subject, html }) {
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: `"SnapTip" <${process.env.EMAIL_USER}>`,
+      from: FROM(),
       to,
       subject,
       html,
