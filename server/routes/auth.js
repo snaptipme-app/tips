@@ -259,6 +259,9 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
     }
 
+    // Update last_login
+    try { db.run('UPDATE employees SET last_login = ? WHERE id = ?', [new Date().toISOString(), employee.id]); saveDB(); } catch (_) {}
+
     const token = jwt.sign(
       { id: employee.id, username: employee.username, email: employee.email, is_admin: employee.is_admin || 0 },
       process.env.JWT_SECRET,

@@ -25,16 +25,44 @@ export default function AdminLogin({ onSuccess }) {
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
+  // Lockout state
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000;
+  const getLockout = () => {
+    try { return JSON.parse(localStorage.getItem('admin_lockout') || '{}'); } catch { return {}; }
+  };
+  const [lockout, setLockout] = useState(getLockout);
+  const [now, setNow] = useState(Date.now());
+
+  // Tick every second for countdown
+  useState(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); });
+
+  const isLocked = lockout.until && now < lockout.until;
+  const remaining = isLocked ? Math.ceil((lockout.until - now) / 1000) : 0;
+  const attemptsLeft = MAX_ATTEMPTS - (lockout.count || 0);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLocked) return;
     setError('');
     setLoading(true);
     try {
       const { data } = await axios.post('/api/admin/login', { password });
+      localStorage.removeItem('admin_lockout');
       saveAdminToken(data.token);
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed.');
+      const newCount = (lockout.count || 0) + 1;
+      const newLockout = newCount >= MAX_ATTEMPTS
+        ? { count: newCount, until: Date.now() + LOCKOUT_MS }
+        : { count: newCount };
+      localStorage.setItem('admin_lockout', JSON.stringify(newLockout));
+      setLockout(newLockout);
+      setError(
+        newCount >= MAX_ATTEMPTS
+          ? `Too many attempts. Locked for 15 minutes.`
+          : `${err.response?.data?.error || 'Login failed.'} (${MAX_ATTEMPTS - newCount} attempts remaining)`
+      );
     } finally {
       setLoading(false);
     }
@@ -100,17 +128,17 @@ export default function AdminLogin({ onSuccess }) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isLocked}
               style={{
                 width: '100%', height: '52px', borderRadius: '50px',
-                background: loading ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#4facfe,#a855f7)',
-                boxShadow: loading ? 'none' : '0 8px 24px rgba(168,85,247,0.4)',
+                background: (loading || isLocked) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#4facfe,#a855f7)',
+                boxShadow: (loading || isLocked) ? 'none' : '0 8px 24px rgba(168,85,247,0.4)',
                 border: 'none', color: '#fff', fontSize: '16px', fontWeight: '700',
-                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
+                cursor: (loading || isLocked) ? 'not-allowed' : 'pointer', opacity: (loading || isLocked) ? 0.6 : 1,
                 transition: 'all 0.2s',
               }}
             >
-              {loading ? 'Authenticating...' : 'Access Admin Panel →'}
+              {isLocked ? `Locked — Try again in ${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')}` : loading ? 'Authenticating...' : 'Access Admin Panel →'}
             </button>
           </form>
 

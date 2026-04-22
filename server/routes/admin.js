@@ -87,16 +87,17 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
   };
 }
 
-function buildWithdrawalRejectedEmail(employee, withdrawal) {
+function buildWithdrawalRejectedEmail(employee, withdrawal, reason) {
   const cur = employee.currency || 'MAD';
   const amount = Number(withdrawal.amount).toFixed(2);
+  const reasonBlock = reason ? `<p style="margin:12px 0 0;color:#ef4444;font-size:14px;font-weight:600;">Reason: ${reason}</p>` : '';
   return {
     subject: 'SnapTip — Withdrawal Request Update',
     html: `
       <div style="font-family:'Segoe UI',Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:560px;margin:auto;">
         <div style="text-align:center;margin-bottom:30px;">
           <div style="display:inline-block;background:rgba(239,68,68,0.15);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
-            <span style="font-size:22px;">⚠️</span>
+            <span style="font-size:22px;">&#9888;</span>
           </div>
           <div style="font-size:24px;font-weight:800;color:#fff;">SnapTip</div>
         </div>
@@ -107,6 +108,7 @@ function buildWithdrawalRejectedEmail(employee, withdrawal) {
             Unfortunately, your withdrawal request for <strong style="color:#fff;">${amount} ${cur}</strong> could not be processed at this time.
             Please contact support or submit a new request.
           </p>
+          ${reasonBlock}
         </div>
         <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;margin-top:28px;">Thank you for using SnapTip</p>
       </div>
@@ -224,7 +226,7 @@ router.get('/users', adminAuth, (req, res) => {
     const users = rowsToObjs(db.exec(`
       SELECT id, username, full_name, first_name, last_name, email,
         account_type, country, currency, balance, created_at,
-        is_suspended, photo_base64, profile_image_url, job_title
+        is_suspended, photo_base64, profile_image_url, job_title, last_login
       FROM employees
       ORDER BY created_at DESC
     `));
@@ -294,8 +296,10 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
     const user = rowToObj(db.exec('SELECT * FROM employees WHERE id = ?', [req.params.id]));
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
-    // Generate temp password
-    const tempPw = 'Snap' + Math.random().toString(36).slice(2, 8);
+    // Generate 8-char password
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let tempPw = '';
+    for (let i = 0; i < 8; i++) tempPw += chars[Math.floor(Math.random() * chars.length)];
     const hash = await bcrypt.hash(tempPw, 10);
     db.run('UPDATE employees SET password = ? WHERE id = ?', [hash, req.params.id]);
     saveDB();
@@ -304,13 +308,19 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
     await sendEmail(user.email, {
       subject: 'SnapTip — Your password has been reset',
       html: `
-        <div style="font-family:Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:500px;margin:auto;">
-          <h2 style="color:#fff;margin:0 0 16px;">Password Reset</h2>
-          <p style="color:rgba(255,255,255,0.6);">Your password has been reset by an admin. Your temporary password is:</p>
-          <div style="background:rgba(108,108,255,0.1);border:1px solid rgba(108,108,255,0.2);border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
-            <code style="font-size:20px;font-weight:700;color:#6c6cff;">${tempPw}</code>
+        <div style="font-family:'Segoe UI',Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:560px;margin:auto;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="font-size:24px;font-weight:800;color:#fff;">SnapTip</div>
           </div>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;">Please change this after logging in.</p>
+          <h2 style="color:#fff;margin:0 0 12px;font-size:20px;">Hello ${user.first_name || user.full_name || 'there'},</h2>
+          <p style="color:rgba(255,255,255,0.6);line-height:1.6;">Your SnapTip password has been reset by an admin.</p>
+          <div style="background:rgba(108,108,255,0.1);border:1px solid rgba(108,108,255,0.2);border-radius:14px;padding:20px;margin:20px 0;text-align:center;">
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Your new temporary password</p>
+            <code style="font-size:24px;font-weight:700;color:#6c6cff;letter-spacing:2px;">${tempPw}</code>
+          </div>
+          <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.6;">Please login and change your password immediately.</p>
+          <a href="https://snaptip.me" style="display:inline-block;margin-top:16px;background:#6c6cff;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:14px;">Login to SnapTip</a>
+          <p style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:28px;">Thank you for using SnapTip</p>
         </div>
       `,
     });
@@ -376,6 +386,7 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
 router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body;
     const db = getDB();
     const withdrawal = rowToObj(db.exec('SELECT * FROM withdrawals WHERE id = ?', [id]));
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
@@ -387,7 +398,7 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
 
     const employee = rowToObj(db.exec('SELECT * FROM employees WHERE id = ?', [withdrawal.employee_id]));
     if (employee?.email) {
-      sendEmail(employee.email, buildWithdrawalRejectedEmail(employee, withdrawal)).catch(console.error);
+      sendEmail(employee.email, buildWithdrawalRejectedEmail(employee, withdrawal, reason)).catch(console.error);
     }
     res.json({ success: true, message: 'Withdrawal rejected. Balance refunded. Email sent.' });
   } catch (err) {
