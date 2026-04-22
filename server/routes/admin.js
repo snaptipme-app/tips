@@ -166,8 +166,8 @@ router.get('/stats', adminAuth, (req, res) => {
     const totalEmployees = rowToObj(db.exec('SELECT COUNT(*) as count FROM employees'))?.count || 0;
     const totalPayments = rowToObj(db.exec('SELECT COUNT(*) as count FROM payments'))?.count || 0;
     const totalTips = rowToObj(db.exec('SELECT COALESCE(SUM(amount),0) as sum FROM payments'))?.sum || 0;
-    const pendingWithdrawals = rowToObj(db.exec("SELECT COUNT(*) as count FROM withdrawals WHERE status='pending'"))?.count || 0;
-    const pendingAmount = rowToObj(db.exec("SELECT COALESCE(SUM(amount),0) as sum FROM withdrawals WHERE status='pending'"))?.sum || 0;
+    const pendingWithdrawals = rowToObj(db.exec("SELECT COUNT(*) as count FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)"))?.count || 0;
+    const pendingAmount = rowToObj(db.exec("SELECT COALESCE(SUM(w.amount),0) as sum FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)"))?.sum || 0;
     const commission = totalTips * 0.10;
 
     // Recent payments
@@ -179,12 +179,13 @@ router.get('/stats', adminAuth, (req, res) => {
       ORDER BY p.created_at DESC LIMIT 10
     `));
 
-    // Recent withdrawals
+    // Recent withdrawals (exclude suspended users)
     const recentWithdrawals = rowsToObjs(db.exec(`
       SELECT w.id, w.amount, w.status, w.method, w.created_at,
         e.full_name, e.username, e.currency
       FROM withdrawals w
-      LEFT JOIN employees e ON e.id = w.employee_id
+      INNER JOIN employees e ON e.id = w.employee_id
+      WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC LIMIT 5
     `));
 
@@ -348,6 +349,7 @@ router.get('/withdrawals', adminAuth, (req, res) => {
         e.country, e.currency
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
+      WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
     `));
     res.json({ withdrawals });
