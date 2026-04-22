@@ -248,9 +248,30 @@ function UsersSection({showToast,onLogout}){
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
         <td><div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
           <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} onClick={()=>setDetail(u)}>View</Btn>
-          {u.is_suspended?<Btn small bg='rgba(0,200,150,.1)' color={GREEN} disabled={actionLoading===u.id} onClick={()=>doAction('reactivate',u.id)}>Activate</Btn>:<Btn small bg='rgba(245,158,11,.1)' color={YELLOW} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Suspend ${u.full_name}?`,fn:()=>doAction('suspend',u.id)})}>{I.ban} Suspend</Btn>}
-          <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Reset password for ${u.full_name}? They will receive an email with the new password.`,fn:()=>doAction('reset',u.id)})}>{I.lock} Reset</Btn>
-          <Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`DELETE ${u.full_name} and ALL their data? This cannot be undone.`,fn:()=>doAction('delete',u.id)})}>{I.trash} Delete</Btn>
+          {u.is_suspended?
+            <Btn small bg='rgba(0,200,150,.1)' color={GREEN} onClick={()=>{
+              const token=localStorage.getItem('snaptip_admin_token');
+              fetch('/api/admin/users/'+u.id+'/reactivate',{method:'PATCH',headers:{'Authorization':'Bearer '+token}})
+              .then(r=>r.json()).then(data=>{if(data.success){alert('User reactivated');window.location.reload()}else{alert(data.error||'Failed')}})
+            }}>Activate</Btn>
+          :
+            <Btn small bg='rgba(245,158,11,.1)' color={YELLOW} onClick={()=>{
+              const token=localStorage.getItem('snaptip_admin_token');
+              fetch('/api/admin/users/'+u.id+'/suspend',{method:'PATCH',headers:{'Authorization':'Bearer '+token}})
+              .then(r=>r.json()).then(data=>{if(data.success){alert('User suspended');window.location.reload()}else{alert(data.error||'Failed')}})
+            }}>{I.ban} Suspend</Btn>
+          }
+          <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} onClick={()=>{
+            const token=localStorage.getItem('snaptip_admin_token');
+            fetch('/api/admin/users/'+u.id+'/reset-password',{method:'POST',headers:{'Authorization':'Bearer '+token}})
+            .then(r=>r.json()).then(data=>{if(data.success){alert('Password reset! New password sent to email.')}else{alert(data.error||'Failed')}})
+          }}>{I.lock} Reset</Btn>
+          <Btn small bg='rgba(239,68,68,.1)' color={RED} onClick={()=>{
+            if(!window.confirm('Delete '+u.full_name+' permanently? This cannot be undone.'))return;
+            const token=localStorage.getItem('snaptip_admin_token');
+            fetch('/api/admin/users/'+u.id,{method:'DELETE',headers:{'Authorization':'Bearer '+token}})
+            .then(r=>r.json()).then(data=>{if(data.success){alert('User deleted');window.location.reload()}else{alert(data.error||'Failed')}})
+          }}>{I.trash} Delete</Btn>
         </div></td>
       </tr>)}
       {!filtered.length&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No users found</td></tr>}
