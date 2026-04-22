@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const ADMIN_TOKEN_KEY = 'snaptip_admin_token';
@@ -35,7 +35,7 @@ export default function AdminLogin({ onSuccess }) {
   const [now, setNow] = useState(Date.now());
 
   // Tick every second for countdown
-  useState(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); });
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 
   const isLocked = lockout.until && now < lockout.until;
   const remaining = isLocked ? Math.ceil((lockout.until - now) / 1000) : 0;
