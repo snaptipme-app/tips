@@ -243,6 +243,7 @@ router.get('/users', adminAuth, (req, res) => {
 router.patch('/users/:id/suspend', adminAuth, (req, res) => {
   try {
     const db = getDB();
+    console.log('[admin] Suspending user:', req.params.id);
     db.run('UPDATE employees SET is_suspended = 1 WHERE id = ?', [req.params.id]);
     saveDB();
     res.json({ success: true, message: 'User suspended.' });
@@ -274,13 +275,14 @@ router.delete('/users/:id', adminAuth, (req, res) => {
   try {
     const db = getDB();
     const uid = req.params.id;
-    // Delete related data
+    console.log('[admin] Deleting user:', uid);
     try { db.run('DELETE FROM payments WHERE employee_id = ?', [uid]); } catch (_) {}
     try { db.run('DELETE FROM withdrawals WHERE employee_id = ?', [uid]); } catch (_) {}
     try { db.run('DELETE FROM team_members WHERE employee_id = ?', [uid]); } catch (_) {}
+    try { db.run('DELETE FROM invitations WHERE employee_id = ?', [uid]); } catch (_) {}
     db.run('DELETE FROM employees WHERE id = ?', [uid]);
     saveDB();
-    res.json({ success: true, message: 'User and related data deleted.' });
+    res.json({ success: true, message: 'User permanently deleted.' });
   } catch (err) {
     console.error('[admin/users/delete]', err.message);
     res.status(500).json({ error: 'Server error.' });

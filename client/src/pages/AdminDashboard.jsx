@@ -167,7 +167,34 @@ function UsersSection({showToast,onLogout}){
   const fetchUsers=useCallback(()=>{setLoading(true);api().get('/users').then(r=>setUsers(r.data.users||[])).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[onLogout]);
   useEffect(()=>{fetchUsers()},[fetchUsers]);
   const filtered=useMemo(()=>{let list=users;if(filterType==='members')list=list.filter(u=>u.account_type==='member'||u.account_type==='individual');if(filterType==='business')list=list.filter(u=>u.account_type==='business');if(filterType==='suspended')list=list.filter(u=>u.is_suspended);if(search){const q=search.toLowerCase();list=list.filter(u=>(u.full_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.country||'').toLowerCase().includes(q))}return list},[users,filterType,search]);
-  const doAction=async(action,userId,msg)=>{console.log('[admin] doAction:',action,userId);setActionLoading(userId);try{let r;if(action==='suspend')r=await api().patch(`/users/${userId}/suspend`);else if(action==='reactivate')r=await api().patch(`/users/${userId}/reactivate`);else if(action==='delete')r=await api().delete(`/users/${userId}`);else if(action==='reset'){r=await api().post(`/users/${userId}/reset-password`);console.log('[admin] reset result:',r.data);showToast(r.data.message||'Password reset email sent');setActionLoading(null);fetchUsers();return}console.log('[admin] action result:',r?.data);showToast(msg);fetchUsers()}catch(e){console.error('[admin] action error:',e.response?.data||e.message);showToast(e.response?.data?.error||'Action failed','error')}setActionLoading(null);setConfirm(null)};
+  const doAction=async(action,userId,msg)=>{
+    console.log('[admin] doAction:',action,userId);
+    setActionLoading(userId);
+    try {
+      if(action==='suspend'){
+        await api().patch(`/users/${userId}/suspend`);
+        setUsers(prev=>prev.map(u=>u.id===userId?{...u,is_suspended:1}:u));
+        showToast('User suspended');
+      } else if(action==='reactivate'){
+        await api().patch(`/users/${userId}/reactivate`);
+        setUsers(prev=>prev.map(u=>u.id===userId?{...u,is_suspended:0}:u));
+        showToast('User reactivated');
+      } else if(action==='delete'){
+        await api().delete(`/users/${userId}`);
+        setUsers(prev=>prev.filter(u=>u.id!==userId));
+        showToast('User permanently deleted');
+      } else if(action==='reset'){
+        const r=await api().post(`/users/${userId}/reset-password`);
+        console.log('[admin] reset result:',r.data);
+        showToast('Password reset! New password sent to user\'s email.');
+      }
+    } catch(e){
+      console.error('[admin] action error:',e.response?.data||e.message);
+      showToast(e.response?.data?.error||'Action failed','error');
+    }
+    setActionLoading(null);
+    setConfirm(null);
+  };
   const typeBadge=t=>{if(t==='business')return<Badge text="Business" bg="rgba(0,200,150,.12)" color={GREEN}/>;if(t==='member')return<Badge text="Member" bg="rgba(108,108,255,.12)" color={ACCENT}/>;return<Badge text={t||'Individual'} bg="rgba(255,255,255,.06)" color="rgba(255,255,255,.4)"/>};
   return(<>
     {confirm&&<Confirm msg={confirm.msg} onConfirm={confirm.fn} onCancel={()=>setConfirm(null)}/>}
@@ -195,9 +222,9 @@ function UsersSection({showToast,onLogout}){
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
         <td><div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
           <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} onClick={()=>setDetail(u)}>View</Btn>
-          {u.is_suspended?<Btn small bg='rgba(0,200,150,.1)' color={GREEN} disabled={actionLoading===u.id} onClick={()=>doAction('reactivate',u.id,'User reactivated')}>Activate</Btn>:<Btn small bg='rgba(245,158,11,.1)' color={YELLOW} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Suspend ${u.full_name}?`,fn:()=>doAction('suspend',u.id,'User suspended')})}>{I.ban} Suspend</Btn>}
-          <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Reset password for ${u.full_name}? A temporary password will be emailed.`,fn:()=>doAction('reset',u.id,'')})}>{I.lock} Reset</Btn>
-          <Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`DELETE ${u.full_name} and ALL their data? This cannot be undone.`,fn:()=>doAction('delete',u.id,'User deleted')})}>{I.trash} Delete</Btn>
+          {u.is_suspended?<Btn small bg='rgba(0,200,150,.1)' color={GREEN} disabled={actionLoading===u.id} onClick={()=>doAction('reactivate',u.id)}>Activate</Btn>:<Btn small bg='rgba(245,158,11,.1)' color={YELLOW} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Suspend ${u.full_name}?`,fn:()=>doAction('suspend',u.id)})}>{I.ban} Suspend</Btn>}
+          <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`Reset password for ${u.full_name}? They will receive an email with the new password.`,fn:()=>doAction('reset',u.id)})}>{I.lock} Reset</Btn>
+          <Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionLoading===u.id} onClick={()=>setConfirm({msg:`DELETE ${u.full_name} and ALL their data? This cannot be undone.`,fn:()=>doAction('delete',u.id)})}>{I.trash} Delete</Btn>
         </div></td>
       </tr>)}
       {!filtered.length&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No users found</td></tr>}
