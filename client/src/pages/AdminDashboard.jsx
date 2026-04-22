@@ -167,26 +167,26 @@ function UsersSection({showToast,onLogout}){
   const fetchUsers=useCallback(()=>{setLoading(true);api().get('/users').then(r=>setUsers(r.data.users||[])).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[onLogout]);
   useEffect(()=>{fetchUsers()},[fetchUsers]);
   const filtered=useMemo(()=>{let list=users;if(filterType==='members')list=list.filter(u=>u.account_type==='member'||u.account_type==='individual');if(filterType==='business')list=list.filter(u=>u.account_type==='business');if(filterType==='suspended')list=list.filter(u=>u.is_suspended);if(search){const q=search.toLowerCase();list=list.filter(u=>(u.full_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.country||'').toLowerCase().includes(q))}return list},[users,filterType,search]);
-  const doAction=async(action,userId,msg)=>{
+  const doAction=async(action,userId)=>{
     console.log('[admin] doAction:',action,userId);
     setActionLoading(userId);
     try {
       if(action==='suspend'){
         await api().patch(`/users/${userId}/suspend`);
-        setUsers(prev=>prev.map(u=>u.id===userId?{...u,is_suspended:1}:u));
-        showToast('User suspended');
+        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
+        showToast('User suspended successfully');
       } else if(action==='reactivate'){
         await api().patch(`/users/${userId}/reactivate`);
-        setUsers(prev=>prev.map(u=>u.id===userId?{...u,is_suspended:0}:u));
-        showToast('User reactivated');
+        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
+        showToast('User reactivated successfully');
       } else if(action==='delete'){
         await api().delete(`/users/${userId}`);
-        setUsers(prev=>prev.filter(u=>u.id!==userId));
+        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
         showToast('User permanently deleted');
       } else if(action==='reset'){
         const r=await api().post(`/users/${userId}/reset-password`);
         console.log('[admin] reset result:',r.data);
-        showToast('Password reset! New password sent to user\'s email.');
+        showToast('Password reset! New password sent to email.');
       }
     } catch(e){
       console.error('[admin] action error:',e.response?.data||e.message);
