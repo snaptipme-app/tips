@@ -38,10 +38,23 @@ router.post('/create', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'business_name and business_type are required.' });
     }
 
-    // One business per owner
+    // One business per owner — but clean up orphaned rows first
     const existing = getOwnedBusiness(db, ownerId);
     if (existing) {
-      return res.status(409).json({ error: 'You already have a business account.', business: existing });
+      // Double-check: is the employee actually a business owner?
+      const employee = rowToObj(db.exec('SELECT account_type FROM employees WHERE id = ?', [ownerId]));
+      console.log(`[business/create] Existing business found for owner ${ownerId}:`, JSON.stringify(existing));
+      console.log(`[business/create] Employee account_type: ${employee?.account_type}`);
+      
+      if (employee && employee.account_type !== 'business') {
+        // Orphaned business row — the employee was likely deleted and re-created with the same ID
+        // or admin changed their account type. Clean it up.
+        console.log(`[business/create] Cleaning up orphaned business id=${existing.id} (employee is ${employee.account_type}, not business)`);
+        db.run('DELETE FROM businesses WHERE id = ?', [existing.id]);
+        saveDB();
+      } else {
+        return res.status(409).json({ error: 'You already have a business account.', business: existing });
+      }
     }
 
     db.run(
