@@ -34,7 +34,7 @@ const NAV=[
 
 const Badge=({text,bg,color})=><span style={{display:'inline-block',padding:'3px 10px',borderRadius:50,fontSize:11,fontWeight:700,background:bg,color,textTransform:'uppercase',letterSpacing:.4}}>{text}</span>;
 const StatusBadge=({status})=>{const m={paid:{t:'Paid',bg:'rgba(0,200,150,.12)',c:GREEN},pending:{t:'Pending',bg:'rgba(245,158,11,.12)',c:YELLOW},rejected:{t:'Rejected',bg:'rgba(239,68,68,.12)',c:RED}};const s=m[status]||m.pending;return<Badge text={s.t} bg={s.bg} color={s.c}/>};
-const Btn=({children,onClick,bg=ACCENT,color='#fff',small,disabled,...r})=><button onClick={onClick} disabled={disabled} style={{background:bg,color,border:'none',borderRadius:50,padding:small?'6px 14px':'10px 20px',fontSize:small?12:14,fontWeight:700,cursor:disabled?'not-allowed':'pointer',opacity:disabled?.5:1,transition:'all .2s',display:'inline-flex',alignItems:'center',gap:6,...r.style}}>{children}</button>;
+const Btn=({children,onClick,bg=ACCENT,color='#fff',small,disabled,...r})=><button onClick={(e)=>{e.stopPropagation();if(onClick)onClick(e)}} disabled={disabled} style={{background:bg,color,border:'none',borderRadius:50,padding:small?'6px 14px':'10px 20px',fontSize:small?12:14,fontWeight:700,cursor:disabled?'not-allowed':'pointer',opacity:disabled?0.5:1,transition:'all .2s',display:'inline-flex',alignItems:'center',gap:6,position:'relative',zIndex:1,...(r.style||{})}}>{children}</button>;
 const Input=({value,onChange,placeholder,...r})=><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{background:'rgba(255,255,255,.06)',border:`1px solid ${BORDER}`,borderRadius:12,height:42,padding:'0 14px',color:'#fff',fontSize:14,outline:'none',flex:1,minWidth:0,...r.style}}/>;
 function Toast({toast}){if(!toast)return null;return<div style={{position:'fixed',top:20,right:20,zIndex:9999,background:toast.type==='error'?RED:GREEN,color:'#fff',padding:'12px 24px',borderRadius:14,fontWeight:600,fontSize:14,boxShadow:'0 8px 32px rgba(0,0,0,.4)',animation:'slideIn .3s ease-out'}}>{toast.msg}</div>}
 function Confirm({msg,onConfirm,onCancel,children}){return<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}><div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:32,maxWidth:420,width:'100%'}}><p style={{color:'#fff',fontSize:16,fontWeight:600,marginBottom:16,lineHeight:1.5}}>{msg}</p>{children}<div style={{display:'flex',gap:12,justifyContent:'flex-end',marginTop:20}}><Btn onClick={onCancel} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn><Btn onClick={onConfirm} bg={RED}>Confirm</Btn></div></div></div>}
@@ -256,9 +256,13 @@ function UsersSection({showToast,onLogout}){
             }}>Activate</Btn>
           :
             <Btn small bg='rgba(245,158,11,.1)' color={YELLOW} onClick={()=>{
+              console.log('SUSPEND CLICKED for user:',u.id);
               const token=localStorage.getItem('snaptip_admin_token');
+              console.log('Token:',token?'EXISTS':'MISSING');
               fetch('/api/admin/users/'+u.id+'/suspend',{method:'PATCH',headers:{'Authorization':'Bearer '+token}})
-              .then(r=>r.json()).then(data=>{if(data.success){alert('User suspended');window.location.reload()}else{alert(data.error||'Failed')}})
+              .then(r=>{console.log('Response status:',r.status);return r.json()})
+              .then(data=>{console.log('Response data:',data);alert(JSON.stringify(data));window.location.reload()})
+              .catch(err=>{console.log('Error:',err);alert('Error: '+err.message)})
             }}>{I.ban} Suspend</Btn>
           }
           <Btn small bg='rgba(108,108,255,.1)' color={ACCENT} onClick={()=>{
@@ -267,10 +271,13 @@ function UsersSection({showToast,onLogout}){
             .then(r=>r.json()).then(data=>{if(data.success){alert('Password reset! New password sent to email.')}else{alert(data.error||'Failed')}})
           }}>{I.lock} Reset</Btn>
           <Btn small bg='rgba(239,68,68,.1)' color={RED} onClick={()=>{
-            if(!window.confirm('Delete '+u.full_name+' permanently? This cannot be undone.'))return;
+            if(!window.confirm('Delete user '+u.id+'?'))return;
+            console.log('DELETE CLICKED for user:',u.id);
             const token=localStorage.getItem('snaptip_admin_token');
             fetch('/api/admin/users/'+u.id,{method:'DELETE',headers:{'Authorization':'Bearer '+token}})
-            .then(r=>r.json()).then(data=>{if(data.success){alert('User deleted');window.location.reload()}else{alert(data.error||'Failed')}})
+            .then(r=>r.json())
+            .then(data=>{console.log('Delete result:',data);alert(JSON.stringify(data));window.location.reload()})
+            .catch(err=>alert('Error: '+err.message))
           }}>{I.trash} Delete</Btn>
         </div></td>
       </tr>)}
