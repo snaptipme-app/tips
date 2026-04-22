@@ -27,7 +27,14 @@ const COUNTRY_FLAG_IMAGES: Record<string, any> = {
 };
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-
+/* eslint-disable @typescript-eslint/no-require-imports */
+const LANG_IMAGES: Record<string, any> = {
+  en: require('../../assets/images/us_icon.png'),
+  fr: require('../../assets/images/france_icon.png'),
+  ar: require('../../assets/images/morocco_icon.png'),
+  es: require('../../assets/images/spain_icon.png'),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 interface Withdrawal {
   id: number;
@@ -315,13 +322,11 @@ export default function Profile() {
                 key={l}
                 onPress={() => { changeLanguage(l); setShowLangModal(false); }}
                 activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
               >
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: language === l ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', borderWidth: language === l ? 1.5 : 0, borderColor: ACCENT }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: language === l ? ACCENT : 'rgba(255,255,255,0.5)' }}>{l.toUpperCase()}</Text>
-                </View>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_INFO[l].label}</Text>
-                {language === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} style={{ marginLeft: 'auto' }} />}
+                <Image source={LANG_IMAGES[l]} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: '#fff' }}>{LANG_INFO[l].label}</Text>
+                {language === l && <Ionicons name="checkmark-circle" size={22} color={GREEN} />}
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowLangModal(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>

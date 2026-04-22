@@ -51,11 +51,11 @@ const InputField = memo(({ icon, placeholder, value, onChangeText, error, right,
 /* ═══════════════════════════════════════════════════════════════════════════
    LANGUAGE + COUNTRY DATA
    ═══════════════════════════════════════════════════════════════════════════ */
-const LANG_FLAGS: Record<string, string> = {
-  en: '🇬🇧',
-  fr: '🇫🇷',
-  ar: '🇸🇦',
-  es: '🇪🇸',
+const LANG_IMAGES: Record<string, any> = {
+  en: require('../assets/images/us_icon.png'),
+  fr: require('../assets/images/france_icon.png'),
+  ar: require('../assets/images/morocco_icon.png'),
+  es: require('../assets/images/spain_icon.png'),
 };
 
 const LANG_NAMES: Record<string, string> = {
@@ -91,7 +91,7 @@ const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastNam
           backgroundColor: INPUT_BG, borderWidth: 1.5, borderColor: ACCENT,
         }}
       >
-        <Text style={{ fontSize: 16 }}>{LANG_FLAGS[currentLang] || '🌐'}</Text>
+        <Image source={LANG_IMAGES[currentLang]} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />
         <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>{currentLang.toUpperCase()}</Text>
         <Ionicons name="chevron-down" size={12} color={ACCENT} />
       </TouchableOpacity>
@@ -580,19 +580,16 @@ export default function Register() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>Select Language</Text>
-            {Object.keys(LANG_FLAGS).map((l) => (
+            {Object.keys(LANG_IMAGES).map((l) => (
               <TouchableOpacity
                 key={l}
                 onPress={() => { changeLanguage(l); setShowLangSheet(false); }}
                 activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
               >
-                <Text style={{ fontSize: 28 }}>{LANG_FLAGS[l]}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_NAMES[l]}</Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: language === l ? ACCENT : 'rgba(255,255,255,0.3)', marginRight: 8 }}>{l.toUpperCase()}</Text>
-                {language === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
+                <Image source={LANG_IMAGES[l]} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: '#fff' }}>{LANG_NAMES[l]}</Text>
+                {language === l && <Ionicons name="checkmark-circle" size={22} color={GREEN} />}
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowLangSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>

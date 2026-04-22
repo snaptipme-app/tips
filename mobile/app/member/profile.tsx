@@ -22,12 +22,21 @@ const GREEN = '#00C896';
 const RED = '#ef4444';
 
 const METHODS = ['CIH Bank', 'Cash Plus', 'Wafa Cash', 'Other Bank'];
-const LANGS = [
-  { code: 'en', label: 'English', flag: 'EN' },
-  { code: 'fr', label: 'Français', flag: 'FR' },
-  { code: 'ar', label: 'العربية', flag: 'AR' },
-  { code: 'es', label: 'Español', flag: 'ES' },
-];
+/* eslint-disable @typescript-eslint/no-require-imports */
+const LANG_IMAGES: Record<string, any> = {
+  en: require('../../assets/images/us_icon.png'),
+  fr: require('../../assets/images/france_icon.png'),
+  ar: require('../../assets/images/morocco_icon.png'),
+  es: require('../../assets/images/spain_icon.png'),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+const LANG_NAMES: Record<string, string> = {
+  en: 'English',
+  fr: 'Français',
+  ar: 'العربية',
+  es: 'Español',
+};
 
 export default function MemberProfile() {
   const { user, setUser, logout } = useAuth();
@@ -233,15 +242,17 @@ export default function MemberProfile() {
         {/* ── Language ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
           <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('language')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {LANGS.map((l) => (
+          <View style={{ gap: 4 }}>
+            {Object.keys(LANG_IMAGES).map((l) => (
               <TouchableOpacity
-                key={l.code}
-                onPress={() => changeLanguage(l.code)}
+                key={l}
+                onPress={() => changeLanguage(l)}
                 activeOpacity={0.8}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 50, borderWidth: 1.5, borderColor: language === l.code ? ACCENT : 'rgba(255,255,255,0.08)', backgroundColor: language === l.code ? 'rgba(108,108,255,0.12)' : 'rgba(255,255,255,0.04)' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: language === l ? ACCENT : 'rgba(255,255,255,0.06)', backgroundColor: language === l ? 'rgba(108,108,255,0.10)' : 'transparent' }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: language === l.code ? ACCENT : 'rgba(255,255,255,0.4)' }}>{l.flag}  {l.label}</Text>
+                <Image source={LANG_IMAGES[l]} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_NAMES[l]}</Text>
+                {language === l && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
               </TouchableOpacity>
             ))}
           </View>
