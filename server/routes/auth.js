@@ -70,10 +70,13 @@ router.post('/send-otp', async (req, res) => {
 // POST /api/auth/verify-otp
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, code } = req.body;
+    // Mobile sends 'otp', legacy may send 'code' — accept both
+    const { email, otp, code } = req.body;
+    const otpCode = otp || code;
+    console.log('[verify-otp] received:', { email, otpCode: otpCode ? '***' + String(otpCode).slice(-2) : undefined });
     const MAX_ATTEMPTS = 3;
 
-    if (!email || !code) {
+    if (!email || !otpCode) {
       return res.status(400).json({ error: 'Email and verification code are required.' });
     }
 
@@ -100,7 +103,7 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
     }
 
-    const isValid = await bcrypt.compare(code.trim(), otpRecord.otp_hash);
+    const isValid = await bcrypt.compare(otpCode.trim(), otpRecord.otp_hash);
 
     if (!isValid) {
       db.run('UPDATE otps SET attempts = attempts + 1 WHERE email = ?', [normalizedEmail]);

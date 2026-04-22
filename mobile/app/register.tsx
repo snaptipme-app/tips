@@ -379,20 +379,26 @@ export default function Register() {
   const verifyOtpDirect = useCallback(async (code: string) => {
     setLoading(true);
     try {
-      console.log('Verifying OTP for email:', email.trim().toLowerCase(), 'otp:', code);
-      await api.post('/auth/verify-otp', { email: email.trim().toLowerCase(), otp: code });
+      const trimmedEmail = email.trim().toLowerCase();
+      console.log('=== VERIFY OTP DEBUG ===');
+      console.log('Email:', trimmedEmail, '| length:', trimmedEmail.length);
+      console.log('OTP code:', code, '| length:', code.length);
+      await api.post('/auth/verify-otp', { email: trimmedEmail, otp: code });
       showToast('Email verified!', 'success');
       setStep(3);
     } catch (e: any) {
+      console.log('Verify error response:', e.response?.data);
       showToast(e.response?.data?.error || 'Verification failed.', 'error');
     } finally { setLoading(false); }
   }, [email, showToast]);
 
   const handleVerifyOtp = useCallback(async () => {
     const code = otp.join('');
+    console.log('=== HANDLE VERIFY OTP ===');
+    console.log('Email state:', email, '| OTP joined:', code);
     if (code.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
     await verifyOtpDirect(code);
-  }, [otp, verifyOtpDirect, showToast]);
+  }, [otp, verifyOtpDirect, showToast, email]);
 
   const handleResend = useCallback(async () => {
     setOtp(['', '', '', '', '', '']);
