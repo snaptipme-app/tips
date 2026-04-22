@@ -164,33 +164,59 @@ function OverviewSection({showToast,onLogout}){
 /* ═══ USERS ═══ */
 function UsersSection({showToast,onLogout}){
   const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[search,setSearch]=useState('');const[filterType,setFilterType]=useState('all');const[confirm,setConfirm]=useState(null);const[actionLoading,setActionLoading]=useState(null);const[detail,setDetail]=useState(null);
-  const fetchUsers=useCallback(()=>{setLoading(true);api().get('/users').then(r=>setUsers(r.data.users||[])).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[onLogout]);
-  useEffect(()=>{fetchUsers()},[fetchUsers]);
+  const adminFetch = async (path, options = {}) => {
+    const token = localStorage.getItem('snaptip_admin_token');
+    console.log('[admin] fetch:', path, 'token:', token ? 'EXISTS' : 'MISSING');
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        ...(options.headers || {})
+      }
+    });
+    const data = await res.json();
+    console.log('[admin] response:', path, res.status, data);
+    if (res.status === 401) { clearAdminToken(); onLogout(); }
+    return data;
+  };
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await adminFetch('/api/admin/users');
+      setUsers(data.users || []);
+    } catch (e) { console.error('[admin] fetchUsers error:', e); }
+    setLoading(false);
+  }, [onLogout]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
   const filtered=useMemo(()=>{let list=users;if(filterType==='members')list=list.filter(u=>u.account_type==='member'||u.account_type==='individual');if(filterType==='business')list=list.filter(u=>u.account_type==='business');if(filterType==='suspended')list=list.filter(u=>u.is_suspended);if(search){const q=search.toLowerCase();list=list.filter(u=>(u.full_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.country||'').toLowerCase().includes(q))}return list},[users,filterType,search]);
-  const doAction=async(action,userId)=>{
-    console.log('[admin] doAction:',action,userId);
+
+  const doAction = async (action, userId) => {
+    console.log('[admin] doAction:', action, userId);
     setActionLoading(userId);
     try {
-      if(action==='suspend'){
-        await api().patch(`/users/${userId}/suspend`);
-        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
-        showToast('User suspended successfully');
-      } else if(action==='reactivate'){
-        await api().patch(`/users/${userId}/reactivate`);
-        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
-        showToast('User reactivated successfully');
-      } else if(action==='delete'){
-        await api().delete(`/users/${userId}`);
-        await new Promise(r=>{fetchUsers();setTimeout(r,300)});
-        showToast('User permanently deleted');
-      } else if(action==='reset'){
-        const r=await api().post(`/users/${userId}/reset-password`);
-        console.log('[admin] reset result:',r.data);
-        showToast('Password reset! New password sent to email.');
+      if (action === 'suspend') {
+        const result = await adminFetch('/api/admin/users/' + userId + '/suspend', { method: 'PATCH' });
+        if (result.success) { showToast('User suspended successfully'); await fetchUsers(); }
+        else { showToast(result.error || 'Failed', 'error'); }
+      } else if (action === 'reactivate') {
+        const result = await adminFetch('/api/admin/users/' + userId + '/reactivate', { method: 'PATCH' });
+        if (result.success) { showToast('User reactivated successfully'); await fetchUsers(); }
+        else { showToast(result.error || 'Failed', 'error'); }
+      } else if (action === 'delete') {
+        const result = await adminFetch('/api/admin/users/' + userId, { method: 'DELETE' });
+        if (result.success) { showToast('User permanently deleted'); await fetchUsers(); }
+        else { showToast(result.error || 'Failed', 'error'); }
+      } else if (action === 'reset') {
+        const result = await adminFetch('/api/admin/users/' + userId + '/reset-password', { method: 'POST' });
+        if (result.success) { showToast('Password reset! New password sent to email.'); }
+        else { showToast(result.error || 'Failed', 'error'); }
       }
-    } catch(e){
-      console.error('[admin] action error:',e.response?.data||e.message);
-      showToast(e.response?.data?.error||'Action failed','error');
+    } catch (e) {
+      console.error('[admin] action error:', e);
+      showToast('Action failed', 'error');
     }
     setActionLoading(null);
     setConfirm(null);
