@@ -160,7 +160,7 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
    ═══════════════════════════════════════════════════════════════════════════ */
 const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
   onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onOpenCountrySheet, onNext, onBack, loading }: any) => {
-  const country = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
+  const country = selectedCountry ? COUNTRY_OPTIONS.find(c => c.id === selectedCountry) : null;
   return (
     <>
       <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
@@ -210,18 +210,28 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
         style={{
           flexDirection: 'row', alignItems: 'center', gap: 12,
           backgroundColor: INPUT_BG, borderRadius: 14, height: 56, paddingHorizontal: 16,
-          borderWidth: 1.5, borderColor: ACCENT, marginBottom: 20,
+          borderWidth: 1.5, borderColor: errors.country ? 'rgba(239,68,68,0.4)' : (country ? ACCENT : BORDER), marginBottom: errors.country ? 4 : 20,
         }}
       >
-        <Image source={country.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{country.name}</Text>
-        </View>
-        <View style={{ backgroundColor: 'rgba(108,108,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>{country.currency}</Text>
-        </View>
+        {country ? (
+          <>
+            <Image source={country.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{country.name}</Text>
+            </View>
+            <View style={{ backgroundColor: 'rgba(108,108,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>{country.currency}</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Ionicons name="globe-outline" size={24} color="rgba(255,255,255,0.3)" />
+            <Text style={{ flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.3)' }}>Select your country</Text>
+          </>
+        )}
         <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
       </TouchableOpacity>
+      {errors.country ? <Text style={{ fontSize: 12, color: '#ef4444', marginBottom: 16, marginLeft: 4 }}>{errors.country}</Text> : null}
 
       <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
         {loading && <ActivityIndicator color="#fff" size="small" />}
@@ -295,7 +305,7 @@ export default function Register() {
   const [showPw, setShowPw] = useState(false);
   const [accountType, setAccountType] = useState<'individual' | 'business'>('individual');
   const [usernameValid, setUsernameValid] = useState<null | boolean>(null);
-  const [selectedCountry, setSelectedCountry] = useState('Morocco');
+  const [selectedCountry, setSelectedCountry] = useState('');
 
   // Step 4
   const [imageUri, setImageUri] = useState('');
@@ -419,6 +429,7 @@ export default function Register() {
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) errs.username = 'Username: 3-20 chars, letters/numbers/underscores.';
     if (password.length < 6) errs.password = 'Minimum 6 characters.';
     if (password !== confirmPw) errs.confirmPw = 'Passwords do not match.';
+    if (!selectedCountry) errs.country = 'Please select your country.';
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);

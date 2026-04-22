@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
+import Logo from '../../components/Logo';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
@@ -110,7 +111,7 @@ export default function Home() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="flash" size={18} color={ACCENT} />
+              <Logo size="small" />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
               <View style={{ backgroundColor: 'rgba(108,108,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>
@@ -154,31 +155,31 @@ export default function Home() {
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 20, marginBottom: 20 }}>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              Total Earned: <Text style={{ fontWeight: '700', color: '#fff' }}>{totalEarned.toFixed(2)} {cur}</Text>
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+              Total Earned: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{totalEarned.toFixed(2)} {cur}</Text>
             </Text>
-            <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-              Tips: <Text style={{ fontWeight: '700', color: '#fff' }}>{tipCount}</Text>
+            <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+              Tips: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{tipCount}</Text>
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
             <TouchableOpacity
               onPress={() => router.push('/member/withdraw')}
               activeOpacity={0.85}
-              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 7 }}
+              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
-              <Ionicons name="arrow-up-circle" size={18} color="#080818" />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#080818' }}>Cash Out</Text>
+              <Ionicons name="arrow-up-circle" size={20} color="#080818" />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#080818' }}>Cash Out</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/member/qr')}
               activeOpacity={0.85}
-              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 7 }}
+              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
-              <Ionicons name="qr-code-outline" size={18} color="#00C896" />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#00C896' }}>My QR</Text>
+              <Ionicons name="qr-code-outline" size={20} color="#00C896" />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#00C896' }}>My QR</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>

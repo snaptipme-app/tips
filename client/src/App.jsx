@@ -21,7 +21,8 @@ function App() {
           <Route path="/register" element={<RegisterMultiStep />} />
 
           {/* Admin panel — self-managed auth (no ProtectedRoute) */}
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/oh" element={<AdminPage />} />
+          <Route path="/admin" element={<Navigate to="/" replace />} />
 
           {/* Admin stats — must be above /:username catch-all */}
           <Route

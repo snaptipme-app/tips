@@ -10,6 +10,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import Logo from '../../components/Logo';
 import { playTipSound } from '../../lib/tipSound';
 
 const BG = '#080818';
@@ -119,7 +120,7 @@ export default function MemberDashboard() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="flash" size={20} color={GREEN} />
+                <Logo size="medium" />
               </View>
               <View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '500' }}>
