@@ -24,12 +24,10 @@ function rowToObj(result) {
 /* ── Nodemailer transporter ── */
 function getTransporter() {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
+    service: 'gmail',
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 }
@@ -113,14 +111,14 @@ function buildWithdrawalRejectedEmail(employee, withdrawal) {
 }
 
 async function sendEmail(to, { subject, html }) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log('[email] SMTP not configured — skipping.');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('[email] EMAIL_USER or EMAIL_PASS not configured — skipping.');
     return;
   }
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: `"SnapTip" <${process.env.SMTP_USER}>`,
+      from: `"SnapTip" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
