@@ -255,6 +255,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials.' });
     }
 
+    if (employee.is_suspended) {
+      return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
+    }
+
     const token = jwt.sign(
       { id: employee.id, username: employee.username, email: employee.email, is_admin: employee.is_admin || 0 },
       process.env.JWT_SECRET,

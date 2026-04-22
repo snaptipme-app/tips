@@ -51,6 +51,7 @@ async function initDB() {
     "ALTER TABLE employees ADD COLUMN is_admin INTEGER DEFAULT 0",
     "ALTER TABLE employees ADD COLUMN country TEXT DEFAULT 'Morocco'",
     "ALTER TABLE employees ADD COLUMN currency TEXT DEFAULT 'MAD'",
+    "ALTER TABLE employees ADD COLUMN is_suspended INTEGER DEFAULT 0",
   ];
   for (const sql of columnMigrations) {
     try { db.run(sql); } catch (_) { /* column already exists */ }
