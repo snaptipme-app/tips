@@ -357,6 +357,10 @@ export default function Register() {
     } finally { setLoading(false); }
   }, [firstName, lastName, email, showToast]);
 
+  // Keep a ref to the current email to avoid stale closures
+  const emailRef = useRef(email);
+  useEffect(() => { emailRef.current = email; }, [email]);
+
   // ── Step 2 handlers ──
   const handleOtpChange = useCallback((text: string, idx: number) => {
     const digit = text.replace(/\D/g, '').slice(-1);
@@ -365,12 +369,26 @@ export default function Register() {
       arr[idx] = digit;
       if (digit && idx === 5) {
         const code = arr.join('');
-        if (code.length === 6) setTimeout(() => verifyOtpDirect(code), 200);
+        if (code.length === 6) {
+          // Use emailRef.current to get the LATEST email value
+          setTimeout(() => {
+            const currentEmail = emailRef.current.trim().toLowerCase();
+            console.log('=== AUTO-VERIFY OTP ===');
+            console.log('Email from ref:', currentEmail, '| code:', code);
+            if (!currentEmail) {
+              console.error('Email is empty — cannot verify!');
+              return;
+            }
+            api.post('/auth/verify-otp', { email: currentEmail, otp: code })
+              .then(() => { showToast('Email verified!', 'success'); setStep(3); })
+              .catch((e: any) => { showToast(e.response?.data?.error || 'Verification failed.', 'error'); });
+          }, 200);
+        }
       }
       return arr;
     });
     if (digit && idx < 5) otpRefs.current[idx + 1]?.focus();
-  }, []);
+  }, [showToast]);
 
   const handleOtpKey = useCallback((e: any, idx: number) => {
     if (e.nativeEvent.key === 'Backspace') {
@@ -389,7 +407,7 @@ export default function Register() {
   const verifyOtpDirect = useCallback(async (code: string) => {
     setLoading(true);
     try {
-      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedEmail = emailRef.current.trim().toLowerCase();
       console.log('=== VERIFY OTP DEBUG ===');
       console.log('Email:', trimmedEmail, '| length:', trimmedEmail.length);
       console.log('OTP code:', code, '| length:', code.length);
@@ -400,7 +418,7 @@ export default function Register() {
       console.log('Verify error response:', e.response?.data);
       showToast(e.response?.data?.error || 'Verification failed.', 'error');
     } finally { setLoading(false); }
-  }, [email, showToast]);
+  }, [showToast]);
 
   const handleVerifyOtp = useCallback(async () => {
     const code = otp.join('');

@@ -163,67 +163,64 @@ function OverviewSection({showToast,onLogout}){
 
 /* ═══ USERS ═══ */
 function UsersSection({showToast,onLogout}){
-  const[users,setUsers]=useState([]);const[loading,setLoading]=useState(true);const[search,setSearch]=useState('');const[filterType,setFilterType]=useState('all');const[confirm,setConfirm]=useState(null);const[actionLoading,setActionLoading]=useState(null);const[detail,setDetail]=useState(null);
-  const adminFetch = async (path, options = {}) => {
-    const token = localStorage.getItem('snaptip_admin_token');
-    console.log('[admin] fetch:', path, 'token:', token ? 'EXISTS' : 'MISSING');
-    const res = await fetch(path, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-        ...(options.headers || {})
-      }
-    });
-    const data = await res.json();
-    console.log('[admin] response:', path, res.status, data);
-    if (res.status === 401) { clearAdminToken(); onLogout(); }
-    return data;
-  };
+  const[users,setUsers]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[search,setSearch]=useState('');
+  const[filterType,setFilterType]=useState('all');
+  const[actionLoading,setActionLoading]=useState(null);
+  const[detail,setDetail]=useState(null);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers=useCallback(async()=>{
     setLoading(true);
-    try {
-      const data = await adminFetch('/api/admin/users');
-      setUsers(data.users || []);
-    } catch (e) { console.error('[admin] fetchUsers error:', e); }
+    try{
+      const token=localStorage.getItem('snaptip_admin_token');
+      const res=await fetch('/api/admin/users',{headers:{'Authorization':'Bearer '+token}});
+      if(res.status===401){clearAdminToken();onLogout();return}
+      const data=await res.json();
+      console.log('[admin] fetchUsers got',data.users?.length||0,'users');
+      setUsers(data.users||[]);
+    }catch(e){console.error('[admin] fetchUsers error:',e)}
     setLoading(false);
-  }, [onLogout]);
+  },[onLogout]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(()=>{fetchUsers()},[fetchUsers]);
+
   const filtered=useMemo(()=>{let list=users;if(filterType==='members')list=list.filter(u=>u.account_type==='member'||u.account_type==='individual');if(filterType==='business')list=list.filter(u=>u.account_type==='business');if(filterType==='suspended')list=list.filter(u=>u.is_suspended);if(search){const q=search.toLowerCase();list=list.filter(u=>(u.full_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.country||'').toLowerCase().includes(q))}return list},[users,filterType,search]);
 
-  const doAction = async (action, userId) => {
-    console.log('[admin] doAction:', action, userId);
+  /* Central action handler — called by every button */
+  const doAction=async(action,userId,userName)=>{
+    console.log('[admin] doAction:',action,'userId:',userId);
+    const token=localStorage.getItem('snaptip_admin_token');
+    if(!token){showToast('Not authenticated','error');return}
     setActionLoading(userId);
-    try {
-      if (action === 'suspend') {
-        const result = await adminFetch('/api/admin/users/' + userId + '/suspend', { method: 'PATCH' });
-        if (result.success) { showToast('User suspended successfully'); await fetchUsers(); }
-        else { showToast(result.error || 'Failed', 'error'); }
-      } else if (action === 'reactivate') {
-        const result = await adminFetch('/api/admin/users/' + userId + '/reactivate', { method: 'PATCH' });
-        if (result.success) { showToast('User reactivated successfully'); await fetchUsers(); }
-        else { showToast(result.error || 'Failed', 'error'); }
-      } else if (action === 'delete') {
-        const result = await adminFetch('/api/admin/users/' + userId, { method: 'DELETE' });
-        if (result.success) { showToast('User permanently deleted'); await fetchUsers(); }
-        else { showToast(result.error || 'Failed', 'error'); }
-      } else if (action === 'reset') {
-        const result = await adminFetch('/api/admin/users/' + userId + '/reset-password', { method: 'POST' });
-        if (result.success) { showToast('Password reset! New password sent to email.'); }
-        else { showToast(result.error || 'Failed', 'error'); }
+    try{
+      let url,method;
+      if(action==='suspend'){url='/api/admin/users/'+userId+'/suspend';method='PATCH'}
+      else if(action==='reactivate'){url='/api/admin/users/'+userId+'/reactivate';method='PATCH'}
+      else if(action==='delete'){url='/api/admin/users/'+userId;method='DELETE'}
+      else if(action==='reset'){url='/api/admin/users/'+userId+'/reset-password';method='POST'}
+      console.log('[admin] calling:',method,url);
+      const res=await fetch(url,{method,headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}});
+      const data=await res.json();
+      console.log('[admin] response:',res.status,data);
+      if(res.ok&&(data.success||data.message)){
+        if(action==='suspend')showToast('User suspended successfully');
+        else if(action==='reactivate')showToast('User reactivated successfully');
+        else if(action==='delete')showToast('User permanently deleted');
+        else if(action==='reset')showToast('Password reset! New password sent to email.');
+        if(action!=='reset')await fetchUsers();
+      }else{
+        showToast(data.error||'Action failed','error');
       }
-    } catch (e) {
-      console.error('[admin] action error:', e);
-      showToast('Action failed', 'error');
+    }catch(e){
+      console.error('[admin] action error:',e);
+      showToast('Network error: '+e.message,'error');
     }
     setActionLoading(null);
-    setConfirm(null);
   };
+
   const typeBadge=t=>{if(t==='business')return<Badge text="Business" bg="rgba(0,200,150,.12)" color={GREEN}/>;if(t==='member')return<Badge text="Member" bg="rgba(108,108,255,.12)" color={ACCENT}/>;return<Badge text={t||'Individual'} bg="rgba(255,255,255,.06)" color="rgba(255,255,255,.4)"/>};
   return(<>
-    {confirm&&<Confirm msg={confirm.msg} onConfirm={confirm.fn} onCancel={()=>setConfirm(null)}/>}
     {detail&&<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setDetail(null)}><div onClick={e=>e.stopPropagation()} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:32,maxWidth:500,width:'100%',maxHeight:'80vh',overflow:'auto'}}>
       <h3 style={{color:'#fff',marginBottom:16,fontSize:18}}>User Details</h3>
       {['full_name','username','email','account_type','country','currency','balance','created_at','last_login','is_suspended','job_title'].map(k=><div key={k} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{k}</span><span style={{color:'#fff',fontSize:13,fontWeight:600}}>{k==='balance'?fmtMoney(detail[k],detail.currency):k==='is_suspended'?(detail[k]?'Yes':'No'):k.includes('at')||k.includes('login')?fmtDate(detail[k]):String(detail[k]||'—')}</span></div>)}
@@ -246,15 +243,15 @@ function UsersSection({showToast,onLogout}){
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(u.balance,u.currency)}</td>
         <td style={{fontSize:12}}>{fmtDate(u.last_login)}</td>
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
-        <td style={{position:'relative',zIndex:10}}>
+        <td>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
             {u.is_suspended?(
-              <button type="button" style={{background:'#22c55e',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',position:'relative',zIndex:20}} onClick={(e)=>{e.preventDefault();e.stopPropagation();const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id+'/reactivate',{method:'PATCH',headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(d=>{if(d.success){alert('User reactivated');window.location.reload()}else{alert('Error: '+(d.error||'Unknown'))}}).catch(err=>alert('Network error: '+err.message))}}>Activate</button>
+              <button type="button" style={{background:'#22c55e',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reactivate',u.id,u.full_name)}}>Activate</button>
             ):(
-              <button type="button" style={{background:'#f59e0b',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',position:'relative',zIndex:20}} onClick={(e)=>{e.preventDefault();e.stopPropagation();console.log('SUSPEND BTN CLICKED',u.id);const t=localStorage.getItem('snaptip_admin_token');console.log('TOKEN:',t?'OK':'MISSING');fetch('/api/admin/users/'+u.id+'/suspend',{method:'PATCH',headers:{'Authorization':'Bearer '+t}}).then(r=>{console.log('STATUS:',r.status);return r.json()}).then(d=>{console.log('RESULT:',d);if(d.success){alert('User suspended');window.location.reload()}else{alert('Error: '+(d.error||'Unknown'))}}).catch(err=>{console.error('FETCH ERROR:',err);alert('Network error: '+err.message)})}}>Suspend</button>
+              <button type="button" style={{background:'#f59e0b',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('suspend',u.id,u.full_name)}}>Suspend</button>
             )}
-            <button type="button" style={{background:'#6c6cff',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',position:'relative',zIndex:20}} onClick={(e)=>{e.preventDefault();e.stopPropagation();const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id+'/reset-password',{method:'POST',headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(d=>{if(d.success||d.message){alert('Password reset email sent!')}else{alert('Error: '+(d.error||'Unknown'))}}).catch(err=>alert('Network error: '+err.message))}}>Reset PW</button>
-            <button type="button" style={{background:'#ef4444',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',position:'relative',zIndex:20}} onClick={(e)=>{e.preventDefault();e.stopPropagation();if(!window.confirm('Delete '+u.full_name+'? Cannot be undone.'))return;console.log('DELETE BTN CLICKED',u.id);const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(d=>{console.log('DELETE RESULT:',d);if(d.success){alert('User deleted');window.location.reload()}else{alert('Error: '+(d.error||'Unknown'))}}).catch(err=>alert('Network error: '+err.message))}}>Delete</button>
+            <button type="button" style={{background:'#6c6cff',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reset',u.id,u.full_name)}}>Reset PW</button>
+            <button type="button" style={{background:'#ef4444',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();if(!window.confirm('Delete '+u.full_name+'? Cannot be undone.'))return;doAction('delete',u.id,u.full_name)}}>Delete</button>
           </div>
         </td>
       </tr>)}
