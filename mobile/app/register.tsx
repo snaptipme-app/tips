@@ -432,12 +432,14 @@ export default function Register() {
     setOtp(['', '', '', '', '', '']);
     setLoading(true);
     try {
-      await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
+      const currentEmail = emailRef.current.trim().toLowerCase();
+      console.log('[resend] Sending new OTP to:', currentEmail);
+      await api.post('/auth/send-otp', { email: currentEmail });
       showToast('New code sent!', 'success');
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed.', 'error');
     } finally { setLoading(false); }
-  }, [email, showToast]);
+  }, [showToast]);
 
   const handleBackToStep1 = useCallback(() => { setStep(1); setOtp(['', '', '', '', '', '']); }, []);
 
