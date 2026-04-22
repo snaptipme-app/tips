@@ -246,16 +246,15 @@ function UsersSection({showToast,onLogout}){
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(u.balance,u.currency)}</td>
         <td style={{fontSize:12}}>{fmtDate(u.last_login)}</td>
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
-        <td style={{position:'relative'}}>
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
-            <button onClick={()=>setDetail(u)} style={{background:'rgba(108,108,255,.15)',color:ACCENT,border:'none',borderRadius:50,padding:'5px 12px',fontSize:12,fontWeight:700,cursor:'pointer',pointerEvents:'all'}}>View</button>
-            {u.is_suspended?
-              <button onClick={()=>{const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id+'/reactivate',{method:'PATCH',headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(d=>{alert(d.success?'Reactivated':d.error||'Failed');window.location.reload()})}} style={{background:'rgba(0,200,150,.15)',color:GREEN,border:'none',borderRadius:50,padding:'5px 12px',fontSize:12,fontWeight:700,cursor:'pointer',pointerEvents:'all'}}>Activate</button>
-            :
-              <button onClick={()=>{console.log('SUSPEND',u.id);const t=localStorage.getItem('snaptip_admin_token');console.log('TOKEN',t?'OK':'MISSING');fetch('/api/admin/users/'+u.id+'/suspend',{method:'PATCH',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(r=>{console.log('STATUS',r.status);return r.json()}).then(d=>{console.log('DATA',d);alert(JSON.stringify(d));window.location.reload()}).catch(e=>{console.error(e);alert('Error:'+e.message)})}} style={{background:'rgba(245,158,11,.15)',color:YELLOW,border:'none',borderRadius:50,padding:'5px 12px',fontSize:12,fontWeight:700,cursor:'pointer',pointerEvents:'all'}}>Suspend</button>
-            }
-            <button onClick={()=>{const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id+'/reset-password',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{alert(d.message||d.error||JSON.stringify(d))}).catch(e=>alert('Error:'+e.message))}} style={{background:'rgba(108,108,255,.15)',color:ACCENT,border:'none',borderRadius:50,padding:'5px 12px',fontSize:12,fontWeight:700,cursor:'pointer',pointerEvents:'all'}}>Reset PW</button>
-            <button onClick={()=>{if(!window.confirm('Delete '+u.full_name+'?'))return;console.log('DELETE',u.id);const t=localStorage.getItem('snaptip_admin_token');fetch('/api/admin/users/'+u.id,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(d=>{console.log('DELETE RESULT',d);alert(JSON.stringify(d));window.location.reload()}).catch(e=>alert('Error:'+e.message))}} style={{background:'rgba(239,68,68,.15)',color:RED,border:'none',borderRadius:50,padding:'5px 12px',fontSize:12,fontWeight:700,cursor:'pointer',pointerEvents:'all'}}>Delete</button>
+        <td>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+            {u.is_suspended?(
+              <button style={{background:'#22c55e',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer'}} onClick={()=>{fetch('/api/admin/users/'+u.id+'/reactivate',{method:'PATCH',headers:{'Authorization':'Bearer '+localStorage.getItem('snaptip_admin_token')}}).then(r=>r.json()).then(()=>window.location.reload())}}>Activate</button>
+            ):(
+              <button style={{background:'#f59e0b',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer'}} onClick={()=>{fetch('/api/admin/users/'+u.id+'/suspend',{method:'PATCH',headers:{'Authorization':'Bearer '+localStorage.getItem('snaptip_admin_token')}}).then(r=>r.json()).then(()=>window.location.reload())}}>Suspend</button>
+            )}
+            <button style={{background:'#6c6cff',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer'}} onClick={()=>{fetch('/api/admin/users/'+u.id+'/reset-password',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('snaptip_admin_token')}}).then(r=>r.json()).then(()=>alert('Password reset email sent'))}}>Reset PW</button>
+            <button style={{background:'#ef4444',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer'}} onClick={()=>{if(!window.confirm('Delete '+u.full_name+'? Cannot be undone.'))return;fetch('/api/admin/users/'+u.id,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('snaptip_admin_token')}}).then(r=>r.json()).then(()=>window.location.reload())}}>Delete</button>
           </div>
         </td>
       </tr>)}
