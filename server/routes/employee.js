@@ -4,6 +4,14 @@ const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { saveBase64Image } = require('../lib/saveBase64Image');
 
+// Ensure QR-settings columns exist on startup
+(async () => {
+  try {
+    await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS custom_message TEXT');
+    await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1');
+  } catch (_) {}
+})();
+
 // ── PATCH /api/employee/profile ──────────────────────────────────────────────
 router.patch('/profile', authMiddleware, async (req, res) => {
   try {
@@ -56,7 +64,7 @@ router.get('/:username', async (req, res) => {
     const { username } = req.params;
 
     const { rows } = await pool.query(
-      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title, country, currency FROM employees WHERE username = $1',
+      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title, country, currency, custom_message, show_photo_on_card FROM employees WHERE username = $1',
       [username]
     );
 
@@ -67,6 +75,21 @@ router.get('/:username', async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('Employee fetch error:', err);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// ── PATCH /api/employee/qr-settings ──────────────────────────────────────────
+router.patch('/qr-settings', authMiddleware, async (req, res) => {
+  try {
+    const { custom_message, show_photo_on_card } = req.body;
+    await pool.query(
+      'UPDATE employees SET custom_message = $1, show_photo_on_card = $2 WHERE id = $3',
+      [custom_message || null, show_photo_on_card !== false ? 1 : 0, req.employee.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[employee/qr-settings]', err.message);
     res.status(500).json({ error: 'Server error.' });
   }
 });

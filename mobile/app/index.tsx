@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../lib/AuthContext';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import api from '../lib/api';
 
 export default function Index() {
@@ -34,6 +35,12 @@ export default function Index() {
       setChecking(false);
     }
   }, [token, user, loading]);
+
+  useEffect(() => {
+    if (!checking && destination) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [checking, destination]);
 
   if (loading || checking) {
     return (

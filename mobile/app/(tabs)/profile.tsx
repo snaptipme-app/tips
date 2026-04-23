@@ -280,6 +280,18 @@ export default function Profile() {
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{user?.country || 'Morocco'} · {user?.currency || 'MAD'}</Text>
             </View>
           </View>
+
+          {/* Support row */}
+          <TouchableOpacity onPress={() => router.push('/support' as any)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="help-circle-outline" size={18} color={ACCENT} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Contact Support</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Get help from our team</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+          </TouchableOpacity>
         </View>
 
         {/* ── History ── */}

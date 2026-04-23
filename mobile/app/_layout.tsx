@@ -2,8 +2,11 @@ import { useEffect } from 'react';
 import { I18nManager } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../lib/AuthContext';
 import { LanguageProvider, useLanguage } from '../lib/LanguageContext';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function InnerLayout() {
   const { isRTL } = useLanguage();
@@ -27,6 +30,7 @@ function InnerLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="support" />
         <Stack.Screen name="business/setup" options={{ presentation: 'modal' }} />
         <Stack.Screen name="business/team" />
         <Stack.Screen name="business/invite" options={{ presentation: 'modal' }} />

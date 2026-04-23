@@ -3,18 +3,48 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
-const TIP_AMOUNTS = [1, 2, 5, 10];
+/* ─── Currency helpers ────────────────────────────────────────────────── */
+function getTipPresets(currency) {
+  switch (currency) {
+    case 'MAD': return [10, 20, 50, 100];
+    case 'EUR': return [2, 5, 10, 20];
+    case 'GBP': return [1, 2, 5, 10];
+    case 'AED': return [5, 10, 20, 50];
+    default:    return [1, 2, 5, 10]; // USD + others
+  }
+}
+
+function formatCurrency(amount, currency) {
+  if (!amount && amount !== 0) return '';
+  switch (currency) {
+    case 'USD': return `$${amount}`;
+    case 'EUR': return `€${amount}`;
+    case 'GBP': return `£${amount}`;
+    default:    return `${amount} ${currency || 'MAD'}`;
+  }
+}
+
+function getCurrencyPrefix(currency) {
+  switch (currency) {
+    case 'USD': return '$';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    default:    return '';
+  }
+}
+
+function getCurrencySuffix(currency) {
+  switch (currency) {
+    case 'USD': case 'EUR': case 'GBP': return '';
+    default: return ` ${currency || 'MAD'}`;
+  }
+}
 
 /* ─── SVG Components ─────────────────────────────────────────────────── */
-const BoltGradientIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-    <defs>
-      <linearGradient id="bolt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#a855f7" />
-        <stop offset="100%" stopColor="#4facfe" />
-      </linearGradient>
-    </defs>
-    <path d="M13 2L4 14h7v8l9-12h-7V2z" fill="url(#bolt-grad)" />
+const SnapTipIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32" style={{ borderRadius: '10px', display: 'block' }}>
+    <rect width="1024" height="1024" rx="225" fill="#080818" />
+    <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round" />
   </svg>
 );
 
@@ -66,9 +96,9 @@ const AmexLogo = () => (
   </div>
 );
 
-const CheckCircle = () => (
+const CheckCircleGreen = () => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <circle cx="11" cy="11" r="11" fill="#5577ff" />
+    <circle cx="11" cy="11" r="11" fill="#00C896" />
     <path d="M6 11l3.5 3.5L16 8" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
@@ -94,8 +124,8 @@ function getPhotoSrc(employee) {
 function AvatarFallback({ name }) {
   const letter = (name || 'U').charAt(0).toUpperCase();
   return (
-    <div style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(85,119,255,0.15)' }}>
-      <span style={{ fontSize: '32px', fontWeight: 700, color: '#5577ff' }}>{letter}</span>
+    <div style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,200,150,0.12)' }}>
+      <span style={{ fontSize: '32px', fontWeight: 700, color: '#00C896' }}>{letter}</span>
     </div>
   );
 }
@@ -106,13 +136,13 @@ const PAYMENT_METHODS = [
   { id: 'card', label: 'Pay with Card', Logo: CreditCardIcon },
 ];
 
-/* ─── Animated Success Checkmark ──────────────────────────────────────── */
+/* ─── Animated SVG Checkmark ──────────────────────────────────────────── */
 function AnimatedCheckmark() {
   return (
     <div style={{
       width: '88px', height: '88px', borderRadius: '50%',
-      background: 'linear-gradient(135deg, #00C896 0%, #34d399 100%)',
-      boxShadow: '0 0 40px rgba(0,200,150,0.4), 0 0 80px rgba(0,200,150,0.1)',
+      background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
+      boxShadow: '0 0 48px rgba(0,200,150,0.5), 0 0 96px rgba(0,200,150,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       animation: 'scaleIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
     }}>
@@ -135,14 +165,14 @@ function AnimatedCheckmark() {
 }
 
 /* ─── Success Screen ──────────────────────────────────────────────────── */
-function SuccessOverlay({ amount, employeeName, thankYouMessage, onClose, t }) {
+function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, onClose, t }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       background: `
-        radial-gradient(ellipse at bottom left, rgba(0,200,150,0.15) 0%, transparent 60%),
-        radial-gradient(ellipse at top right, rgba(85,119,255,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse at bottom left, rgba(0,200,150,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse at top right, rgba(0,255,102,0.06) 0%, transparent 60%),
         #080818
       `,
       padding: '20px',
@@ -155,7 +185,7 @@ function SuccessOverlay({ amount, employeeName, thankYouMessage, onClose, t }) {
       </h2>
 
       <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: '8px', lineHeight: '1.6' }}>
-        Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>${amount}</span> has been sent to{' '}
+        Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span> has been sent to{' '}
         <span style={{ color: '#fff', fontWeight: 600 }}>{employeeName}</span>
       </p>
 
@@ -175,9 +205,9 @@ function SuccessOverlay({ amount, employeeName, thankYouMessage, onClose, t }) {
         onClick={onClose}
         style={{
           width: '100%', maxWidth: '340px', height: '56px', borderRadius: '50px',
-          background: 'linear-gradient(135deg, #4facfe 0%, #a855f7 100%)',
-          boxShadow: '0 8px 32px rgba(168,85,247,0.5)',
-          border: 'none', color: '#fff', fontSize: '18px', fontWeight: 700,
+          background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
+          boxShadow: '0 8px 32px rgba(0,200,150,0.4)',
+          border: 'none', color: '#080818', fontSize: '18px', fontWeight: 700,
           cursor: 'pointer', marginTop: '32px',
           transition: 'all 0.2s ease',
         }}
@@ -194,7 +224,6 @@ const inlineStyles = `
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes scaleIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @keyframes drawCheck { to { stroke-dashoffset: 0; } }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 `;
 
@@ -220,7 +249,6 @@ export default function TipPage() {
   const t = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
 
-  // Set RTL and lang on <html>
   useEffect(() => {
     const lang = getLanguageCode();
     document.documentElement.lang = lang;
@@ -228,7 +256,6 @@ export default function TipPage() {
     return () => { document.documentElement.dir = 'ltr'; document.documentElement.lang = 'en'; };
   }, [rtl]);
 
-  // Fetch employee + business data
   useEffect(() => {
     (async () => {
       try {
@@ -236,23 +263,26 @@ export default function TipPage() {
           api.get(`/employee/${username}?t=${Date.now()}`),
           api.get(`/business/public/${username}`),
         ]);
-
         if (empRes.status === 'fulfilled') {
           setEmployee(empRes.value.data);
         } else {
           setError(empRes.reason?.response?.data?.error || 'Employee not found.');
         }
-
         if (bizRes.status === 'fulfilled') {
           setBusiness(bizRes.value.data?.business || null);
         }
-      } catch (err) {
+      } catch {
         setError('Something went wrong.');
       } finally {
         setLoading(false);
       }
     })();
   }, [username]);
+
+  const currency = employee?.currency || 'MAD';
+  const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
+  const currencyPrefix = getCurrencyPrefix(currency);
+  const currencySuffix = getCurrencySuffix(currency);
 
   const handleSelectAmount = (amount) => {
     setSelectedAmount(amount);
@@ -273,27 +303,19 @@ export default function TipPage() {
   const handlePay = async () => {
     const amount = getFinalAmount();
     if (amount <= 0) return;
-
     setSending(true);
-
-    // Simulate 2-second payment processing delay
     await new Promise((resolve) => setTimeout(resolve, 2000));
-
     try {
       await api.post('/payments/mock', {
         employee_username: username,
         amount,
         payment_method: paymentMethod,
       });
-
-      setTipAmount(amount);
-      setShowSuccess(true);
-    } catch (err) {
-      console.error('Payment failed:', err);
-      // Still show success for mock payment UX — tourist should see confirmation
-      setTipAmount(amount);
-      setShowSuccess(true);
+    } catch {
+      // Show success regardless for mock UX
     } finally {
+      setTipAmount(amount);
+      setShowSuccess(true);
       setSending(false);
     }
   };
@@ -305,29 +327,28 @@ export default function TipPage() {
     setIsCustom(false);
   };
 
-  /* ─── Page background ─── */
   const pageBg = {
     minHeight: '100dvh',
     background: `
-      radial-gradient(ellipse at bottom left, rgba(120,0,180,0.4) 0%, transparent 60%),
-      radial-gradient(ellipse at bottom right, rgba(80,0,160,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom left, rgba(0,200,150,0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at top right, rgba(0,200,150,0.04) 0%, transparent 50%),
       #080818
     `,
   };
 
-  /* ─── Loading state ─── */
+  /* ─── Loading ─── */
   if (loading) {
     return (
       <>
         <style>{inlineStyles}</style>
         <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '40px', height: '40px', border: '4px solid #5577ff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+          <div style={{ width: '40px', height: '40px', border: '3px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
         </div>
       </>
     );
   }
 
-  /* ─── Error state ─── */
+  /* ─── Error ─── */
   if (error) {
     return (
       <>
@@ -341,7 +362,7 @@ export default function TipPage() {
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{t.notFoundTitle}</h2>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>{error}</p>
-            <Link to="/login" style={{ fontSize: '13px', color: '#5577ff', fontWeight: 600, textDecoration: 'underline' }}>
+            <Link to="/login" style={{ fontSize: '13px', color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>
               {t.employeeLogin}
             </Link>
           </div>
@@ -353,6 +374,7 @@ export default function TipPage() {
   const finalAmount = getFinalAmount();
   const photoSrc = getPhotoSrc(employee);
   const payDisabled = sending || finalAmount <= 0;
+  const avgTip = tipPresets[Math.floor(tipPresets.length / 2)];
 
   return (
     <>
@@ -360,10 +382,10 @@ export default function TipPage() {
 
       <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center' }} dir={rtl ? 'rtl' : 'ltr'}>
 
-        {/* ── Success Overlay ── */}
         {showSuccess && (
           <SuccessOverlay
             amount={tipAmount}
+            currency={currency}
             employeeName={employee.full_name}
             thankYouMessage={business?.thank_you_message}
             onClose={handleCloseSuccess}
@@ -374,27 +396,27 @@ export default function TipPage() {
         <div style={{ width: '100%', maxWidth: '390px', padding: '0 20px' }}>
 
           {/* ① Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', paddingTop: '20px', marginBottom: '16px' }}>
-            <BoltGradientIcon />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', paddingTop: '20px', marginBottom: '16px' }}>
+            <SnapTipIcon />
             <span style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>SnapTip</span>
           </div>
 
           {/* ② Employee card */}
           <div style={{
-            background: 'rgba(255,255,255,0.07)',
+            background: 'rgba(255,255,255,0.05)',
             borderRadius: '20px',
             padding: '28px 24px',
-            marginBottom: '24px',
+            marginBottom: '20px',
             textAlign: 'center',
-            border: '1px solid rgba(255,255,255,0.04)',
+            border: '1px solid rgba(0,200,150,0.1)',
+            boxShadow: '0 0 40px rgba(0,200,150,0.04)',
             animation: 'slideUp 0.5s ease-out',
           }}>
-            {/* Avatar 90px */}
             <div style={{
               width: '90px', height: '90px', borderRadius: '50%',
-              border: '3px solid rgba(255,255,255,0.8)',
-              boxShadow: '0 0 24px rgba(255,255,255,0.2)',
-              overflow: 'hidden', margin: '0 auto',
+              border: '2.5px solid rgba(0,200,150,0.6)',
+              boxShadow: '0 0 20px rgba(0,200,150,0.2)',
+              overflow: 'hidden', margin: '0 auto 14px',
             }}>
               {photoSrc ? (
                 <img src={photoSrc} alt={employee.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -403,42 +425,33 @@ export default function TipPage() {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="48" height="48" style={{borderRadius:'12px'}}>
-                <rect width="1024" height="1024" rx="225" fill="#080818"/>
-                <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round"/>
-              </svg>
-            </div>
-
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', marginTop: '14px', marginBottom: '4px' }}>{employee.full_name}</h1>
-
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>{employee.full_name}</h1>
 
             {employee.job_title && (
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>{employee.job_title}</p>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>{employee.job_title}</p>
             )}
 
-            {/* Business badge */}
             {business && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(85,119,255,0.1)', borderRadius: '50px', padding: '4px 12px', marginTop: '8px', border: '1px solid rgba(85,119,255,0.15)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0,200,150,0.08)', borderRadius: '50px', padding: '4px 12px', marginTop: '4px', border: '1px solid rgba(0,200,150,0.15)' }}>
                 {(business.logo_base64 || business.logo_url) ? (
                   <img src={business.logo_base64 || business.logo_url} alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', objectFit: 'cover' }} />
                 ) : null}
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>{business.business_name}</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(0,200,150,0.8)' }}>{business.business_name}</span>
               </div>
             )}
 
-            <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '12px' }}>{t.tagline}</p>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>{t.tagline}</p>
           </div>
 
           {/* ③ Tip Amount Selection */}
-          <div style={{ marginBottom: '24px', animation: 'slideUp 0.5s ease-out 0.1s both' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '12px' }}>
-              {t.customAmount ? 'Choose tip amount' : 'Choose tip amount'}
+          <div style={{ marginBottom: '20px', animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Choose tip amount
             </h3>
 
-            {/* 2×2 grid */}
+            {/* 2×2 preset grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              {TIP_AMOUNTS.map((amt) => {
+              {tipPresets.map((amt) => {
                 const isSelected = selectedAmount === amt && !isCustom;
                 return (
                   <button
@@ -446,42 +459,43 @@ export default function TipPage() {
                     onClick={() => handleSelectAmount(amt)}
                     style={{
                       height: '56px', borderRadius: '14px',
-                      border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                      background: isSelected
-                        ? 'linear-gradient(135deg, #4facfe 0%, #a855f7 100%)'
-                        : 'rgba(255,255,255,0.06)',
-                      boxShadow: isSelected ? '0 4px 24px rgba(79,172,254,0.4)' : 'none',
-                      color: '#ffffff', fontSize: '18px', fontWeight: 700,
+                      border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
+                      background: isSelected ? 'rgba(0,200,150,0.12)' : 'rgba(255,255,255,0.05)',
+                      boxShadow: isSelected ? '0 0 20px rgba(0,200,150,0.2)' : 'none',
+                      color: isSelected ? '#00C896' : '#ffffff',
+                      fontSize: '18px', fontWeight: 700,
                       cursor: 'pointer', transition: 'all 0.2s ease',
                     }}
                   >
-                    ${amt}
+                    {formatCurrency(amt, currency)}
                   </button>
                 );
               })}
             </div>
 
-            {/* Custom Amount button */}
+            {/* Custom Amount */}
             <button
               onClick={handleCustom}
               style={{
                 width: '100%', height: '52px', borderRadius: '14px',
-                border: isCustom ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                background: isCustom
-                  ? 'linear-gradient(135deg, #4facfe 0%, #a855f7 100%)'
-                  : 'rgba(255,255,255,0.06)',
-                boxShadow: isCustom ? '0 4px 20px rgba(79,172,254,0.4)' : 'none',
-                color: '#ffffff', fontSize: '15px', fontWeight: 700,
+                border: isCustom ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
+                background: isCustom ? 'rgba(0,200,150,0.12)' : 'rgba(255,255,255,0.05)',
+                boxShadow: isCustom ? '0 0 20px rgba(0,200,150,0.2)' : 'none',
+                color: isCustom ? '#00C896' : '#ffffff',
+                fontSize: '15px', fontWeight: 700,
                 cursor: 'pointer', transition: 'all 0.2s ease',
               }}
             >
               {t.customAmount}
             </button>
 
-            {/* Custom input */}
             {isCustom && (
               <div style={{ marginTop: '10px', position: 'relative', animation: 'fadeIn 0.3s ease-out' }}>
-                <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 700 }}>$</span>
+                {currencyPrefix && (
+                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 700 }}>
+                    {currencyPrefix}
+                  </span>
+                )}
                 <input
                   type="number"
                   min="0.5"
@@ -493,24 +507,30 @@ export default function TipPage() {
                   style={{
                     width: '100%', height: '52px', borderRadius: '14px',
                     background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(0,200,150,0.3)',
                     color: '#ffffff', fontSize: '17px', fontWeight: 700,
-                    textAlign: 'center', paddingLeft: '36px',
-                    outline: 'none',
+                    textAlign: 'center',
+                    paddingLeft: currencyPrefix ? '36px' : '14px',
+                    paddingRight: currencySuffix ? '60px' : '14px',
+                    outline: 'none', boxSizing: 'border-box',
                   }}
                 />
+                {currencySuffix && (
+                  <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '14px', fontWeight: 600 }}>
+                    {currencySuffix.trim()}
+                  </span>
+                )}
               </div>
             )}
 
-            {/* Average tip */}
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: '10px' }}>
-              Average tip: $4
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '10px' }}>
+              Average tip: {formatCurrency(avgTip, currency)}
             </p>
           </div>
 
           {/* ④ Payment Method */}
-          <div style={{ marginBottom: '24px', animation: 'slideUp 0.5s ease-out 0.2s both' }}>
-            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ marginBottom: '20px', animation: 'slideUp 0.5s ease-out 0.2s both' }}>
+            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Payment method
             </h3>
 
@@ -523,8 +543,8 @@ export default function TipPage() {
                   style={{
                     width: '100%', height: '58px', borderRadius: '14px',
                     display: 'flex', alignItems: 'center',
-                    background: isSelected ? 'rgba(85,119,255,0.1)' : 'rgba(255,255,255,0.04)',
-                    border: isSelected ? '1.5px solid rgba(85,119,255,0.5)' : '1px solid rgba(255,255,255,0.06)',
+                    background: isSelected ? 'rgba(0,200,150,0.07)' : 'rgba(255,255,255,0.04)',
+                    border: isSelected ? '1.5px solid rgba(0,200,150,0.4)' : '1px solid rgba(255,255,255,0.06)',
                     padding: '0 16px', gap: '14px', marginBottom: '10px',
                     cursor: 'pointer', transition: 'all 0.2s ease',
                   }}
@@ -538,12 +558,11 @@ export default function TipPage() {
                       <AmexLogo />
                     </div>
                   )}
-                  {isSelected && <CheckCircle />}
+                  {isSelected && <CheckCircleGreen />}
                 </button>
               );
             })}
 
-            {/* Trust row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}>
               <LockIcon />
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>SSL encrypted · Secure checkout</span>
@@ -555,13 +574,15 @@ export default function TipPage() {
             onClick={handlePay}
             disabled={payDisabled}
             style={{
-              width: '100%', height: '56px', borderRadius: '50px',
+              width: '100%', height: '58px', borderRadius: '50px',
               background: payDisabled
                 ? 'rgba(255,255,255,0.08)'
-                : 'linear-gradient(135deg, #4facfe 0%, #a855f7 100%)',
-              boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(168,85,247,0.5)',
-              border: 'none', color: '#ffffff', fontSize: '18px', fontWeight: 700,
-              opacity: payDisabled ? 0.4 : 1,
+                : 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
+              boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(0,200,150,0.35)',
+              border: 'none',
+              color: payDisabled ? 'rgba(255,255,255,0.3)' : '#080818',
+              fontSize: '18px', fontWeight: 700,
+              opacity: payDisabled ? 0.5 : 1,
               cursor: payDisabled ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
@@ -570,11 +591,13 @@ export default function TipPage() {
           >
             {sending ? (
               <>
-                <div style={{ width: '20px', height: '20px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                <div style={{ width: '20px', height: '20px', border: '2px solid #080818', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
                 Processing...
               </>
             ) : (
-              `${t.payButton} $${finalAmount > 0 ? finalAmount : '0'}`
+              finalAmount > 0
+                ? `${t.payButton} ${formatCurrency(finalAmount, currency)}`
+                : t.payButton
             )}
           </button>
 
@@ -582,10 +605,10 @@ export default function TipPage() {
           <div style={{ textAlign: 'center', marginTop: '20px', paddingBottom: '32px', animation: 'slideUp 0.5s ease-out 0.4s both' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
               <LockIcon />
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Secure payment powered by SnapTip</span>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>Secure payment · Powered by SnapTip</span>
             </div>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginBottom: '8px' }}>No account needed</p>
-            <Link to="/login" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textDecoration: 'underline', transition: 'all 0.2s ease' }}>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', marginBottom: '8px' }}>No account needed</p>
+            <Link to="/login" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>
               {t.employeeLogin}
             </Link>
           </div>

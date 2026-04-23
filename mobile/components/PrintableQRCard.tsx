@@ -18,6 +18,8 @@ export type PrintableQRCardBusiness = {
 export type PrintableQRCardProps = {
   employee: PrintableQRCardEmployee;
   business?: PrintableQRCardBusiness;
+  customMessage?: string;
+  showPhoto?: boolean;
 };
 
 const ACCENT = '#6c6cff';
@@ -30,12 +32,13 @@ const LIGHT_BORDER = '#e8e8e8';
  * Display-only printable QR card.
  * For actual PDF generation / sharing, use lib/captureQRCard.ts instead.
  */
-export default function PrintableQRCard({ employee, business }: PrintableQRCardProps) {
+export default function PrintableQRCard({ employee, business, customMessage, showPhoto = true }: PrintableQRCardProps) {
   const tipUrl = `https://snaptip.me/${employee.username}`;
   const initials = (employee.full_name || '?').charAt(0).toUpperCase();
-  const photoSrc = employee.photo_url || '';
+  const photoSrc = showPhoto ? (employee.photo_url || '') : '';
   const bizLogo = business?.logo_base64 || business?.logo_url || '';
   const bizName = business?.business_name || '';
+  const ctaText = customMessage?.trim() || 'Leave a tip!';
 
   return (
     <View style={styles.card}>
@@ -57,7 +60,7 @@ export default function PrintableQRCard({ employee, business }: PrintableQRCardP
 
       {/* ② Call to Action */}
       <Text style={styles.ctaSub}>Enjoyed the service?</Text>
-      <Text style={styles.ctaMain}>Leave a tip!</Text>
+      <Text style={styles.ctaMain}>{ctaText}</Text>
 
       {/* ③ QR Code */}
       <View style={styles.qrWrapper}>

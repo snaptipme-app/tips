@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Linking,
+  TextInput, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,9 @@ export default function MemberQR() {
 
   const [business, setBusiness] = useState<PrintableQRCardBusiness>(null);
   const [capturing, setCapturing] = useState(false);
+  const [customMessage, setCustomMessage] = useState('');
+  const [showPhoto, setShowPhoto] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const username = user?.username || '';
   const tipUrl = `https://snaptip.me/${username}`;
@@ -41,7 +45,29 @@ export default function MemberQR() {
     api.get('/business/member-business')
       .then(res => setBusiness(res.data.business || null))
       .catch(() => {});
-  }, []);
+    // Load saved QR settings
+    api.get(`/employee/${user?.username}`)
+      .then(res => {
+        if (res.data.custom_message) setCustomMessage(res.data.custom_message);
+        if (res.data.show_photo_on_card !== undefined) setShowPhoto(res.data.show_photo_on_card !== 0);
+      })
+      .catch(() => {});
+  }, [user?.username]);
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await api.patch('/employee/qr-settings', {
+        custom_message: customMessage.trim() || null,
+        show_photo_on_card: showPhoto,
+      });
+      showToast('Card settings saved!', 'success');
+    } catch {
+      showToast('Failed to save settings.', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const handleDownload = async () => {
     setCapturing(true);
@@ -107,7 +133,67 @@ export default function MemberQR() {
           shadowRadius: 24,
           elevation: 10,
         }}>
-          <PrintableQRCard employee={employee} business={business} />
+          <PrintableQRCard employee={employee} business={business} customMessage={customMessage} showPhoto={showPhoto} />
+        </View>
+
+        {/* ── Customize Your Card ── */}
+        <View style={{
+          backgroundColor: CARD_DARK, borderRadius: 20, padding: 20,
+          borderWidth: 1, borderColor: BORDER_DARK, marginBottom: 16,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Ionicons name="color-palette-outline" size={18} color={ACCENT} />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Customize Your Card</Text>
+          </View>
+
+          {/* Custom message */}
+          <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
+            Custom Message
+          </Text>
+          <TextInput
+            style={{
+              height: 48, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+              color: '#fff', fontSize: 14, paddingHorizontal: 14, marginBottom: 16,
+            }}
+            placeholder="Leave a tip!  (default)"
+            placeholderTextColor="rgba(255,255,255,0.2)"
+            value={customMessage}
+            onChangeText={setCustomMessage}
+            maxLength={40}
+          />
+
+          {/* Show photo toggle */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Show Profile Photo</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display your photo on the card</Text>
+            </View>
+            <Switch
+              value={showPhoto}
+              onValueChange={setShowPhoto}
+              trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(0,200,150,0.4)' }}
+              thumbColor={showPhoto ? '#00C896' : 'rgba(255,255,255,0.4)'}
+            />
+          </View>
+
+          {/* Apply button */}
+          <TouchableOpacity
+            onPress={handleSaveSettings}
+            disabled={savingSettings}
+            activeOpacity={0.8}
+            style={{
+              height: 44, borderRadius: 50, borderWidth: 1,
+              borderColor: 'rgba(108,108,255,0.4)',
+              backgroundColor: 'rgba(108,108,255,0.1)',
+              justifyContent: 'center', alignItems: 'center',
+              opacity: savingSettings ? 0.5 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>
+              {savingSettings ? 'Saving...' : 'Apply Changes'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Download & Share (Primary) ── */}
