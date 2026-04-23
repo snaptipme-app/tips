@@ -31,7 +31,7 @@ export default function BusinessSetup() {
   const [loading, setLoading] = useState(false);
 
   const pickLogo = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, allowsEditing: true, aspect: [1, 1], base64: true });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5, allowsEditing: true, aspect: [1, 1], base64: true });
     if (!result.canceled) setLogoUri(result.assets[0].uri);
   };
 

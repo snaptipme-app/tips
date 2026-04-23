@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import { getImageSource } from '../../lib/imageUtils';
 import SnapTipLogo from '../../components/SnapTipLogo';
 
 const BG = '#080818';
@@ -45,7 +46,7 @@ export default function BusinessDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const initials = (user?.full_name || 'B').charAt(0).toUpperCase();
-  const photoSrc = user?.photo_base64 || user?.profile_image_url || '';
+  const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -118,7 +119,7 @@ export default function BusinessDashboard() {
             <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
               <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
                 {photoSrc ? (
-                  <Image source={{ uri: photoSrc }} style={{ width: 40, height: 40 }} />
+                  <Image source={photoSrc} style={{ width: 40, height: 40 }} />
                 ) : (
                   <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>{initials}</Text>
                 )}

@@ -73,7 +73,7 @@ export default function BusinessProfileSettings() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
+      quality: 0.5,
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {

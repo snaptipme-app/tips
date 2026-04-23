@@ -9,6 +9,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
+import { getImageSource } from '../../lib/imageUtils';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -72,11 +73,8 @@ export default function Profile() {
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 
   const photoSrc = localPhotoUri
-    || user?.photo_base64
-    || (user?.profile_image_url && user.profile_image_url.startsWith('/')
-      ? `https://snaptip.me${user.profile_image_url}`
-      : user?.profile_image_url)
-    || '';
+    ? { uri: localPhotoUri }
+    : getImageSource(user?.photo_base64 || user?.profile_image_url);
 
   const fetchData = useCallback(async () => {
     try {
@@ -100,8 +98,8 @@ export default function Profile() {
     }
 
     const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true });
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
@@ -171,7 +169,7 @@ export default function Profile() {
           <View style={{ width: 96, height: 96, marginBottom: 14 }}>
             <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2.5, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)', opacity: uploading ? 0.5 : 1 }}>
               {photoSrc ? (
-                <Image source={{ uri: photoSrc }} style={{ width: 96, height: 96 }} />
+                <Image source={photoSrc} style={{ width: 96, height: 96 }} />
               ) : (
                 <Text style={{ fontSize: 36, fontWeight: '700', color: ACCENT }}>{initials}</Text>
               )}

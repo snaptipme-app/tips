@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
 import SnapTipLogo from '../../components/SnapTipLogo';
+import { getImageSource } from '../../lib/imageUtils';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
@@ -34,12 +35,7 @@ export default function Home() {
 
   const cur = user?.currency || 'MAD';
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
-  const photoSrc =
-    user?.photo_base64 ||
-    (user?.profile_image_url && user.profile_image_url.startsWith('/')
-      ? `https://snaptip.me${user.profile_image_url}`
-      : user?.profile_image_url) ||
-    '';
+  const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
 
   // Business owners go to manager dashboard
   useEffect(() => {
@@ -124,7 +120,7 @@ export default function Home() {
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
             <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
               {photoSrc ? (
-                <Image source={{ uri: photoSrc }} style={{ width: 44, height: 44 }} />
+                <Image source={photoSrc} style={{ width: 44, height: 44 }} />
               ) : (
                 <Text style={{ fontSize: 17, fontWeight: '700', color: ACCENT }}>{initials}</Text>
               )}

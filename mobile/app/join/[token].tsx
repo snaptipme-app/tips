@@ -159,7 +159,7 @@ export default function JoinBusiness() {
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true,
+      allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       setPhotoB64(`data:image/jpeg;base64,${result.assets[0].base64}`);

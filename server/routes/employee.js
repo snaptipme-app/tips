@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { saveBase64Image } = require('../lib/saveBase64Image');
 
 // ── PATCH /api/employee/profile ──────────────────────────────────────────────
 router.patch('/profile', authMiddleware, async (req, res) => {
@@ -13,9 +14,24 @@ router.patch('/profile', authMiddleware, async (req, res) => {
     const values = [];
     let idx = 1;
 
-    if (photo_url) { updates.push(`photo_url = $${idx++}`); values.push(photo_url); }
-    if (photo_base64) { updates.push(`photo_base64 = $${idx++}`); values.push(photo_base64); }
-    if (photo_url) { updates.push(`profile_image_url = $${idx++}`); values.push(photo_url); }
+    // If base64 photo is provided, save it to disk and use the URL
+    if (photo_base64) {
+      try {
+        const savedUrl = saveBase64Image(photo_base64, 'profile');
+        updates.push(`photo_url = $${idx++}`); values.push(savedUrl);
+        updates.push(`profile_image_url = $${idx++}`); values.push(savedUrl);
+        updates.push(`photo_base64 = $${idx++}`); values.push(photo_base64);
+        console.log(`[employee/profile] Photo saved to disk: ${savedUrl}`);
+      } catch (imgErr) {
+        console.error('[employee/profile] Photo save failed:', imgErr.message);
+        // Fallback: store base64 in DB only
+        updates.push(`photo_base64 = $${idx++}`); values.push(photo_base64);
+      }
+    } else if (photo_url) {
+      updates.push(`photo_url = $${idx++}`); values.push(photo_url);
+      updates.push(`profile_image_url = $${idx++}`); values.push(photo_url);
+    }
+
     if (full_name) { updates.push(`full_name = $${idx++}`); values.push(full_name.trim()); }
     if (job_title !== undefined) { updates.push(`job_title = $${idx++}`); values.push(job_title.trim()); }
 

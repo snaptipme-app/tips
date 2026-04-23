@@ -5,7 +5,7 @@ import { Alert } from 'react-native';
 
 const api = axios.create({
   baseURL: 'https://snaptip.me/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 

@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../db');
-const { upload, getImageUrl, multerErrorHandler } = require('../middleware/upload');
+const { saveBase64Image } = require('../lib/saveBase64Image');
 const { sendOTPEmail } = require('../utils/sendEmail');
 
 function generateOTP() {
@@ -106,10 +106,10 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// POST /api/auth/register
-router.post('/register', upload.single('profileImage'), multerErrorHandler, async (req, res) => {
+// POST /api/auth/register  — pure JSON, no multer
+router.post('/register', async (req, res) => {
   try {
-    const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency } = req.body;
+    const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency, photoBase64 } = req.body;
 
     if (!firstName || !lastName || !email || !rawUsername || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
@@ -151,11 +151,20 @@ router.post('/register', upload.single('profileImage'), multerErrorHandler, asyn
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const profileImageUrl = getImageUrl(req, req.file);
-    let photoBase64 = '';
-    if (req.file) {
-      photoBase64 = fileToBase64(req.file.path);
+    // Handle optional photo upload via base64
+    let profileImageUrl = '';
+    let photoBase64Stored = '';
+    if (photoBase64) {
+      try {
+        profileImageUrl = saveBase64Image(photoBase64, 'profile');
+        photoBase64Stored = photoBase64;
+        console.log(`[register] Photo saved: ${profileImageUrl}`);
+      } catch (imgErr) {
+        console.error('[register] Photo save failed:', imgErr.message);
+        // Non-fatal — proceed without photo
+      }
     }
+
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
     const { rows: insertRows } = await pool.query(
@@ -163,7 +172,7 @@ router.post('/register', upload.single('profileImage'), multerErrorHandler, asyn
          (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
-       hashedPassword, profileImageUrl, profileImageUrl, photoBase64, accountType, userCountry, userCurrency]
+       hashedPassword, profileImageUrl, profileImageUrl, photoBase64Stored, accountType, userCountry, userCurrency]
     );
 
     await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);

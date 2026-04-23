@@ -10,6 +10,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import { getImageSource } from '../../lib/imageUtils';
 import Logo from '../../components/Logo';
 import { playTipSound } from '../../lib/tipSound';
 
@@ -45,7 +46,7 @@ export default function MemberDashboard() {
   const prevBalanceRef = useRef<number | null>(null);
 
   const initials = (user?.full_name || 'M').charAt(0).toUpperCase();
-  const photoSrc = user?.photo_base64 || user?.profile_image_url || '';
+  const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
 
   const fetchData = useCallback(async () => {
     try {
@@ -134,7 +135,7 @@ export default function MemberDashboard() {
             <TouchableOpacity onPress={() => router.push('/member/profile')} activeOpacity={0.8}>
               <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', borderWidth: 2, borderColor: GREEN, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.12)' }}>
                 {photoSrc ? (
-                  <Image source={{ uri: photoSrc }} style={{ width: 40, height: 40 }} />
+                  <Image source={photoSrc} style={{ width: 40, height: 40 }} />
                 ) : (
                   <Text style={{ fontSize: 15, fontWeight: '700', color: GREEN }}>{initials}</Text>
                 )}
