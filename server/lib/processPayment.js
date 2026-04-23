@@ -20,6 +20,8 @@
  * @returns {object} The created payment object
  */
 async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD') {
+  console.log(`[DEBUG processPayment] employeeId=${employeeId} amount=${amount} currency=${currency} method=${method}`);
+
   // 1. Insert payment record (with currency for full traceability)
   const { rows: paymentRows } = await pool.query(
     `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency)
@@ -27,6 +29,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
     [employeeId, amount, method, transactionId || null, touristEmail || null, currency]
   );
   const payment = paymentRows[0];
+  console.log(`[DEBUG processPayment] Payment inserted: id=${payment?.id}, currency=${payment?.currency}`);
 
   // 2. Update employee balance and total_tips
   await pool.query(

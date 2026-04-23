@@ -11,6 +11,8 @@ const { processSuccessfulPayment } = require('../lib/processPayment');
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/mock', async (req, res) => {
   try {
+    console.log('[DEBUG payments/mock] Request body:', JSON.stringify(req.body));
+
     const {
       employee_username,
       amount,
@@ -53,6 +55,8 @@ router.post('/mock', async (req, res) => {
     const COUNTRY_CURRENCY = { 'Morocco': 'MAD', 'United States': 'USD', 'France': 'EUR', 'Spain': 'EUR', 'UAE': 'AED', 'UK': 'GBP' };
     const employeeCurrency = employee.currency || COUNTRY_CURRENCY[employee.country] || 'MAD';
 
+    console.log(`[DEBUG payments/mock] Employee: ${employee.full_name}, DB currency=${employee.currency}, derived=${employeeCurrency}`);
+
     // Process payment using shared function — with the REAL currency
     const payment = await processSuccessfulPayment(
       pool,
@@ -79,7 +83,7 @@ router.post('/mock', async (req, res) => {
       message: `Successfully tipped ${parsedAmount.toFixed(2)} ${employeeCurrency} to ${employee.full_name}`,
     });
   } catch (err) {
-    console.error('[payments/mock]', err.message);
+    console.error('[payments/mock] ERROR:', err.message, err.stack);
     res.status(500).json({
       success: false,
       error: 'Server error processing payment.',

@@ -246,6 +246,7 @@ export default function TipPage() {
   const [sending, setSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
+  const [paymentError, setPaymentError] = useState('');
 
   const t = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -305,19 +306,27 @@ export default function TipPage() {
     const amount = getFinalAmount();
     if (amount <= 0) return;
     setSending(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setPaymentError('');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     try {
-      await api.post('/payments/mock', {
+      console.log('[DEBUG TipPage] Sending payment:', { employee_username: username, amount, currency });
+      const response = await api.post('/payments/mock', {
         employee_username: username,
         amount,
         currency,
         payment_method: paymentMethod,
       });
-    } catch {
-      // Show success regardless for mock UX
+      console.log('[DEBUG TipPage] Payment response:', response.data);
+      if (response.data?.success) {
+        setTipAmount(amount);
+        setShowSuccess(true);
+      } else {
+        setPaymentError(response.data?.error || 'Payment failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('[DEBUG TipPage] Payment error:', err?.response?.data || err.message);
+      setPaymentError(err?.response?.data?.error || 'Payment failed. Please try again.');
     } finally {
-      setTipAmount(amount);
-      setShowSuccess(true);
       setSending(false);
     }
   };
@@ -570,6 +579,17 @@ export default function TipPage() {
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>SSL encrypted · Secure checkout</span>
             </div>
           </div>
+
+          {/* Payment error */}
+          {paymentError && (
+            <div style={{
+              background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+              borderRadius: '12px', padding: '12px 16px', marginBottom: '12px',
+              textAlign: 'center', animation: 'fadeIn 0.3s ease-out',
+            }}>
+              <p style={{ color: '#ef4444', fontSize: '14px', fontWeight: 600, margin: 0 }}>{paymentError}</p>
+            </div>
+          )}
 
           {/* ⑤ Pay button */}
           <button

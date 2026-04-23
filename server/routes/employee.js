@@ -79,6 +79,7 @@ router.get('/:username', async (req, res) => {
       emp.currency = COUNTRY_CURRENCY[emp.country] || 'MAD';
     }
 
+    console.log(`[DEBUG employee/:username] ${emp.username} → currency=${emp.currency}, country=${emp.country}`);
     res.json(emp);
   } catch (err) {
     console.error('Employee fetch error:', err);

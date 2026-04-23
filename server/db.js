@@ -72,6 +72,7 @@ async function initDB() {
         employee_id INTEGER REFERENCES employees(id),
         amount REAL,
         fee REAL DEFAULT 0,
+        currency TEXT DEFAULT 'USD',
         payment_method TEXT DEFAULT 'mock',
         stripe_payment_id TEXT,
         tourist_email TEXT,
@@ -155,6 +156,15 @@ async function initDB() {
     ];
     for (const ddl of businessAlterTables) {
       try { await pool.query(ddl); } catch (e) { }
+    }
+
+    // Payments & Withdrawals migrations
+    const paymentAlterTables = [
+      "ALTER TABLE payments ADD COLUMN currency TEXT DEFAULT 'USD'",
+      "ALTER TABLE withdrawals ADD COLUMN admin_notes TEXT",
+    ];
+    for (const ddl of paymentAlterTables) {
+      try { await pool.query(ddl); } catch (e) { /* column already exists */ }
     }
 
     // Default settings
