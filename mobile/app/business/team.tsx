@@ -321,7 +321,17 @@ export default function TeamManagement() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.12)' }} />
             </View>
 
-            {selectedMember && (
+            {selectedMember && (() => {
+              const memberPhoto = (() => {
+                if (selectedMember.photo_base64) return { uri: selectedMember.photo_base64 };
+                const raw = selectedMember.profile_image_url || selectedMember.photo_url || '';
+                if (!raw) return null;
+                if (raw.startsWith('data:') || raw.startsWith('http://') || raw.startsWith('https://')) return { uri: raw };
+                if (raw.startsWith('/')) return { uri: `https://snaptip.me${raw}` };
+                return { uri: raw };
+              })();
+              const memberInitial = (selectedMember.full_name || 'U').charAt(0).toUpperCase();
+              return (
               <>
                 {/* Member info header */}
                 <View style={{
@@ -334,10 +344,15 @@ export default function TeamManagement() {
                     backgroundColor: 'rgba(108,108,255,0.12)',
                     justifyContent: 'center', alignItems: 'center',
                     borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)',
+                    overflow: 'hidden',
                   }}>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: ACCENT }}>
-                      {(selectedMember.full_name || 'U').charAt(0).toUpperCase()}
-                    </Text>
+                    {memberPhoto ? (
+                      <Image source={memberPhoto} style={{ width: 52, height: 52 }} />
+                    ) : (
+                      <Text style={{ fontSize: 20, fontWeight: '700', color: ACCENT }}>
+                        {memberInitial}
+                      </Text>
+                    )}
                   </View>
                   <View>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{selectedMember.full_name}</Text>
@@ -430,7 +445,8 @@ export default function TeamManagement() {
                   <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
                 </TouchableOpacity>
               </>
-            )}
+              );
+            })()}
           </View>
         </TouchableOpacity>
       </Modal>

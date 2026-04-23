@@ -37,12 +37,12 @@ export default function Home() {
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
   const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
 
-  // Business owners go to manager dashboard
-  useEffect(() => {
-    if (user?.account_type === 'business') {
-      router.replace('/business/dashboard');
-    }
-  }, [user?.account_type]);
+  // Business owners: render business dashboard inline to stay in tabs
+  if (user?.account_type === 'business') {
+    // Lazy require to avoid circular deps
+    const BusinessDashboard = require('../business/dashboard').default;
+    return <BusinessDashboard />;
+  }
 
   const fetchData = useCallback(async () => {
     try {

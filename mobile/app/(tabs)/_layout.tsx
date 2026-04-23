@@ -46,12 +46,17 @@ export default function TabLayout() {
         tabBarBackground,
       }}
     >
-      {/* ── Home tab (members only) ── */}
+      {/* ── Home tab / Dashboard tab ── */}
       <Tabs.Screen
         name="home"
         options={
           isBusiness
-            ? { href: null }
+            ? {
+                title: 'Dashboard',
+                tabBarIcon: ({ color, focused }) => (
+                  <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
+                ),
+              }
             : {
                 title: t('home'),
                 tabBarIcon: ({ color, focused }) => (

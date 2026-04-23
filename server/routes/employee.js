@@ -72,7 +72,14 @@ router.get('/:username', async (req, res) => {
       return res.status(404).json({ error: 'Employee not found.' });
     }
 
-    res.json(rows[0]);
+    const emp = rows[0];
+    // Ensure currency is always set — derive from country if missing
+    if (!emp.currency) {
+      const COUNTRY_CURRENCY = { 'Morocco': 'MAD', 'United States': 'USD', 'France': 'EUR', 'Spain': 'EUR', 'UAE': 'AED', 'UK': 'GBP' };
+      emp.currency = COUNTRY_CURRENCY[emp.country] || 'MAD';
+    }
+
+    res.json(emp);
   } catch (err) {
     console.error('Employee fetch error:', err);
     res.status(500).json({ error: 'Server error.' });

@@ -33,7 +33,7 @@ const COUNTRY_FLAG_IMAGES: Record<string, any> = {
 const LANG_IMAGES: Record<string, any> = {
   en: require('../../assets/images/us_icon.png'),
   fr: require('../../assets/images/france_icon.png'),
-  ar: require('../../assets/images/morocco_icon.png'),
+  ar: require('../../assets/images/uae_icon.png'),
   es: require('../../assets/images/spain_icon.png'),
 };
 /* eslint-enable @typescript-eslint/no-require-imports */

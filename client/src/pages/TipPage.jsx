@@ -114,9 +114,10 @@ const LockIcon = () => (
 function getPhotoSrc(employee) {
   if (!employee) return '';
   if (employee.photo_base64) return employee.photo_base64;
-  if (employee.profile_image_url?.startsWith('/')) return `http://localhost:5000${employee.profile_image_url}`;
+  const BASE = 'https://snaptip.me';
+  if (employee.profile_image_url?.startsWith('/')) return `${BASE}${employee.profile_image_url}`;
   if (employee.profile_image_url) return employee.profile_image_url;
-  if (employee.photo_url?.startsWith('/')) return `http://localhost:5000${employee.photo_url}`;
+  if (employee.photo_url?.startsWith('/')) return `${BASE}${employee.photo_url}`;
   if (employee.photo_url) return employee.photo_url;
   return '';
 }
