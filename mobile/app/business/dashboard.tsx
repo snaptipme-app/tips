@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
-import Logo from '../../components/Logo';
+import SnapTipLogo from '../../components/SnapTipLogo';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -105,8 +105,8 @@ export default function BusinessDashboard() {
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.15)', justifyContent: 'center', alignItems: 'center' }}>
-                <Logo size="medium" />
+              <View style={{ width: 38, height: 38, borderRadius: 12, overflow: 'hidden' }}>
+                <SnapTipLogo size="small" />
               </View>
               <View>
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }}>SnapTip Business</Text>

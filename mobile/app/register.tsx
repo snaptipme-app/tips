@@ -8,6 +8,7 @@ import api from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
+import SnapTipLogo from '../components/SnapTipLogo';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -533,6 +534,11 @@ export default function Register() {
         keyboardDismissMode="none"
         contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }}
       >
+        {/* ── Logo ── */}
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <SnapTipLogo size="medium" />
+        </View>
+
         {/* ── Progress Bar ── */}
         <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 16 }}>
           <View style={{ width: `${progress}%`, height: '100%', backgroundColor: GREEN, borderRadius: 2 }} />

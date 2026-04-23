@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/AuthContext';
-import Logo from '../components/Logo';
+import SnapTipLogo from '../components/SnapTipLogo';
 import { Toast, useToast } from '../components/Toast';
 
 const BG = '#080818';
@@ -73,8 +73,8 @@ export default function Login() {
       >
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 40 }}>
-          <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(108,108,255,0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-            <Logo size="large" />
+          <View style={{ marginBottom: 12 }}>
+            <SnapTipLogo size="large" />
           </View>
           <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.5 }}>SnapTip</Text>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>Welcome back</Text>

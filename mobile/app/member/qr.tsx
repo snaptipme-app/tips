@@ -11,6 +11,7 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import PrintableQRCard, { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
+import SnapTipLogo from '../../components/SnapTipLogo';
 
 const BG = '#080818';
 const CARD_DARK = '#0f0f2e';
@@ -77,6 +78,7 @@ export default function MemberQR() {
           >
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
+          <SnapTipLogo size="small" />
           <View>
             <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('my_qr_card')}</Text>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>

@@ -10,6 +10,7 @@ import api from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
+import SnapTipLogo from '../../components/SnapTipLogo';
 
 /* ── Design tokens ── */
 const BG = '#080818';
@@ -325,6 +326,7 @@ export default function MemberWithdraw() {
             <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
+            <SnapTipLogo size="small" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Withdraw Earnings</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

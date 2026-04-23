@@ -9,6 +9,11 @@
     "scheme": "snaptip",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/snaptip_icon.png",
+      "backgroundColor": "#080818",
+      "resizeMode": "contain"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "me.snaptip.app",

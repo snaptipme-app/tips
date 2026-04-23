@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import SnapTipLogo from '../../components/SnapTipLogo';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -159,7 +160,10 @@ export default function Profile() {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 40 }}>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 20 }}>{t('account_settings')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <SnapTipLogo size="small" />
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('account_settings')}</Text>
+        </View>
 
         {/* ── Profile Card ── */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>

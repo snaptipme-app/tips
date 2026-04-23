@@ -4,7 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../lib/AuthContext';
-import Logo from '../../components/Logo';
+import SnapTipLogo from '../../components/SnapTipLogo';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
@@ -111,7 +111,7 @@ export default function Home() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Logo size="small" />
+              <SnapTipLogo size="small" />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
               <View style={{ backgroundColor: 'rgba(108,108,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>
@@ -171,7 +171,7 @@ export default function Home() {
               style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
               <Ionicons name="arrow-up-circle" size={20} color="#080818" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#080818' }}>Cash Out</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#080818' }}>Cash Out</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/member/qr')}
@@ -179,7 +179,7 @@ export default function Home() {
               style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
               <Ionicons name="qr-code-outline" size={20} color="#00C896" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#00C896' }}>My QR</Text>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#00C896' }}>My QR</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
