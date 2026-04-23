@@ -16,14 +16,15 @@
  * @param {string}  method        - Payment method ('mock' | 'stripe')
  * @param {string|null} transactionId - Stripe payment ID or null for mock
  * @param {string|null} touristEmail  - Tourist's email (optional)
+ * @param {string}  currency      - Currency code (e.g. 'MAD', 'EUR', 'USD', 'AED')
  * @returns {object} The created payment object
  */
-async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail) {
-  // 1. Insert payment record
+async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD') {
+  // 1. Insert payment record (with currency for full traceability)
   const { rows: paymentRows } = await pool.query(
-    `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email)
-     VALUES ($1, $2, $3, 'completed', $4, $5) RETURNING *`,
-    [employeeId, amount, method, transactionId || null, touristEmail || null]
+    `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency)
+     VALUES ($1, $2, $3, 'completed', $4, $5, $6) RETURNING *`,
+    [employeeId, amount, method, transactionId || null, touristEmail || null, currency]
   );
   const payment = paymentRows[0];
 

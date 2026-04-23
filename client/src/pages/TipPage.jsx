@@ -310,6 +310,7 @@ export default function TipPage() {
       await api.post('/payments/mock', {
         employee_username: username,
         amount,
+        currency,
         payment_method: paymentMethod,
       });
     } catch {

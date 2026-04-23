@@ -545,8 +545,9 @@ router.get('/transactions', adminAuth, async (req, res) => {
     else if (range === 'month') dateFilter = "AND p.created_at >= CURRENT_DATE - INTERVAL '30 days'";
 
     const { rows: transactions } = await pool.query(`
-      SELECT p.id, p.amount, p.payment_method, p.created_at, p.currency as pay_currency,
-        e.full_name, e.username, e.currency
+      SELECT p.id, p.amount, p.payment_method, p.created_at,
+        COALESCE(p.currency, e.currency, 'MAD') as currency,
+        e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       WHERE 1=1 ${dateFilter}

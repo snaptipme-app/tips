@@ -34,9 +34,9 @@ router.post('/mock', async (req, res) => {
       });
     }
 
-    // Find employee
+    // Find employee + their currency
     const { rows: empRows } = await pool.query(
-      'SELECT id, full_name, balance FROM employees WHERE username = $1',
+      'SELECT id, full_name, balance, currency, country FROM employees WHERE username = $1',
       [employee_username]
     );
 
@@ -49,18 +49,23 @@ router.post('/mock', async (req, res) => {
 
     const employee = empRows[0];
 
-    // Process payment using shared function
+    // Derive the employee's actual currency
+    const COUNTRY_CURRENCY = { 'Morocco': 'MAD', 'United States': 'USD', 'France': 'EUR', 'Spain': 'EUR', 'UAE': 'AED', 'UK': 'GBP' };
+    const employeeCurrency = employee.currency || COUNTRY_CURRENCY[employee.country] || 'MAD';
+
+    // Process payment using shared function — with the REAL currency
     const payment = await processSuccessfulPayment(
       pool,
       employee.id,
       parsedAmount,
       'mock',
       null,
-      tourist_email
+      tourist_email,
+      employeeCurrency
     );
 
     console.log(
-      `[payments/mock] $${parsedAmount} → ${employee_username} (employee_id=${employee.id}), payment_id=${payment.id}`
+      `[payments/mock] ${parsedAmount} ${employeeCurrency} → ${employee_username} (employee_id=${employee.id}), payment_id=${payment.id}`
     );
 
     res.status(201).json({
@@ -69,8 +74,9 @@ router.post('/mock', async (req, res) => {
         payment_id: payment.id,
         employee_name: employee.full_name,
         amount: parsedAmount,
+        currency: employeeCurrency,
       },
-      message: `Successfully tipped $${parsedAmount.toFixed(2)} to ${employee.full_name}`,
+      message: `Successfully tipped ${parsedAmount.toFixed(2)} ${employeeCurrency} to ${employee.full_name}`,
     });
   } catch (err) {
     console.error('[payments/mock]', err.message);
@@ -90,7 +96,7 @@ router.get('/history', authMiddleware, async (req, res) => {
     const employeeId = req.employee.id;
 
     const { rows: payments } = await pool.query(
-      'SELECT id, amount, payment_method, status, tourist_email, created_at FROM payments WHERE employee_id = $1 ORDER BY created_at DESC',
+      'SELECT id, amount, currency, payment_method, status, tourist_email, created_at FROM payments WHERE employee_id = $1 ORDER BY created_at DESC',
       [employeeId]
     );
 
