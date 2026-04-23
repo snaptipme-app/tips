@@ -4,10 +4,14 @@ import { getAdminToken, clearAdminToken } from './AdminLogin';
 
 const BG='#080818',CARD='#0f0f2e',BORDER='rgba(255,255,255,0.06)',ACCENT='#6c6cff',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#a855f7';
 const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
+const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#6c6cff',USD:'#00C896',AED:'#a855f7',GBP:'#06b6d4'};
+function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
 function api(){return axios.create({baseURL:'/api/admin',headers:{Authorization:`Bearer ${getAdminToken()}`}})}
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
-const fmtMoney=(n,c='MAD')=>`${Number(n||0).toFixed(2)} ${c}`;
+const fmtMoney=(n,c='USD')=>`${Number(n||0).toFixed(2)} ${c}`;
+const fmtAmount=(n,c)=>{if(!c)return Number(n||0).toFixed(2);const sym={USD:'$',EUR:'€',GBP:'£'};return sym[c]?`${sym[c]}${Number(n||0).toFixed(2)}`:`${Number(n||0).toFixed(2)} ${c}`;};
 const CountryBadge=({country})=>{const code=COUNTRY_CODES[country]||'??';return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'2px 7px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',letterSpacing:.3}}>{code}</span>;}
+const CurrencyPill=({currency,amount})=>{const color=getCurrencyColor(currency);return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:`${color}18`,border:`1px solid ${color}40`,borderRadius:50,padding:'3px 10px',fontSize:12,fontWeight:700,color,whiteSpace:'nowrap'}}>{fmtAmount(amount,currency)}</span>}
 
 /* SVG Icons */
 const I={
@@ -110,19 +114,43 @@ export default function AdminDashboard({onLogout}){
 /* ═══ OVERVIEW ═══ */
 function OverviewSection({showToast,onLogout}){
   const[data,setData]=useState(null);const[loading,setLoading]=useState(true);
-  useEffect(()=>{api().get('/stats').then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}else showToast('Failed','error')}).finally(()=>setLoading(false))},[]);
+  useEffect(()=>{api().get('/stats').then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}else showToast('Failed','error')}).finally(()=>setLoading(false));},[]);
   if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>;
   if(!data)return null;
-  const cards=[{label:'Total Users',value:data.totalEmployees,color:ACCENT},{label:'Total Tips',value:fmtMoney(data.totalTips),color:GREEN},{label:'Commission (10%)',value:fmtMoney(data.commission),color:PURPLE},{label:'Pending Withdrawals',value:data.pendingWithdrawals,color:YELLOW,sub:fmtMoney(data.pendingAmount)}];
+  const tipsByCurrency=data.tipsByCurrency||[];
   const maxR=Math.max(...(data.growth||[]).map(g=>g.count),1),maxT=Math.max(...(data.tipsGrowth||[]).map(g=>g.count),1);
   return(<>
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:24}}>Dashboard Overview</h1>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:14,marginBottom:28}}>
-      {cards.map((s,i)=><div key={i} style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>{s.label}</p>
-        <p style={{fontSize:24,fontWeight:800,color:s.color}}>{s.value}</p>
-        {s.sub&&<p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{s.sub}</p>}
-      </div>)}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:28}}>
+      {/* Total Users */}
+      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
+        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Total Users</p>
+        <p style={{fontSize:28,fontWeight:800,color:ACCENT}}>{data.totalEmployees}</p>
+      </div>
+      {/* Tips by Currency — multi-currency card */}
+      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`,gridColumn:tipsByCurrency.length>2?'span 2':'auto'}}>
+        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:10}}>Tips Collected</p>
+        {tipsByCurrency.length===0
+          ?<p style={{fontSize:20,fontWeight:800,color:GREEN}}>0.00</p>
+          :<div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+            {tipsByCurrency.map(t=><CurrencyPill key={t.currency} currency={t.currency} amount={t.total}/>)}
+          </div>
+        }
+        <p style={{fontSize:11,color:'rgba(255,255,255,.25)',marginTop:8}}>{data.totalPayments} transactions</p>
+      </div>
+      {/* Commission */}
+      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
+        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Commission (10%)</p>
+        {tipsByCurrency.length>0
+          ?<div style={{display:'flex',flexWrap:'wrap',gap:6}}>{tipsByCurrency.map(t=><CurrencyPill key={t.currency} currency={t.currency} amount={t.total*0.1}/>)}</div>
+          :<p style={{fontSize:20,fontWeight:800,color:PURPLE}}>0.00</p>}
+      </div>
+      {/* Pending Withdrawals */}
+      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
+        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Pending Withdrawals</p>
+        <p style={{fontSize:28,fontWeight:800,color:YELLOW}}>{data.pendingWithdrawals}</p>
+        <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{fmtMoney(data.pendingAmount,'MAD')}</p>
+      </div>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:14,marginBottom:28}}>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
@@ -151,11 +179,11 @@ function OverviewSection({showToast,onLogout}){
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:14}}>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`,overflow:'auto'}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:12}}>Recent Payments</p>
-        {data.recentPayments?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Date</th></tr></thead><tbody>{data.recentPayments.map((p,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{p.full_name||p.username}</td><td>{fmtMoney(p.amount,p.currency)}</td><td>{fmtDate(p.created_at)}</td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No payments yet</p>}
+        {data.recentPayments?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Date</th></tr></thead><tbody>{data.recentPayments.map((p,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{p.full_name||p.username}</td><td><CurrencyPill currency={p.currency} amount={p.amount}/></td><td>{fmtDate(p.created_at)}</td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No payments yet</p>}
       </div>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`,overflow:'auto'}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:12}}>Recent Withdrawals</p>
-        {data.recentWithdrawals?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Status</th></tr></thead><tbody>{data.recentWithdrawals.map((w,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{w.full_name||w.username}</td><td>{fmtMoney(w.amount,w.currency)}</td><td><StatusBadge status={w.status}/></td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No withdrawals yet</p>}
+        {data.recentWithdrawals?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Status</th></tr></thead><tbody>{data.recentWithdrawals.map((w,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{w.full_name||w.username}</td><td><CurrencyPill currency={w.currency} amount={w.amount}/></td><td><StatusBadge status={w.status}/></td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No withdrawals yet</p>}
       </div>
     </div>
   </>);
@@ -463,8 +491,8 @@ function TransactionsSection({showToast,onLogout}){
       <tbody>{data.transactions.map((t,i)=><tr key={i}>
         <td style={{fontSize:12}}>{fmtDate(t.created_at)}</td>
         <td><span style={{fontWeight:600,color:'#fff'}}>{t.full_name}</span> <span style={{color:'rgba(255,255,255,.3)'}}>@{t.username}</span></td>
-        <td style={{fontWeight:700,color:'#fff'}}>{fmtMoney(t.amount,t.currency)}</td>
-        <td style={{color:PURPLE,fontWeight:600}}>{fmtMoney(Number(t.amount)*.1,t.currency)}</td>
+        <td style={{fontWeight:700,color:'#fff'}}><CurrencyPill currency={t.currency} amount={t.amount}/></td>
+        <td><CurrencyPill currency={t.currency} amount={Number(t.amount)*.1}/></td>
         <td><Badge text={t.payment_method||'mock'} bg='rgba(255,255,255,.06)' color='rgba(255,255,255,.5)'/></td>
       </tr>)}
       {!data.transactions.length&&<tr><td colSpan={5} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No transactions for this period</td></tr>}

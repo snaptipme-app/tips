@@ -4,14 +4,16 @@ import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
 /* ─── Currency helpers ────────────────────────────────────────────────── */
+const CURRENCY_PRESETS = {
+  MAD: [10, 20, 50, 100],
+  AED: [10, 20, 50, 100],
+  EUR: [2, 5, 10, 20],
+  USD: [2, 5, 10, 20],
+  GBP: [1, 2, 5, 10],
+};
+
 function getTipPresets(currency) {
-  switch (currency) {
-    case 'MAD': return [10, 20, 50, 100];
-    case 'EUR': return [2, 5, 10, 20];
-    case 'GBP': return [1, 2, 5, 10];
-    case 'AED': return [5, 10, 20, 50];
-    default:    return [1, 2, 5, 10]; // USD + others
-  }
+  return CURRENCY_PRESETS[currency] || CURRENCY_PRESETS.USD;
 }
 
 function formatCurrency(amount, currency) {
@@ -20,7 +22,7 @@ function formatCurrency(amount, currency) {
     case 'USD': return `$${amount}`;
     case 'EUR': return `€${amount}`;
     case 'GBP': return `£${amount}`;
-    default:    return `${amount} ${currency || 'MAD'}`;
+    default:    return `${amount} ${currency || 'USD'}`;
   }
 }
 
@@ -36,7 +38,7 @@ function getCurrencyPrefix(currency) {
 function getCurrencySuffix(currency) {
   switch (currency) {
     case 'USD': case 'EUR': case 'GBP': return '';
-    default: return ` ${currency || 'MAD'}`;
+    default: return ` ${currency || 'USD'}`;
   }
 }
 
@@ -281,10 +283,10 @@ export default function TipPage() {
     })();
   }, [username]);
 
-  const currency = employee?.currency || 'MAD';
-  const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
-  const currencyPrefix = getCurrencyPrefix(currency);
-  const currencySuffix = getCurrencySuffix(currency);
+  const currency = employee?.currency || null;
+  const tipPresets = useMemo(() => getTipPresets(currency || 'USD'), [currency]);
+  const currencyPrefix = getCurrencyPrefix(currency || 'USD');
+  const currencySuffix = getCurrencySuffix(currency || 'USD');
 
   const handleSelectAmount = (amount) => {
     setSelectedAmount(amount);

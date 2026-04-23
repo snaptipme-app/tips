@@ -16,6 +16,7 @@ router.post('/mock', async (req, res) => {
     const {
       employee_username,
       amount,
+      currency: requestedCurrency = null,
       tourist_email = null,
       payment_method = 'mock',
     } = req.body;
@@ -51,9 +52,10 @@ router.post('/mock', async (req, res) => {
 
     const employee = empRows[0];
 
-    // Derive the employee's actual currency
+    // Derive currency: prefer what the tourist page sent, then fall back to employee's DB currency
     const COUNTRY_CURRENCY = { 'Morocco': 'MAD', 'United States': 'USD', 'France': 'EUR', 'Spain': 'EUR', 'UAE': 'AED', 'UK': 'GBP' };
-    const employeeCurrency = employee.currency || COUNTRY_CURRENCY[employee.country] || 'MAD';
+    const dbCurrency = employee.currency || COUNTRY_CURRENCY[employee.country] || 'USD';
+    const employeeCurrency = requestedCurrency || dbCurrency;
 
     console.log(`[DEBUG payments/mock] Employee: ${employee.full_name}, DB currency=${employee.currency}, derived=${employeeCurrency}`);
 

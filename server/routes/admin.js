@@ -215,11 +215,21 @@ router.get('/stats', adminAuth, async (req, res) => {
 
     const { rows: recentPayments } = await pool.query(`
       SELECT p.id, p.amount, p.payment_method, p.created_at,
-        e.full_name, e.username, e.currency
+        COALESCE(p.currency, e.currency, 'USD') as currency,
+        e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       ORDER BY p.created_at DESC LIMIT 10
     `);
+
+    // Per-currency tips breakdown
+    const { rows: tipsByCurrencyRows } = await pool.query(`
+      SELECT COALESCE(currency, 'USD') as currency, COALESCE(SUM(amount),0) as total, COUNT(*) as count
+      FROM payments
+      GROUP BY currency
+      ORDER BY total DESC
+    `);
+    const tipsByCurrency = tipsByCurrencyRows.map(r => ({ currency: r.currency, total: Number(r.total), count: Number(r.count) }));
 
     const { rows: recentWithdrawals } = await pool.query(`
       SELECT w.id, w.amount, w.status, w.method, w.created_at,
@@ -249,7 +259,7 @@ router.get('/stats', adminAuth, async (req, res) => {
     res.json({
       totalEmployees, totalPayments, totalTips, pendingWithdrawals,
       pendingAmount, commission, recentPayments, recentWithdrawals,
-      growth, tipsGrowth,
+      growth, tipsGrowth, tipsByCurrency,
     });
   } catch (err) {
     console.error('[admin/stats]', err.message);
