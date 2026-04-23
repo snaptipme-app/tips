@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../db');
-const { upload, getImageUrl } = require('../middleware/upload');
+const { upload, getImageUrl, multerErrorHandler } = require('../middleware/upload');
 const { sendOTPEmail } = require('../utils/sendEmail');
 
 function generateOTP() {
@@ -107,7 +107,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // POST /api/auth/register
-router.post('/register', upload.single('profileImage'), async (req, res) => {
+router.post('/register', upload.single('profileImage'), multerErrorHandler, async (req, res) => {
   try {
     const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency } = req.body;
 

@@ -23,18 +23,18 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed (jpg, png, webp, gif).'), false);
+    cb(new Error('Only image files are allowed (jpg, png, webp, gif, heic).'), false);
   }
 };
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
 });
 
 /**
@@ -48,4 +48,21 @@ function getImageUrl(req, file) {
   return `/uploads/${file.filename}`;
 }
 
-module.exports = { upload, getImageUrl };
+/**
+ * Multer error handler middleware.
+ * Use after upload middleware: router.post('/route', upload.single('file'), multerErrorHandler, handler)
+ */
+function multerErrorHandler(err, req, res, next) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Please select an image under 10MB.' });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    return res.status(400).json({ error: err.message || 'File upload failed.' });
+  }
+  next();
+}
+
+module.exports = { upload, getImageUrl, multerErrorHandler };
