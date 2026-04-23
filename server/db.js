@@ -61,7 +61,7 @@ async function initDB() {
         email TEXT,
         token TEXT UNIQUE,
         status TEXT DEFAULT 'pending',
-        expires_at INTEGER,
+        expires_at BIGINT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
@@ -112,7 +112,7 @@ async function initDB() {
         email TEXT,
         otp_hash TEXT,
         attempts INTEGER DEFAULT 0,
-        expires_at INTEGER,
+        expires_at BIGINT,
         verified INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW()
       )

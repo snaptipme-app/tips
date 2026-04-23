@@ -261,10 +261,15 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
   try {
     const uid = req.params.id;
     console.log('[admin] Deleting user:', uid);
+    // Delete all related records in dependency order
+    await pool.query('DELETE FROM tips WHERE employee_id = $1', [uid]);
     await pool.query('DELETE FROM payments WHERE employee_id = $1', [uid]);
     await pool.query('DELETE FROM withdrawals WHERE employee_id = $1', [uid]);
+    await pool.query('DELETE FROM analytics WHERE employee_id = $1', [uid]);
+    await pool.query('DELETE FROM otps WHERE email IN (SELECT email FROM employees WHERE id = $1)', [uid]);
     await pool.query('DELETE FROM team_members WHERE employee_id = $1', [uid]);
     await pool.query('DELETE FROM invitations WHERE business_id IN (SELECT id FROM businesses WHERE owner_id = $1)', [uid]);
+    await pool.query('DELETE FROM team_members WHERE business_id IN (SELECT id FROM businesses WHERE owner_id = $1)', [uid]);
     await pool.query('DELETE FROM businesses WHERE owner_id = $1', [uid]);
     await pool.query('DELETE FROM employees WHERE id = $1', [uid]);
     res.json({ success: true, message: 'User permanently deleted.' });

@@ -20,6 +20,16 @@ router.post('/create', authMiddleware, async (req, res) => {
     const ownerId = req.employee.id;
     console.log('[business/create] owner_id:', req.employee.id);
 
+    if (!ownerId) {
+      return res.status(400).json({ error: 'Authentication error: owner ID missing from token.' });
+    }
+
+    // Verify owner actually exists in DB
+    const { rows: ownerCheck } = await pool.query('SELECT id FROM employees WHERE id = $1', [ownerId]);
+    if (ownerCheck.length === 0) {
+      return res.status(400).json({ error: 'Invalid owner: employee not found.' });
+    }
+
     if (!business_name || !business_type) {
       return res.status(400).json({ error: 'business_name and business_type are required.' });
     }
