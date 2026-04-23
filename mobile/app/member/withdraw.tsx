@@ -396,7 +396,9 @@ export default function MemberWithdraw() {
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Ionicons name="globe-outline" size={26} color={ACCENT} />
+                  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                    <SvgPath d="M3 21h18v-2H3v2zm0-4h2v-4H3v4zm4 0h2v-4H7v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zM1 11l11-7 11 7H1z" fill={ACCENT} />
+                  </Svg>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>International Bank Transfer</Text>

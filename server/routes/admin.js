@@ -46,7 +46,7 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
     <div style="background:#080818;padding:32px;text-align:center;">
-      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
       <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
     </div>
 
@@ -119,7 +119,7 @@ function buildWithdrawalRejectedEmail(employee, withdrawal, reason) {
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
     <div style="background:#080818;padding:32px;text-align:center;">
-      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
       <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
     </div>
 
@@ -354,7 +354,7 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
     <div style="background:#080818;padding:32px;text-align:center;">
-      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
       <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
     </div>
 

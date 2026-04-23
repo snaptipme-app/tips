@@ -1,4 +1,4 @@
-const API_BASE = 'https://snaptip.me';
+const API_BASE = 'http://156.67.28.181:5000';
 
 /**
  * Returns an Image-compatible source for any photo value from the backend.
@@ -21,4 +21,15 @@ export function getImageSource(url: string | null | undefined): { uri: string } 
   }
   // Fallback — treat as-is
   return { uri: url };
+}
+
+/**
+ * Returns a full image URL string (not an object).
+ * Useful for places that need a raw string rather than { uri }.
+ */
+export function getFullImageUrl(url: string | null | undefined): string | null {
+  if (!url || url.trim() === '') return null;
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return `${API_BASE}${url}`;
+  return url;
 }

@@ -327,7 +327,7 @@ export default function TeamManagement() {
                 const raw = selectedMember.profile_image_url || selectedMember.photo_url || '';
                 if (!raw) return null;
                 if (raw.startsWith('data:') || raw.startsWith('http://') || raw.startsWith('https://')) return { uri: raw };
-                if (raw.startsWith('/')) return { uri: `https://snaptip.me${raw}` };
+                if (raw.startsWith('/')) return { uri: `http://156.67.28.181:5000${raw}` };
                 return { uri: raw };
               })();
               const memberInitial = (selectedMember.full_name || 'U').charAt(0).toUpperCase();
