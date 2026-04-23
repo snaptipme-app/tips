@@ -23,7 +23,7 @@ async function initDB() {
         balance REAL DEFAULT 0,
         total_tips REAL DEFAULT 0,
         otp_code TEXT,
-        otp_expires INTEGER,
+        otp_expires BIGINT,
         is_verified INTEGER DEFAULT 0,
         is_suspended INTEGER DEFAULT 0,
         last_login TEXT,
@@ -138,7 +138,10 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN business_id INTEGER",
       "ALTER TABLE employees ADD COLUMN withdrawal_method TEXT",
       "ALTER TABLE employees ADD COLUMN withdrawal_account TEXT",
-      "ALTER TABLE employees ADD COLUMN profile_photo_base64 TEXT"
+      "ALTER TABLE employees ADD COLUMN profile_photo_base64 TEXT",
+      "ALTER TABLE employees ALTER COLUMN otp_expires TYPE BIGINT",
+      "ALTER TABLE otps ALTER COLUMN expires_at TYPE BIGINT",
+      "ALTER TABLE invitations ALTER COLUMN expires_at TYPE BIGINT"
     ];
 
     for (const ddl of employeeAlterTables) {

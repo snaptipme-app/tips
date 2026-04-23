@@ -18,6 +18,7 @@ router.post('/create', authMiddleware, async (req, res) => {
   try {
     const { business_name, business_type, logo_url = '', address = '' } = req.body;
     const ownerId = req.employee.id;
+    console.log('[business/create] owner_id:', req.employee.id);
 
     if (!business_name || !business_type) {
       return res.status(400).json({ error: 'business_name and business_type are required.' });
