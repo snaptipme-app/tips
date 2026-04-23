@@ -311,6 +311,7 @@ export default function Register() {
   // Step 4
   const [imageUri, setImageUri] = useState('');
   const [imageBase64, setImageBase64] = useState('');
+  const imageBase64Ref = useRef(''); // ref to avoid stale closure in handleComplete
   const [jobTitle, setJobTitle] = useState('');
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
@@ -496,8 +497,11 @@ export default function Register() {
       ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
     if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      const uri = result.assets[0].uri;
+      const b64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setImageUri(uri);
+      setImageBase64(b64);
+      imageBase64Ref.current = b64; // keep ref in sync immediately
     }
   };
 
@@ -505,7 +509,9 @@ export default function Register() {
     setLoading(true);
     try {
       const body: any = {};
-      if (imageBase64) { body.photo_url = imageBase64; body.photo_base64 = imageBase64; }
+      // Read from ref to avoid stale closure - ref is always up-to-date
+      const latestBase64 = imageBase64Ref.current || imageBase64;
+      if (latestBase64) { body.photo_url = latestBase64; body.photo_base64 = latestBase64; }
       if (jobTitle.trim()) body.job_title = jobTitle.trim();
       if (Object.keys(body).length) await api.patch('/employee/profile', body);
       showToast('Setup complete!', 'success');

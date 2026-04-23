@@ -101,10 +101,18 @@ router.post('/invite', authMiddleware, async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     const normalizedEmail = email.trim().toLowerCase();
 
+    // Prevent owner from inviting themselves
+    const { rows: ownerRows } = await pool.query('SELECT email FROM employees WHERE id = $1', [req.employee.id]);
+    const ownerEmail = ownerRows[0]?.email || '';
+    if (ownerEmail && ownerEmail.toLowerCase() === normalizedEmail) {
+      return res.status(400).json({ error: 'You cannot invite yourself to your own business.' });
+    }
+
     await pool.query(
       "INSERT INTO invitations (business_id, email, token, expires_at) VALUES ($1, $2, $3, extract(epoch from (now() + interval '48 hours')) * 1000)",
       [business.id, normalizedEmail, token]
     );
+
 
     const inviteUrl = `https://snaptip.me/join/${token}`;
 
