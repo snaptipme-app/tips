@@ -37,67 +37,116 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
 
   return {
     subject: '✅ SnapTip — Your withdrawal has been processed!',
-    html: `
-      <div style="font-family:'Segoe UI',Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:560px;margin:auto;">
-        <div style="text-align:center;margin-bottom:30px;">
-          <div style="display:inline-block;background:linear-gradient(135deg,#00C896,#00ff66);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
-            <span style="font-size:22px;">⚡</span>
-          </div>
-          <div style="font-size:24px;font-weight:800;color:#fff;">SnapTip</div>
-        </div>
-        <h1 style="font-size:20px;font-weight:700;margin:0 0 8px;text-align:center;">Great news, ${employee.first_name || employee.full_name || 'there'}! 🎉</h1>
-        <p style="color:rgba(255,255,255,0.5);margin:0 0 24px;text-align:center;">Your withdrawal request has been successfully processed.</p>
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
-        <div style="background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);border-radius:14px;padding:24px;margin-bottom:20px;">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:8px 0;color:rgba(255,255,255,0.5);font-size:14px;">Amount Requested</td><td style="text-align:right;color:#fff;font-weight:600;">${amount} ${cur}</td></tr>
-            <tr><td style="padding:8px 0;color:rgba(255,255,255,0.5);font-size:14px;">Fee</td><td style="text-align:right;color:#f59e0b;font-weight:600;">-${fee} ${cur}</td></tr>
-            <tr style="border-top:1px solid rgba(255,255,255,0.08);">
-              <td style="padding:12px 0 0;color:#00C896;font-size:16px;font-weight:700;">Amount Sent</td>
-              <td style="text-align:right;color:#00C896;font-size:18px;font-weight:800;padding-top:12px;">${net} ${cur}</td>
-            </tr>
-          </table>
-        </div>
+    <div style="background:#080818;padding:32px;text-align:center;">
+      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
+    </div>
 
-        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:18px;margin-bottom:20px;">
-          <p style="margin:0 0 6px;font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;">Payment Details</p>
-          <p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#fff;">${withdrawal.method}</p>
-          <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.4);">${details}</p>
-          <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.4);">Date: ${date}</p>
-        </div>
+    <div style="background:#00C896;padding:16px 32px;text-align:center;">
+      <p style="color:white;font-size:15px;font-weight:600;margin:0;">💸 Payment successfully sent!</p>
+    </div>
 
-        <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;margin-top:28px;">Thank you for using SnapTip</p>
-      </div>
-    `,
+    <div style="padding:40px 32px;">
+      <h2 style="color:#080818;font-size:24px;margin:0 0 8px;">Your withdrawal has been processed!</h2>
+      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 28px;">
+        Hi ${employee.first_name || employee.full_name || 'there'}, your withdrawal request has been approved and processed.
+      </p>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;border:1px solid #e8e8ea;border-radius:12px;overflow:hidden;">
+        <tr style="background:#f5f5f7;">
+          <td style="padding:12px 16px;color:#666;font-size:14px;">Amount Requested</td>
+          <td style="padding:12px 16px;color:#080818;font-size:14px;font-weight:600;text-align:right;">${amount} ${cur}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;color:#666;font-size:14px;border-top:1px solid #e8e8ea;">Fee</td>
+          <td style="padding:12px 16px;color:#f59e0b;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e8e8ea;">-${fee} ${cur}</td>
+        </tr>
+        <tr style="background:#f0fdf9;">
+          <td style="padding:14px 16px;color:#00C896;font-size:15px;font-weight:700;border-top:2px solid #00C896;">Amount Sent</td>
+          <td style="padding:14px 16px;color:#00C896;font-size:17px;font-weight:800;text-align:right;border-top:2px solid #00C896;">${net} ${cur}</td>
+        </tr>
+        <tr style="background:#f5f5f7;">
+          <td style="padding:12px 16px;color:#666;font-size:14px;border-top:1px solid #e8e8ea;">Method</td>
+          <td style="padding:12px 16px;color:#080818;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e8e8ea;">${withdrawal.method}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;color:#666;font-size:14px;border-top:1px solid #e8e8ea;">Account</td>
+          <td style="padding:12px 16px;color:#080818;font-size:14px;text-align:right;border-top:1px solid #e8e8ea;">${details}</td>
+        </tr>
+        <tr style="background:#f5f5f7;">
+          <td style="padding:12px 16px;color:#666;font-size:14px;border-top:1px solid #e8e8ea;">Date</td>
+          <td style="padding:12px 16px;color:#080818;font-size:14px;text-align:right;border-top:1px solid #e8e8ea;">${date}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background:#f5f5f7;padding:24px 32px;text-align:center;border-top:1px solid #e8e8ea;">
+      <p style="color:#888;font-size:13px;margin:0 0 8px;">Secure payments powered by SnapTip</p>
+      <p style="color:#aaa;font-size:12px;margin:0;">© 2026 SnapTip. All rights reserved.</p>
+    </div>
+
+  </div>
+</body>
+</html>`,
   };
 }
 
 function buildWithdrawalRejectedEmail(employee, withdrawal, reason) {
   const cur = employee.currency || 'MAD';
   const amount = Number(withdrawal.amount).toFixed(2);
-  const reasonBlock = reason ? `<p style="margin:12px 0 0;color:#ef4444;font-size:14px;font-weight:600;">Reason: ${reason}</p>` : '';
+  const reasonBlock = reason
+    ? `<div style="background:#fff5f5;border-left:4px solid #ef4444;border-radius:0 8px 8px 0;padding:14px 16px;margin:20px 0;">
+         <p style="margin:0;color:#b91c1c;font-size:14px;font-weight:600;">Reason</p>
+         <p style="margin:6px 0 0;color:#444;font-size:14px;line-height:1.5;">${reason}</p>
+       </div>`
+    : '';
   return {
     subject: 'SnapTip — Withdrawal Request Update',
-    html: `
-      <div style="font-family:'Segoe UI',Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:560px;margin:auto;">
-        <div style="text-align:center;margin-bottom:30px;">
-          <div style="display:inline-block;background:rgba(239,68,68,0.15);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
-            <span style="font-size:22px;">&#9888;</span>
-          </div>
-          <div style="font-size:24px;font-weight:800;color:#fff;">SnapTip</div>
-        </div>
-        <h1 style="font-size:20px;font-weight:700;margin:0 0 8px;text-align:center;">Withdrawal Update</h1>
-        <p style="color:rgba(255,255,255,0.5);margin:0 0 24px;text-align:center;">Hi ${employee.first_name || employee.full_name || 'there'},</p>
-        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:24px;margin-bottom:20px;">
-          <p style="margin:0;color:rgba(255,255,255,0.7);font-size:15px;line-height:1.6;">
-            Unfortunately, your withdrawal request for <strong style="color:#fff;">${amount} ${cur}</strong> could not be processed at this time.
-            Please contact support or submit a new request.
-          </p>
-          ${reasonBlock}
-        </div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.25);text-align:center;margin-top:28px;">Thank you for using SnapTip</p>
+    html: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+    <div style="background:#080818;padding:32px;text-align:center;">
+      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
+    </div>
+
+    <div style="padding:40px 32px;">
+      <h2 style="color:#080818;font-size:24px;margin:0 0 16px;">Withdrawal request update</h2>
+      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 8px;">
+        Hi ${employee.first_name || employee.full_name || 'there'},
+      </p>
+      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Unfortunately, your withdrawal request for <strong style="color:#080818;">${amount} ${cur}</strong> could not be processed at this time. Your balance has been fully refunded.
+      </p>
+
+      ${reasonBlock}
+
+      <div style="text-align:center;margin-top:28px;">
+        <a href="https://snaptip.me" style="display:inline-block;background:#00C896;color:white;text-decoration:none;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;">Submit a new request</a>
       </div>
-    `,
+    </div>
+
+    <div style="background:#f5f5f7;padding:24px 32px;text-align:center;border-top:1px solid #e8e8ea;">
+      <p style="color:#888;font-size:13px;margin:0 0 8px;">Secure payments powered by SnapTip</p>
+      <p style="color:#aaa;font-size:12px;margin:0;">© 2026 SnapTip. All rights reserved.</p>
+    </div>
+
+  </div>
+</body>
+</html>`,
   };
 }
 
@@ -296,22 +345,47 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
 
     await sendEmail(user.email, {
       subject: 'SnapTip — Your password has been reset',
-      html: `
-        <div style="font-family:'Segoe UI',Inter,sans-serif;background:#080818;color:#fff;padding:40px;border-radius:16px;max-width:560px;margin:auto;">
-          <div style="text-align:center;margin-bottom:24px;">
-            <div style="font-size:24px;font-weight:800;color:#fff;">SnapTip</div>
-          </div>
-          <h2 style="color:#fff;margin:0 0 12px;font-size:20px;">Hello ${user.first_name || user.full_name || 'there'},</h2>
-          <p style="color:rgba(255,255,255,0.6);line-height:1.6;">Your SnapTip password has been reset by an admin.</p>
-          <div style="background:rgba(108,108,255,0.1);border:1px solid rgba(108,108,255,0.2);border-radius:14px;padding:20px;margin:20px 0;text-align:center;">
-            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">Your new temporary password</p>
-            <code style="font-size:24px;font-weight:700;color:#6c6cff;letter-spacing:2px;">${tempPw}</code>
-          </div>
-          <p style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.6;">Please login and change your password immediately.</p>
-          <a href="https://snaptip.me" style="display:inline-block;margin-top:16px;background:#6c6cff;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:14px;">Login to SnapTip</a>
-          <p style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:28px;">Thank you for using SnapTip</p>
-        </div>
-      `,
+      html: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+    <div style="background:#080818;padding:32px;text-align:center;">
+      <img src="http://156.67.28.181:5000/assets/images/snaptip_icon.png" width="56" height="56" alt="SnapTip Logo" style="display:inline-block;border-radius:12px;" />
+      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
+    </div>
+
+    <div style="padding:40px 32px;">
+      <h2 style="color:#080818;font-size:24px;margin:0 0 16px;">Your password has been reset</h2>
+      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 28px;">
+        Hi ${user.first_name || user.full_name || 'there'}, an admin has reset your SnapTip password. Use the temporary password below to log in, then change it immediately.
+      </p>
+
+      <div style="background:#f0fdf9;border:2px solid #00C896;border-radius:14px;padding:28px;text-align:center;margin-bottom:24px;">
+        <p style="color:#666;font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px;">Your temporary password</p>
+        <span style="font-size:28px;font-weight:700;letter-spacing:6px;color:#00C896;font-family:monospace;">${tempPw}</span>
+      </div>
+
+      <p style="color:#888;font-size:14px;margin:0 0 24px;text-align:center;">
+        Please login and change your password immediately.
+      </p>
+
+      <div style="text-align:center;">
+        <a href="https://snaptip.me" style="display:inline-block;background:#080818;color:white;text-decoration:none;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;">Login to SnapTip</a>
+      </div>
+    </div>
+
+    <div style="background:#f5f5f7;padding:24px 32px;text-align:center;border-top:1px solid #e8e8ea;">
+      <p style="color:#888;font-size:13px;margin:0 0 8px;">Secure payments powered by SnapTip</p>
+      <p style="color:#aaa;font-size:12px;margin:0;">© 2026 SnapTip. All rights reserved.</p>
+    </div>
+
+  </div>
+</body>
+</html>`,
     });
 
     res.json({ success: true, message: `Password reset. Email sent to ${user.email}.` });

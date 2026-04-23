@@ -1,6 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
+const authMiddleware = require('../middleware/auth');
+
+// GET /api/tips — returns tips for the logged-in employee (never errors on empty)
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, amount, status, created_at FROM tips WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 50',
+      [req.employee.id]
+    );
+    res.json({ tips: rows });
+  } catch (err) {
+    console.error('[tips GET /]', err.message);
+    res.json({ tips: [] });
+  }
+});
 
 // POST /api/tips/create — public
 router.post('/create', async (req, res) => {

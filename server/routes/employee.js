@@ -56,7 +56,7 @@ router.get('/:username', async (req, res) => {
     const { username } = req.params;
 
     const { rows } = await pool.query(
-      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title FROM employees WHERE username = $1',
+      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title, country, currency FROM employees WHERE username = $1',
       [username]
     );
 
