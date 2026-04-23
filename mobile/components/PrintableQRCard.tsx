@@ -69,14 +69,16 @@ export default function PrintableQRCard({ employee, business, customMessage, sho
 
       {/* ④ Employee Info */}
       <View style={styles.empSection}>
-        {photoSrc ? (
-          <Image source={{ uri: photoSrc }} style={styles.empPhoto} resizeMode="cover" />
-        ) : (
-          <View style={styles.empInitialsCircle}>
-            <Text style={styles.empInitialsText}>{initials}</Text>
-          </View>
+        {showPhoto && (
+          photoSrc ? (
+            <Image source={{ uri: photoSrc }} style={styles.empPhoto} resizeMode="cover" />
+          ) : (
+            <View style={styles.empInitialsCircle}>
+              <Text style={styles.empInitialsText}>{initials}</Text>
+            </View>
+          )
         )}
-        <Text style={styles.empName}>{employee.full_name}</Text>
+        <Text style={[styles.empName, !showPhoto && { marginTop: 0 }]}>{employee.full_name}</Text>
         {employee.job_title ? (
           <Text style={styles.empJobTitle}>{employee.job_title}</Text>
         ) : null}

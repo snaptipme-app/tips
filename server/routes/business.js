@@ -5,6 +5,11 @@ const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { sendEmail } = require('../utils/sendEmail');
 
+// Ensure required_country column exists
+(async () => {
+  try { await pool.query('ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT'); } catch (_) {}
+})();
+
 /* ── Helper: find the business owned by the logged-in employee ── */
 async function getOwnedBusiness(pool, ownerId) {
   const { rows } = await pool.query('SELECT * FROM businesses WHERE owner_id = $1', [ownerId]);
@@ -112,16 +117,28 @@ router.post('/invite', authMiddleware, async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // Prevent owner from inviting themselves
-    const { rows: ownerRows } = await pool.query('SELECT email, full_name FROM employees WHERE id = $1', [req.employee.id]);
+    const { rows: ownerRows } = await pool.query('SELECT email, full_name, country FROM employees WHERE id = $1', [req.employee.id]);
     const ownerEmail = ownerRows[0]?.email || '';
     const ownerName = ownerRows[0]?.full_name || 'The manager';
+    const ownerCountry = ownerRows[0]?.country || 'Morocco';
     if (ownerEmail && ownerEmail.toLowerCase() === normalizedEmail) {
       return res.status(400).json({ error: 'You cannot invite yourself to your own business.' });
     }
 
+    // Country validation: if invited employee already exists, check country match
+    const { rows: existingEmpRows } = await pool.query('SELECT country FROM employees WHERE email = $1', [normalizedEmail]);
+    if (existingEmpRows.length > 0 && existingEmpRows[0].country) {
+      const inviteeCountry = existingEmpRows[0].country;
+      if (inviteeCountry !== ownerCountry) {
+        return res.status(400).json({
+          error: `You can only invite employees from the same country as your business (${ownerCountry}). This employee is registered in ${inviteeCountry}.`
+        });
+      }
+    }
+
     await pool.query(
-      "INSERT INTO invitations (business_id, email, token, expires_at) VALUES ($1, $2, $3, extract(epoch from (now() + interval '48 hours')) * 1000)",
-      [business.id, normalizedEmail, token]
+      "INSERT INTO invitations (business_id, email, token, expires_at, required_country) VALUES ($1, $2, $3, extract(epoch from (now() + interval '48 hours')) * 1000, $4)",
+      [business.id, normalizedEmail, token, ownerCountry]
     );
 
     const inviteUrl = `https://snaptip.me/join/${token}`;
@@ -353,6 +370,19 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
     // Check expiry
     if (invitation.expires_at && invitation.expires_at < Date.now()) {
       return res.status(400).json({ error: 'This invitation has expired.' });
+    }
+
+    // Country validation
+    const { rows: joiningEmpRows } = await pool.query('SELECT country FROM employees WHERE id = $1', [employeeId]);
+    const employeeCountry = joiningEmpRows[0]?.country || '';
+    const requiredCountry = invitation.required_country || '';
+    if (requiredCountry && employeeCountry && requiredCountry !== employeeCountry) {
+      return res.status(400).json({
+        error: `This invitation is for employees from ${requiredCountry}. Your account is registered in ${employeeCountry}.`,
+        code: 'COUNTRY_MISMATCH',
+        required_country: requiredCountry,
+        your_country: employeeCountry,
+      });
     }
 
     // Check not already a member

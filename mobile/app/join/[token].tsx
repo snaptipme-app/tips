@@ -91,7 +91,13 @@ export default function JoinBusiness() {
       setBusinessName(data.business_name || businessName);
       animateStep(() => setStep('success'));
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed to join.', 'error');
+      const errData = e.response?.data;
+      if (errData?.code === 'COUNTRY_MISMATCH') {
+        setError(`This invitation is for employees from ${errData.required_country}. Your account is registered in ${errData.your_country}.`);
+        animateStep(() => setStep('error'));
+      } else {
+        showToast(errData?.error || 'Failed to join.', 'error');
+      }
     } finally { setRegLoading(false); }
   };
 
@@ -126,7 +132,13 @@ export default function JoinBusiness() {
 
       animateStep(() => setStep('withdrawal'));
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Registration failed.', 'error');
+      const errData = e.response?.data;
+      if (errData?.code === 'COUNTRY_MISMATCH') {
+        setError(`This invitation is for employees from ${errData.required_country}. Your account is registered in ${errData.your_country}.`);
+        animateStep(() => setStep('error'));
+      } else {
+        showToast(errData?.error || 'Registration failed.', 'error');
+      }
     } finally { setRegLoading(false); }
   };
 
