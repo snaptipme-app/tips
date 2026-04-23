@@ -36,7 +36,7 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
   const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   return {
-    subject: '✅ SnapTip — Your withdrawal has been processed!',
+    subject: 'SnapTip — Your withdrawal has been processed',
     html: `<!DOCTYPE html>
 <html>
 <head>
@@ -51,7 +51,7 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
     </div>
 
     <div style="background:#00C896;padding:16px 32px;text-align:center;">
-      <p style="color:white;font-size:15px;font-weight:600;margin:0;">💸 Payment successfully sent!</p>
+      <p style="color:white;font-size:15px;font-weight:600;margin:0;">Payment successfully sent</p>
     </div>
 
     <div style="padding:40px 32px;">
@@ -404,8 +404,9 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       SELECT
         w.id, w.amount, w.fee, w.net_amount, w.method,
         w.account_details, w.contact_phone, w.status, w.created_at,
-        e.id as employee_id, e.full_name, e.username, e.email,
-        e.country, e.currency
+        e.id as employee_id, e.full_name, e.first_name, e.username, e.email,
+        e.country, e.currency, e.profile_image_url, e.photo_base64,
+        e.created_at as emp_created_at
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)

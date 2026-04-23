@@ -3,11 +3,11 @@ import axios from 'axios';
 import { getAdminToken, clearAdminToken } from './AdminLogin';
 
 const BG='#080818',CARD='#0f0f2e',BORDER='rgba(255,255,255,0.06)',ACCENT='#6c6cff',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#a855f7';
-const FLAGS={Morocco:'\u{1F1F2}\u{1F1E6}','United States':'\u{1F1FA}\u{1F1F8}',France:'\u{1F1EB}\u{1F1F7}',Spain:'\u{1F1EA}\u{1F1F8}',UAE:'\u{1F1E6}\u{1F1EA}'};
+const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
 function api(){return axios.create({baseURL:'/api/admin',headers:{Authorization:`Bearer ${getAdminToken()}`}})}
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
 const fmtMoney=(n,c='MAD')=>`${Number(n||0).toFixed(2)} ${c}`;
-const flag=c=>FLAGS[c]||'\u{1F30D}';
+const CountryBadge=({country})=>{const code=COUNTRY_CODES[country]||'??';return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'2px 7px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',letterSpacing:.3}}>{code}</span>;}
 
 /* SVG Icons */
 const I={
@@ -221,11 +221,26 @@ function UsersSection({showToast,onLogout}){
 
   const typeBadge=t=>{if(t==='business')return<Badge text="Business" bg="rgba(0,200,150,.12)" color={GREEN}/>;if(t==='member')return<Badge text="Member" bg="rgba(108,108,255,.12)" color={ACCENT}/>;return<Badge text={t||'Individual'} bg="rgba(255,255,255,.06)" color="rgba(255,255,255,.4)"/>};
   return(<>
-    {detail&&<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setDetail(null)}><div onClick={e=>e.stopPropagation()} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:32,maxWidth:500,width:'100%',maxHeight:'80vh',overflow:'auto'}}>
-      <h3 style={{color:'#fff',marginBottom:16,fontSize:18}}>User Details</h3>
-      {['full_name','username','email','account_type','country','currency','balance','created_at','last_login','is_suspended','job_title'].map(k=><div key={k} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{k}</span><span style={{color:'#fff',fontSize:13,fontWeight:600}}>{k==='balance'?fmtMoney(detail[k],detail.currency):k==='is_suspended'?(detail[k]?'Yes':'No'):k.includes('at')||k.includes('login')?fmtDate(detail[k]):String(detail[k]||'—')}</span></div>)}
-      <Btn onClick={()=>setDetail(null)} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)' style={{marginTop:20,width:'100%'}}>Close</Btn>
-    </div></div>}
+    {detail&&<div onClick={()=>setDetail(null)} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:520,width:'100%',marginTop:20,marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,paddingBottom:24,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(108,108,255,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {detail.photo_base64||detail.profile_image_url?<img src={detail.photo_base64||detail.profile_image_url} style={{width:72,height:72,objectFit:'cover'}} alt=""/>:<span style={{fontSize:28,fontWeight:700,color:ACCENT}}>{(detail.full_name||'?')[0]}</span>}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#fff'}}>{detail.full_name}</div>
+            <div style={{fontSize:13,color:'rgba(255,255,255,.4)',marginTop:2}}>@{detail.username}</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:3}}>{detail.email}</div>
+            <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap'}}>{typeBadge(detail.account_type)}<CountryBadge country={detail.country}/>{detail.is_suspended&&<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>}</div>
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
+          {[{l:'Balance',v:fmtMoney(detail.balance,detail.currency),c:GREEN},{l:'Country',v:detail.country||'—',c:'#fff'},{l:'Currency',v:detail.currency||'—',c:YELLOW}].map(k=><div key={k.l} style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>{k.l}</p><p style={{fontSize:15,fontWeight:800,color:k.c}}>{k.v}</p></div>)}
+        </div>
+        {[['Job Title',detail.job_title],['Joined',fmtDate(detail.created_at)],['Last Login',fmtDate(detail.last_login)]].map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{l}</span><span style={{color:'#fff',fontSize:13,fontWeight:600}}>{v||'—'}</span></div>)}
+        <Btn onClick={()=>setDetail(null)} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)' style={{marginTop:20,width:'100%'}}>Close</Btn>
+      </div>
+    </div>}
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Users Management</h1>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search name, email, country..." style={{maxWidth:320}}/>
@@ -239,12 +254,13 @@ function UsersSection({showToast,onLogout}){
         <td><div style={{display:'flex',alignItems:'center',gap:10}}><div style={{width:34,height:34,borderRadius:'50%',background:'rgba(108,108,255,.12)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>{u.photo_base64||u.profile_image_url?<img src={u.photo_base64||u.profile_image_url} style={{width:34,height:34,objectFit:'cover'}} alt=""/>:<span style={{fontWeight:700,color:ACCENT,fontSize:13}}>{(u.full_name||'?')[0].toUpperCase()}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{u.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>@{u.username}</div></div></div></td>
         <td style={{fontSize:12}}>{u.email}</td>
         <td>{typeBadge(u.account_type)}</td>
-        <td><span style={{marginRight:4}}>{flag(u.country)}</span>{u.country}</td>
+        <td><CountryBadge country={u.country}/> <span style={{marginLeft:4}}>{u.country}</span></td>
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(u.balance,u.currency)}</td>
         <td style={{fontSize:12}}>{fmtDate(u.last_login)}</td>
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
         <td>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+            <button type="button" style={{background:'rgba(108,108,255,.15)',color:ACCENT,border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();setDetail(u)}}>View</button>
             {u.is_suspended?(
               <button type="button" style={{background:'#22c55e',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reactivate',u.id,u.full_name)}}>Activate</button>
             ):(
@@ -263,44 +279,128 @@ function UsersSection({showToast,onLogout}){
 
 /* ═══ WITHDRAWALS ═══ */
 function WithdrawalsSection({showToast,onLogout,onUpdate}){
-  const[withdrawals,setWithdrawals]=useState([]);const[loading,setLoading]=useState(true);const[filter,setFilter]=useState('all');const[search,setSearch]=useState('');const[actionId,setActionId]=useState(null);const[confirm,setConfirm]=useState(null);const[rejectId,setRejectId]=useState(null);const[rejectReason,setRejectReason]=useState('');
-  const fetchW=useCallback(()=>{setLoading(true);api().get('/withdrawals').then(r=>setWithdrawals(r.data.withdrawals||[])).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[onLogout]);
-  useEffect(()=>{fetchW()},[fetchW]);
-  const handlePaid=async id=>{setActionId(id);try{await api().patch(`/withdrawals/${id}/status`);showToast('Marked as paid! Email sent.');fetchW();onUpdate()}catch(e){showToast(e.response?.data?.error||'Failed','error')}setActionId(null)};
-  const handleReject=async()=>{if(!rejectReason.trim()){showToast('Please provide a rejection reason','error');return}setActionId(rejectId);try{await api().patch(`/withdrawals/${rejectId}/reject`,{reason:rejectReason});showToast('Withdrawal rejected. Balance refunded.');fetchW();onUpdate()}catch(e){showToast(e.response?.data?.error||'Failed','error')}setActionId(null);setRejectId(null);setRejectReason('')};
-  const parseDetails=d=>{if(!d)return'';try{const p=JSON.parse(d);return Object.entries(p).map(([k,v])=>`${k}: ${v}`).join(' \u00b7 ')}catch(_){return d}};
-  const filtered=useMemo(()=>{let list=withdrawals;if(filter!=='all')list=list.filter(w=>w.status===filter);if(search){const q=search.toLowerCase();list=list.filter(w=>(w.full_name||'').toLowerCase().includes(q))}return list},[withdrawals,filter,search]);
+  const[withdrawals,setWithdrawals]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[filter,setFilter]=useState('all');
+  const[methodFilter,setMethodFilter]=useState('all');
+  const[search,setSearch]=useState('');
+  const[actionId,setActionId]=useState(null);
+  const[detail,setDetail]=useState(null);
+  const[adminNotes,setAdminNotes]=useState('');
+  const[rejectMode,setRejectMode]=useState(false);
+  const[rejectReason,setRejectReason]=useState('');
+  const[standaloneRejectId,setStandaloneRejectId]=useState(null);
+  const[standaloneReason,setStandaloneReason]=useState('');
+
+  const fetchW=useCallback(()=>{
+    setLoading(true);
+    api().get('/withdrawals')
+      .then(r=>setWithdrawals(r.data.withdrawals||[]))
+      .catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout();}})
+      .finally(()=>setLoading(false));
+  },[onLogout]);
+  useEffect(()=>{fetchW();},[fetchW]);
+
+  const handlePaid=async id=>{
+    setActionId(id);
+    try{await api().patch('/withdrawals/'+id+'/status');showToast('Marked as paid! Email sent.');fetchW();onUpdate();setDetail(null);setRejectMode(false);setRejectReason('');}
+    catch(e){showToast(e.response?.data?.error||'Failed','error');}
+    setActionId(null);
+  };
+  const handleRejectConfirm=async(id,reason)=>{
+    if(!reason.trim()){showToast('Please provide a rejection reason','error');return;}
+    setActionId(id);
+    try{await api().patch('/withdrawals/'+id+'/reject',{reason});showToast('Rejected. Balance refunded. Email sent.');fetchW();onUpdate();setDetail(null);setRejectMode(false);setRejectReason('');setStandaloneRejectId(null);setStandaloneReason('');}
+    catch(e){showToast(e.response?.data?.error||'Failed','error');}
+    setActionId(null);
+  };
+
+  const parseDetails=d=>{if(!d)return{};try{return JSON.parse(d);}catch(_){return{Details:d};}};
+  const AccountDetailsBlock=({w})=>{
+    const d=parseDetails(w.account_details);
+    const m=(w.method||'').toLowerCase();
+    const CopyBtn=({val})=>val?<button onClick={()=>{navigator.clipboard.writeText(val);showToast('Copied!');}} style={{marginLeft:6,background:'rgba(108,108,255,.12)',border:'none',color:ACCENT,fontSize:11,cursor:'pointer',fontWeight:700,padding:'2px 7px',borderRadius:6}}>Copy</button>:null;
+    const Row=({label,val,copy})=>(<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13,minWidth:120}}>{label}</span><span style={{color:'#fff',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',textAlign:'right',wordBreak:'break-all'}}>{val||'—'}{copy&&<CopyBtn val={val}/>}</span></div>);
+    if(m.includes('wise')||m.includes('international'))return(<>
+      <Row label="Account Holder" val={d.accountHolder||d.account_holder} copy/>
+      <Row label="IBAN" val={d.iban||d.IBAN} copy/>
+      <Row label="SWIFT / BIC" val={d.swift||d.bic||d.SWIFT} copy/>
+      <Row label="Bank Name" val={d.bankName||d.bank_name}/>
+      <Row label="Contact Phone" val={d.phone||d.contactPhone||w.contact_phone} copy/>
+      <div style={{marginTop:14}}>
+        <a href="https://wise.com/send" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(0,200,150,.1)',border:'1px solid rgba(0,200,150,.3)',color:'#00C896',textDecoration:'none',padding:'10px 20px',borderRadius:50,fontSize:14,fontWeight:700}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open Wise
+        </a>
+      </div>
+    </>);
+    if(m.includes('cih'))return(<><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="RIB (16 digits)" val={d.rib||d.RIB} copy/></>);
+    if(m.includes('other bank')||m.includes('bank'))return(<><Row label="Bank Name" val={d.bankName||d.bank_name}/><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="RIB (24 digits)" val={d.rib||d.RIB} copy/></>);
+    if(m.includes('agency')||m.includes('cash')||m.includes('wafa'))return(<><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="CIN" val={d.cin||d.CIN} copy/><Row label="Phone" val={d.phone||w.contact_phone} copy/></>);
+    return(<Row label="Phone Number" val={d.phone||w.contact_phone||d.phoneNumber} copy/>);
+  };
+
+  const allMethods=useMemo(()=>['all',...new Set(withdrawals.map(w=>w.method).filter(Boolean))],[withdrawals]);
+  const filtered=useMemo(()=>{
+    let list=withdrawals;
+    if(filter!=='all')list=list.filter(w=>w.status===filter);
+    if(methodFilter!=='all')list=list.filter(w=>w.method===methodFilter);
+    if(search){const q=search.toLowerCase();list=list.filter(w=>(w.full_name||'').toLowerCase().includes(q)||(w.username||'').toLowerCase().includes(q));}
+    return list;
+  },[withdrawals,filter,methodFilter,search]);
 
   return(<>
-    {rejectId&&<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}><div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:20,padding:32,maxWidth:420,width:'100%'}}>
-      <p style={{color:'#fff',fontSize:16,fontWeight:600,marginBottom:16}}>Reject Withdrawal</p>
-      <p style={{color:'rgba(255,255,255,.5)',fontSize:13,marginBottom:12}}>Please provide a reason for rejection:</p>
-      <textarea value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Enter rejection reason..." rows={3} style={{width:'100%',background:'rgba(255,255,255,.06)',border:`1px solid ${BORDER}`,borderRadius:12,padding:12,color:'#fff',fontSize:14,outline:'none',resize:'vertical',marginBottom:16}}/>
-      <div style={{display:'flex',gap:12,justifyContent:'flex-end'}}><Btn onClick={()=>{setRejectId(null);setRejectReason('')}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn><Btn onClick={handleReject} bg={RED} disabled={actionId}>Reject</Btn></div>
-    </div></div>}
+    {detail&&<div onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:560,width:'100%',marginTop:20,marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,paddingBottom:24,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(108,108,255,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {detail.photo_base64||detail.profile_image_url?<img src={detail.photo_base64||detail.profile_image_url} style={{width:72,height:72,objectFit:'cover'}} alt=""/>:<span style={{fontSize:28,fontWeight:700,color:ACCENT}}>{(detail.full_name||'?')[0]}</span>}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:20,fontWeight:800,color:'#fff'}}>{detail.full_name}</div>
+            <div style={{fontSize:13,color:'rgba(255,255,255,.4)',marginTop:2}}>@{detail.username}</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:3}}>{detail.email}</div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}><CountryBadge country={detail.country}/><span style={{fontSize:12,color:'rgba(255,255,255,.3)'}}>{detail.country} · {detail.currency} · Joined {fmtDate(detail.emp_created_at)}</span></div>
+          </div>
+        </div>
+        <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Withdrawal Details</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
+          {[{l:'Amount',v:fmtMoney(detail.amount,detail.currency),c:'#fff'},{l:'Fee',v:fmtMoney(detail.fee,detail.currency),c:YELLOW},{l:'Net Payout',v:fmtMoney(detail.net_amount,detail.currency),c:GREEN}].map(k=><div key={k.l} style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>{k.l}</p><p style={{fontSize:16,fontWeight:800,color:k.c}}>{k.v}</p></div>)}
+        </div>
+        {[['Method',detail.method,'text'],['Status',null,'badge'],['Date',fmtDate(detail.created_at),'text']].map(([l,v,t])=><div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{l}</span>{t==='badge'?<StatusBadge status={detail.status}/>:<span style={{color:'#fff',fontSize:13,fontWeight:600}}>{v}</span>}</div>)}
+        <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,margin:'20px 0 10px'}}>Account Details</p>
+        <div style={{background:'rgba(255,255,255,.03)',borderRadius:12,padding:'4px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
+        <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Admin Notes (internal)</p>
+        <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} placeholder="Add internal notes..." rows={2} style={{width:'100%',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:20,boxSizing:'border-box'}}/>
+        {rejectMode&&<><p style={{fontSize:11,fontWeight:700,color:RED,textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Rejection Reason (sent to employee)</p><textarea value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Enter reason..." rows={2} style={{width:'100%',background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.25)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:16,boxSizing:'border-box'}}/></>}
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+          {detail.status==='pending'&&<>{!rejectMode?<><Btn onClick={()=>handlePaid(detail.id)} bg={GREEN} color='#080818' disabled={!!actionId}>{I.check} Mark as Paid</Btn><Btn onClick={()=>setRejectMode(true)} bg='rgba(239,68,68,.1)' color={RED}>{I.x} Reject</Btn></>:<><Btn onClick={()=>handleRejectConfirm(detail.id,rejectReason)} bg={RED} disabled={!!actionId}>Confirm Reject</Btn><Btn onClick={()=>{setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn></>}</>}
+          <Btn onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)' style={{marginLeft:'auto'}}>Close</Btn>
+        </div>
+      </div>
+    </div>}
+    {standaloneRejectId&&<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}><div style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:20,padding:32,maxWidth:420,width:'100%'}}><p style={{color:'#fff',fontSize:16,fontWeight:600,marginBottom:12}}>Reject Withdrawal</p><textarea value={standaloneReason} onChange={e=>setStandaloneReason(e.target.value)} placeholder="Rejection reason (sent to employee)..." rows={3} style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:12,color:'#fff',fontSize:14,outline:'none',resize:'vertical',marginBottom:16}}/><div style={{display:'flex',gap:12,justifyContent:'flex-end'}}><Btn onClick={()=>{setStandaloneRejectId(null);setStandaloneReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn><Btn onClick={()=>handleRejectConfirm(standaloneRejectId,standaloneReason)} bg={RED} disabled={!!actionId}>Reject</Btn></div></div></div>}
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Withdrawals</h1>
-    <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-      <Input value={search} onChange={setSearch} placeholder="Search employee..." style={{maxWidth:280}}/>
-      <div style={{display:'flex',gap:6}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(108,108,255,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
+    <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
+      <Input value={search} onChange={setSearch} placeholder="Search by name or @username..." style={{maxWidth:260}}/>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(108,108,255,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
+      <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#0f0f2e'}}>{m==='all'?'All Methods':m}</option>)}</select>
+      <span style={{fontSize:12,color:'rgba(255,255,255,.3)',marginLeft:'auto'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
-    <div style={{background:CARD,borderRadius:16,border:`1px solid ${BORDER}`,overflow:'auto'}}>
-      <table><thead><tr><th>Employee</th><th>Amount</th><th>Fee</th><th>Net</th><th>Method</th><th>Account Details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+    <div style={{background:CARD,borderRadius:16,border:'1px solid rgba(255,255,255,0.06)',overflow:'auto'}}>
+      <table><thead><tr><th>Date</th><th>Employee</th><th>Method</th><th>Amount</th><th>Fee</th><th>Net</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>{filtered.map(w=><tr key={w.id}>
-        <td><span style={{marginRight:4}}>{flag(w.country)}</span><span style={{fontWeight:600,color:'#fff'}}>{w.full_name}</span></td>
+        <td style={{fontSize:12,whiteSpace:'nowrap'}}>{fmtDate(w.created_at)}</td>
+        <td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:30,height:30,borderRadius:'50%',background:'rgba(108,108,255,.12)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{w.photo_base64||w.profile_image_url?<img src={w.photo_base64||w.profile_image_url} style={{width:30,height:30,objectFit:'cover'}} alt=""/>:<span style={{fontSize:12,fontWeight:700,color:ACCENT}}>{(w.full_name||'?')[0]}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{w.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)',display:'flex',alignItems:'center',gap:4}}>@{w.username} <CountryBadge country={w.country}/></div></div></div></td>
+        <td style={{fontSize:12,color:'rgba(255,255,255,.6)',maxWidth:140}}>{w.method}</td>
         <td style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.amount,w.currency)}</td>
         <td style={{color:YELLOW}}>{fmtMoney(w.fee,w.currency)}</td>
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(w.net_amount,w.currency)}</td>
-        <td>{w.method}</td>
-        <td><div style={{maxWidth:220,fontSize:12,color:'rgba(255,255,255,.5)',wordBreak:'break-all'}}>{parseDetails(w.account_details)}{w.account_details&&<button onClick={()=>{navigator.clipboard.writeText(parseDetails(w.account_details));showToast('Copied!')}} style={{marginLeft:6,background:'none',border:'none',color:ACCENT,fontSize:11,cursor:'pointer',fontWeight:600}}>Copy</button>}</div></td>
         <td><StatusBadge status={w.status}/></td>
-        <td style={{fontSize:12}}>{fmtDate(w.created_at)}</td>
-        <td>{w.status==='pending'&&<div style={{display:'flex',gap:6}}>
-          <Btn small disabled={actionId===w.id} onClick={()=>handlePaid(w.id)}>{I.check} Paid</Btn>
-          <Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>setRejectId(w.id)}>{I.x} Reject</Btn>
-        </div>}</td>
+        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes('');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#080818' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
       </tr>)}
-      {!filtered.length&&<tr><td colSpan={9} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
+      {!filtered.length&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
       </tbody></table>
     </div>}
   </>);
@@ -322,7 +422,7 @@ function BusinessesSection({showToast,onLogout}){
         <td style={{fontWeight:700,color:'#fff'}}>{b.business_name}</td>
         <td><div style={{fontSize:13}}>{b.owner_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>{b.owner_email}</div></td>
         <td><Badge text={b.business_type} bg='rgba(108,108,255,.12)' color={ACCENT}/></td>
-        <td>{flag(b.country)} {b.country}</td>
+        <td><CountryBadge country={b.country}/> {b.country}</td>
         <td style={{fontWeight:700,color:'#fff'}}>{b.team_count}</td>
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(b.total_tips)}</td>
         <td style={{fontSize:12}}>{fmtDate(b.created_at)}</td>
@@ -400,11 +500,11 @@ function AnalyticsSection({showToast}){
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:14}}>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:14}}>Top Countries by Users</p>
-        {(data.topCountriesByUsers||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14}}>{flag(c.country)} {c.country}</span><span style={{color:ACCENT,fontWeight:700,fontSize:14}}>{c.count}</span></div>)}
+        {(data.topCountriesByUsers||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14,display:'flex',alignItems:'center',gap:6}}><CountryBadge country={c.country}/>{c.country}</span><span style={{color:ACCENT,fontWeight:700,fontSize:14}}>{c.count}</span></div>)}
       </div>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:14}}>Top Countries by Tips</p>
-        {(data.topCountriesByTips||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14}}>{flag(c.country)} {c.country}</span><span style={{color:GREEN,fontWeight:700,fontSize:14}}>{fmtMoney(c.total)}</span></div>)}
+        {(data.topCountriesByTips||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14,display:'flex',alignItems:'center',gap:6}}><CountryBadge country={c.country}/>{c.country}</span><span style={{color:GREEN,fontWeight:700,fontSize:14}}>{fmtMoney(c.total)}</span></div>)}
       </div>
     </div>
   </>);
