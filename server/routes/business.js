@@ -1,70 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { sendEmail } = require('../utils/sendEmail');
 
-/* ── Helper: map sql.js result to array of objects ── */
-function rowsToObjs(result) {
-  if (!result || result.length === 0) return [];
-  const { columns, values } = result[0];
-  return values.map((vals) => {
-    const obj = {};
-    columns.forEach((col, i) => { obj[col] = vals[i]; });
-    return obj;
-  });
-}
-function rowToObj(result) {
-  const rows = rowsToObjs(result);
-  return rows.length ? rows[0] : null;
-}
-
 /* ── Helper: find the business owned by the logged-in employee ── */
-function getOwnedBusiness(db, ownerId) {
-  return rowToObj(db.exec('SELECT * FROM businesses WHERE owner_id = ?', [ownerId]));
+async function getOwnedBusiness(pool, ownerId) {
+  const { rows } = await pool.query('SELECT * FROM businesses WHERE owner_id = $1', [ownerId]);
+  return rows.length ? rows[0] : null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/business/create
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/create', authMiddleware, (req, res) => {
+router.post('/create', authMiddleware, async (req, res) => {
   try {
     const { business_name, business_type, logo_url = '', address = '' } = req.body;
     const ownerId = req.employee.id;
-    const db = getDB();
 
     if (!business_name || !business_type) {
       return res.status(400).json({ error: 'business_name and business_type are required.' });
     }
 
-    // One business per owner — but clean up orphaned rows first
-    const existing = getOwnedBusiness(db, ownerId);
+    const existing = await getOwnedBusiness(pool, ownerId);
     if (existing) {
-      // Double-check: is the employee actually a business owner?
-      const employee = rowToObj(db.exec('SELECT account_type FROM employees WHERE id = ?', [ownerId]));
-      console.log(`[business/create] Existing business found for owner ${ownerId}:`, JSON.stringify(existing));
-      console.log(`[business/create] Employee account_type: ${employee?.account_type}`);
+      const { rows: empRows } = await pool.query('SELECT account_type FROM employees WHERE id = $1', [ownerId]);
+      const employee = empRows[0];
       
       if (employee && employee.account_type !== 'business') {
-        // Orphaned business row — the employee was likely deleted and re-created with the same ID
-        // or admin changed their account type. Clean it up.
-        console.log(`[business/create] Cleaning up orphaned business id=${existing.id} (employee is ${employee.account_type}, not business)`);
-        db.run('DELETE FROM businesses WHERE id = ?', [existing.id]);
-        saveDB();
+        console.log(`[business/create] Cleaning up orphaned business id=${existing.id}`);
+        await pool.query('DELETE FROM businesses WHERE id = $1', [existing.id]);
       } else {
         return res.status(409).json({ error: 'You already have a business account.', business: existing });
       }
     }
 
-    db.run(
-      'INSERT INTO businesses (owner_id, business_name, business_type, logo_url, address) VALUES (?, ?, ?, ?, ?)',
+    const { rows: insertRows } = await pool.query(
+      'INSERT INTO businesses (owner_id, business_name, business_type, logo_url, address) VALUES ($1, $2, $3, $4, $5) RETURNING id',
       [ownerId, business_name.trim(), business_type.trim(), logo_url.trim(), address.trim()]
     );
-    saveDB();
-
-    const idResult = db.exec('SELECT last_insert_rowid() as id');
-    const id = idResult[0].values[0][0];
+    const id = insertRows[0].id;
 
     console.log(`[business] Created business "${business_name}" (id=${id}) for owner ${ownerId}`);
     res.status(201).json({ success: true, business_id: id, business_name, business_type });
@@ -77,29 +53,25 @@ router.post('/create', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/me
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/me', authMiddleware, (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
 
     if (!business) {
       return res.status(404).json({ error: 'No business found for this account.' });
     }
 
-    const memberCount = rowToObj(
-      db.exec('SELECT COUNT(*) as count FROM team_members WHERE business_id = ?', [business.id])
-    )?.count ?? 0;
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) as count FROM team_members WHERE business_id = $1', [business.id]);
+    const memberCount = parseInt(countRows[0].count, 10) || 0;
 
-    const totalTipsRes = rowToObj(
-      db.exec(
-        `SELECT COALESCE(SUM(p.amount), 0) as total
-         FROM payments p
-         INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-         WHERE tm.business_id = ?`,
-        [business.id]
-      )
+    const { rows: tipsRows } = await pool.query(
+      `SELECT COALESCE(SUM(p.amount), 0) as total
+       FROM payments p
+       INNER JOIN team_members tm ON tm.employee_id = p.employee_id
+       WHERE tm.business_id = $1`,
+      [business.id]
     );
-    const total_tips = totalTipsRes?.total ?? 0;
+    const total_tips = Number(tipsRows[0]?.total) || 0;
 
     console.log(`[business/me] owner=${req.employee.id}, business_id=${business.id}`);
     res.json({ business, stats: { member_count: memberCount, total_tips } });
@@ -115,13 +87,12 @@ router.get('/me', authMiddleware, (req, res) => {
 router.post('/invite', authMiddleware, async (req, res) => {
   try {
     const { email } = req.body;
-    const db = getDB();
 
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'A valid email is required.' });
     }
 
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
@@ -129,18 +100,16 @@ router.post('/invite', authMiddleware, async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     const normalizedEmail = email.trim().toLowerCase();
 
-    db.run(
-      "INSERT INTO invitations (business_id, email, token, expires_at) VALUES (?, ?, ?, datetime('now', '+48 hours'))",
+    await pool.query(
+      "INSERT INTO invitations (business_id, email, token, expires_at) VALUES ($1, $2, $3, extract(epoch from (now() + interval '48 hours')) * 1000)",
       [business.id, normalizedEmail, token]
     );
-    saveDB();
 
     const inviteUrl = `https://snaptip.me/join/${token}`;
 
-    // Professional branded HTML email
     const htmlBody = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background-color:#080818;font-family:Arial,sans-serif;">
   <div style="max-width:500px;margin:40px auto;background:linear-gradient(135deg,#1a1a3e,#0d0d2b);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
     <div style="background:linear-gradient(135deg,#6c6cff,#a855f7);padding:32px;text-align:center;">
@@ -150,28 +119,11 @@ router.post('/invite', authMiddleware, async (req, res) => {
     <div style="padding:32px;">
       <h2 style="color:white;font-size:22px;margin:0 0 12px;">You're invited!</h2>
       <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.6;margin:0 0 8px;">
-        <strong style="color:white;">${business.business_name}</strong> has invited you to join their team on SnapTip and start receiving digital tips from tourists.
-      </p>
-      <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:0 0 28px;">
-        Click the button below to accept the invitation and create your account.
+        <strong style="color:white;">${business.business_name}</strong> has invited you to join their team on SnapTip.
       </p>
       <div style="text-align:center;margin:28px 0;">
-        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#4facfe,#a855f7);color:white;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:bold;letter-spacing:0.5px;">&#10003; Accept Invitation</a>
+        <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#4facfe,#a855f7);color:white;text-decoration:none;padding:16px 40px;border-radius:50px;font-size:16px;font-weight:bold;">&#10003; Accept Invitation</a>
       </div>
-      <p style="color:rgba(255,255,255,0.4);font-size:12px;text-align:center;margin:16px 0 0;">
-        Or copy this link:<br>
-        <a href="${inviteUrl}" style="color:#6c6cff;word-break:break-all;font-size:11px;">${inviteUrl}</a>
-      </p>
-      <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin:24px 0 0;border:1px solid rgba(255,255,255,0.08);">
-        <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;line-height:1.6;">
-          &#128274; This invitation link expires in <strong style="color:white;">48 hours</strong><br>
-          &#8226; You'll need a SnapTip account to accept this invitation<br>
-          &#8226; If you didn't expect this email, you can safely ignore it
-        </p>
-      </div>
-    </div>
-    <div style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.08);text-align:center;">
-      <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0;">Powered by SnapTip • snaptip.me<br>The smart way to receive tips from tourists worldwide</p>
     </div>
   </div>
 </body>
@@ -183,7 +135,6 @@ router.post('/invite', authMiddleware, async (req, res) => {
       console.warn('[business/invite] Email send failed:', emailErr.message);
     }
 
-    console.log(`[business/invite] Invited ${normalizedEmail} to business_id=${business.id}, token=${token}`);
     res.json({ success: true, message: `Invitation sent to ${normalizedEmail}`, token });
   } catch (err) {
     console.error('[business/invite] FULL ERROR:', err);
@@ -194,41 +145,38 @@ router.post('/invite', authMiddleware, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/invite-link  (get or create a shareable invite link)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/invite-link', authMiddleware, (req, res) => {
+router.get('/invite-link', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
 
-    // Look for existing active link invite
-    let linkInvite = rowToObj(
-      db.exec("SELECT * FROM invitations WHERE business_id = ? AND email = 'link_invite' AND status = 'active'", [business.id])
+    let { rows: linkInviteRows } = await pool.query(
+      "SELECT * FROM invitations WHERE business_id = $1 AND email = 'link_invite' AND status = 'active'",
+      [business.id]
     );
+    let linkInvite = linkInviteRows[0];
 
     // If exists but expired, invalidate it
-    if (linkInvite && linkInvite.expires_at && new Date(linkInvite.expires_at) < new Date()) {
-      db.run("UPDATE invitations SET status = 'expired' WHERE id = ?", [linkInvite.id]);
-      saveDB();
+    // expires_at is stored in postgres as BIGINT or INTEGER (epoch milliseconds)
+    if (linkInvite && linkInvite.expires_at && linkInvite.expires_at < Date.now()) {
+      await pool.query("UPDATE invitations SET status = 'expired' WHERE id = $1", [linkInvite.id]);
       linkInvite = null;
     }
 
-    // Create new if none exists
     if (!linkInvite) {
       const token = crypto.randomBytes(32).toString('hex');
-      db.run(
-        "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES (?, 'link_invite', ?, 'active', datetime('now', '+48 hours'))",
+      await pool.query(
+        "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '48 hours')) * 1000)",
         [business.id, token]
       );
-      saveDB();
-      linkInvite = rowToObj(
-        db.exec("SELECT * FROM invitations WHERE token = ?", [token])
-      );
+      
+      const { rows: newRows } = await pool.query("SELECT * FROM invitations WHERE token = $1", [token]);
+      linkInvite = newRows[0];
     }
 
     const invite_url = `https://snaptip.me/join/${linkInvite.token}`;
-    console.log(`[business/invite-link] business_id=${business.id}, token=${linkInvite.token}`);
     res.json({ invite_url, token: linkInvite.token, expires_at: linkInvite.expires_at });
   } catch (err) {
     console.error('[business/invite-link]', err.message);
@@ -239,29 +187,25 @@ router.get('/invite-link', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/business/refresh-invite-link
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/refresh-invite-link', authMiddleware, (req, res) => {
+router.post('/refresh-invite-link', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
 
-    // Invalidate all existing link invites
-    db.run("UPDATE invitations SET status = 'expired' WHERE business_id = ? AND email = 'link_invite' AND status = 'active'", [business.id]);
+    await pool.query("UPDATE invitations SET status = 'expired' WHERE business_id = $1 AND email = 'link_invite' AND status = 'active'", [business.id]);
 
-    // Create new token
     const token = crypto.randomBytes(32).toString('hex');
-    db.run(
-      "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES (?, 'link_invite', ?, 'active', datetime('now', '+48 hours'))",
+    await pool.query(
+      "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '48 hours')) * 1000)",
       [business.id, token]
     );
-    saveDB();
+
+    const { rows: newRows } = await pool.query("SELECT expires_at FROM invitations WHERE token = $1", [token]);
+    const linkInvite = newRows[0];
 
     const invite_url = `https://snaptip.me/join/${token}`;
-    const linkInvite = rowToObj(db.exec("SELECT expires_at FROM invitations WHERE token = ?", [token]));
-
-    console.log(`[business/refresh-invite-link] New token for business_id=${business.id}`);
     res.json({ invite_url, token, expires_at: linkInvite?.expires_at });
   } catch (err) {
     console.error('[business/refresh-invite-link]', err.message);
@@ -272,16 +216,14 @@ router.post('/refresh-invite-link', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/members
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/members', authMiddleware, (req, res) => {
+router.get('/members', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
-
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
 
-    const members = rowsToObjs(db.exec(
+    const { rows: members } = await pool.query(
       `SELECT
          tm.id as member_id,
          tm.role,
@@ -298,12 +240,11 @@ router.get('/members', authMiddleware, (req, res) => {
          COALESCE((SELECT SUM(amount) FROM payments WHERE employee_id = e.id), 0) as total_tips
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
-       WHERE tm.business_id = ?
+       WHERE tm.business_id = $1
        ORDER BY tm.joined_at DESC`,
       [business.id]
-    ));
+    );
 
-    console.log(`[business/members] business_id=${business.id}, count=${members.length}`);
     res.json({ members });
   } catch (err) {
     console.error('[business/members]', err.message);
@@ -314,36 +255,26 @@ router.get('/members', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/invite-info/:token  (public — for preview before joining)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/invite-info/:token', (req, res) => {
+router.get('/invite-info/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const db = getDB();
 
-    console.log('[business/invite-info] Looking up token:', token);
-
-    const invitation = rowToObj(
-      db.exec('SELECT * FROM invitations WHERE token = ?', [token])
-    );
+    const { rows: invRows } = await pool.query('SELECT * FROM invitations WHERE token = $1', [token]);
+    const invitation = invRows[0];
     if (!invitation) {
-      console.log('[business/invite-info] Token not found');
       return res.status(404).json({ error: 'Invitation not found.' });
     }
-
-    console.log('[business/invite-info] Found invitation:', JSON.stringify({ id: invitation.id, status: invitation.status, email: invitation.email, business_id: invitation.business_id }));
 
     if (invitation.status !== 'pending' && invitation.status !== 'active') {
       return res.status(400).json({ error: 'This invitation has already been used.' });
     }
 
-    if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+    if (invitation.expires_at && invitation.expires_at < Date.now()) {
       return res.status(400).json({ error: 'This invitation has expired.' });
     }
 
-    const business = rowToObj(
-      db.exec('SELECT business_name, business_type, logo_url FROM businesses WHERE id = ?', [invitation.business_id])
-    );
-
-    console.log('[business/invite-info] Business:', JSON.stringify(business));
+    const { rows: bizRows } = await pool.query('SELECT business_name, business_type, logo_url FROM businesses WHERE id = $1', [invitation.business_id]);
+    const business = bizRows[0];
 
     res.json({
       business_name: business?.business_name || 'Unknown Business',
@@ -352,7 +283,7 @@ router.get('/invite-info/:token', (req, res) => {
       email: invitation.email,
     });
   } catch (err) {
-    console.error('[business/invite-info] FULL ERROR:', err);
+    console.error('[business/invite-info]', err.message);
     res.status(500).json({ error: 'Server error.' });
   }
 });
@@ -360,73 +291,55 @@ router.get('/invite-info/:token', (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/business/join/:token
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/join/:token', authMiddleware, (req, res) => {
+router.post('/join/:token', authMiddleware, async (req, res) => {
   try {
     const { token } = req.params;
-    const db = getDB();
     const employeeId = req.employee.id;
 
-    console.log(`[business/join] Employee ${employeeId} attempting to join with token: ${token}`);
-
-    const invitation = rowToObj(
-      db.exec("SELECT * FROM invitations WHERE token = ? AND status IN ('pending', 'active')", [token])
-    );
+    const { rows: invRows } = await pool.query("SELECT * FROM invitations WHERE token = $1 AND status IN ('pending', 'active')", [token]);
+    const invitation = invRows[0];
 
     if (!invitation) {
-      console.log('[business/join] Invitation not found or already used');
       return res.status(404).json({ error: 'Invitation not found or already used.' });
     }
 
-    console.log(`[business/join] Found invitation: business_id=${invitation.business_id}, email=${invitation.email}`);
-
     // Check expiry
-    if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+    if (invitation.expires_at && invitation.expires_at < Date.now()) {
       return res.status(400).json({ error: 'This invitation has expired.' });
     }
 
     // Check not already a member
-    const alreadyMember = rowToObj(
-      db.exec(
-        'SELECT id FROM team_members WHERE business_id = ? AND employee_id = ?',
-        [invitation.business_id, employeeId]
-      )
+    const { rows: memberRows } = await pool.query(
+      'SELECT id FROM team_members WHERE business_id = $1 AND employee_id = $2',
+      [invitation.business_id, employeeId]
     );
-    if (alreadyMember) {
+    if (memberRows.length > 0) {
       return res.status(409).json({ error: 'You are already a member of this business.' });
     }
 
     // Insert into team_members
-    db.run(
-      'INSERT INTO team_members (business_id, employee_id, role) VALUES (?, ?, ?)',
+    await pool.query(
+      'INSERT INTO team_members (business_id, employee_id, role) VALUES ($1, $2, $3)',
       [invitation.business_id, employeeId, 'member']
     );
 
-    // Update employee record — set business_id and account_type
-    db.run(
-      "UPDATE employees SET business_id = ?, account_type = 'member' WHERE id = ?",
+    // Update employee record
+    await pool.query(
+      "UPDATE employees SET business_id = $1, account_type = 'member' WHERE id = $2",
       [invitation.business_id, employeeId]
     );
 
     // Only mark email invites as accepted; link invites stay active (reusable)
     if (invitation.email !== 'link_invite') {
-      db.run(
-        "UPDATE invitations SET status = 'accepted' WHERE token = ?",
-        [token]
-      );
+      await pool.query("UPDATE invitations SET status = 'accepted' WHERE token = $1", [token]);
     }
-    saveDB();
 
-    // Get business name for the response
-    const business = rowToObj(
-      db.exec('SELECT business_name FROM businesses WHERE id = ?', [invitation.business_id])
-    );
+    const { rows: bizRows } = await pool.query('SELECT business_name FROM businesses WHERE id = $1', [invitation.business_id]);
+    const business = bizRows[0];
 
-    // Get updated employee data to return
-    const updatedEmployee = rowToObj(
-      db.exec('SELECT id, username, full_name, email, account_type, business_id, balance, photo_url, photo_base64, profile_image_url FROM employees WHERE id = ?', [employeeId])
-    );
+    const { rows: empRows } = await pool.query('SELECT id, username, full_name, email, account_type, business_id, balance, photo_url, photo_base64, profile_image_url FROM employees WHERE id = $1', [employeeId]);
+    const updatedEmployee = empRows[0];
 
-    console.log(`[business/join] SUCCESS: Employee ${employeeId} joined business_id=${invitation.business_id}, account_type=member`);
     res.json({
       success: true,
       message: 'You have joined the business successfully.',
@@ -434,7 +347,7 @@ router.post('/join/:token', authMiddleware, (req, res) => {
       employee: updatedEmployee,
     });
   } catch (err) {
-    console.error('[business/join]', err.message, err.stack);
+    console.error('[business/join]', err.message);
     res.status(500).json({ error: 'Server error joining business.' });
   }
 });
@@ -442,33 +355,28 @@ router.post('/join/:token', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/business/members/:employeeId
 // ─────────────────────────────────────────────────────────────────────────────
-router.delete('/members/:employeeId', authMiddleware, (req, res) => {
+router.delete('/members/:employeeId', authMiddleware, async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
 
     if (!business) {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
 
-    const member = rowToObj(
-      db.exec(
-        'SELECT id FROM team_members WHERE business_id = ? AND employee_id = ?',
-        [business.id, employeeId]
-      )
+    const { rows: memberRows } = await pool.query(
+      'SELECT id FROM team_members WHERE business_id = $1 AND employee_id = $2',
+      [business.id, employeeId]
     );
-    if (!member) {
+    if (memberRows.length === 0) {
       return res.status(404).json({ error: 'Member not found in your business.' });
     }
 
-    db.run(
-      'DELETE FROM team_members WHERE business_id = ? AND employee_id = ?',
-      [business.id, employeeId]
-    );
-    saveDB();
+    await pool.query('DELETE FROM team_members WHERE business_id = $1 AND employee_id = $2', [business.id, employeeId]);
+    
+    // Also reset business_id
+    await pool.query("UPDATE employees SET business_id = NULL, account_type = 'individual' WHERE id = $1", [employeeId]);
 
-    console.log(`[business/members] Removed employee_id=${employeeId} from business_id=${business.id}`);
     res.json({ success: true, message: 'Member removed successfully.' });
   } catch (err) {
     console.error('[business/members DELETE]', err.message);
@@ -479,50 +387,49 @@ router.delete('/members/:employeeId', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/stats  — KPI cards + top performers leaderboard
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/stats', authMiddleware, (req, res) => {
+router.get('/stats', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) return res.status(403).json({ error: 'You do not own a business.' });
 
-    const totalTipsRow = rowToObj(db.exec(
+    const { rows: totalTipsRow } = await pool.query(
       `SELECT COALESCE(SUM(p.amount), 0) as total
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = ?`,
+       WHERE tm.business_id = $1`,
       [business.id]
-    ));
+    );
 
-    const totalTxRow = rowToObj(db.exec(
+    const { rows: totalTxRow } = await pool.query(
       `SELECT COUNT(*) as count
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = ?`,
+       WHERE tm.business_id = $1`,
       [business.id]
-    ));
+    );
 
-    const activeMembersRow = rowToObj(db.exec(
-      'SELECT COUNT(*) as count FROM team_members WHERE business_id = ?',
+    const { rows: activeMembersRow } = await pool.query(
+      'SELECT COUNT(*) as count FROM team_members WHERE business_id = $1',
       [business.id]
-    ));
+    );
 
-    const topPerformers = rowsToObjs(db.exec(
+    const { rows: topPerformers } = await pool.query(
       `SELECT e.id, e.full_name, e.username, e.photo_base64, e.profile_image_url,
               COALESCE(SUM(p.amount), 0) as total_tips
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
        LEFT JOIN payments p ON p.employee_id = e.id
-       WHERE tm.business_id = ?
+       WHERE tm.business_id = $1
        GROUP BY e.id
        ORDER BY total_tips DESC
        LIMIT 3`,
       [business.id]
-    ));
+    );
 
     res.json({
-      total_tips: Number(totalTipsRow?.total) || 0,
-      total_transactions: Number(totalTxRow?.count) || 0,
-      active_members: Number(activeMembersRow?.count) || 0,
+      total_tips: Number(totalTipsRow[0]?.total) || 0,
+      total_transactions: Number(totalTxRow[0]?.count) || 0,
+      active_members: Number(activeMembersRow[0]?.count) || 0,
       top_performers: topPerformers,
       business_name: business.business_name,
     });
@@ -535,24 +442,23 @@ router.get('/stats', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/transactions  — all payments to all employees in business
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/transactions', authMiddleware, (req, res) => {
+router.get('/transactions', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) return res.status(403).json({ error: 'You do not own a business.' });
 
-    const transactions = rowsToObjs(db.exec(
+    const { rows: transactions } = await pool.query(
       `SELECT p.id, p.amount, p.status, p.created_at,
               e.full_name as employee_name, e.username as employee_username,
               e.photo_url, e.photo_base64, e.profile_image_url
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
        INNER JOIN employees e ON e.id = p.employee_id
-       WHERE tm.business_id = ?
+       WHERE tm.business_id = $1
        ORDER BY p.created_at DESC
        LIMIT 200`,
       [business.id]
-    ));
+    );
 
     res.json({ transactions });
   } catch (err) {
@@ -564,32 +470,30 @@ router.get('/transactions', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH /api/business/update  — update business profile
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/update', authMiddleware, (req, res) => {
+router.patch('/update', authMiddleware, async (req, res) => {
   try {
     const { business_name, business_type, address, thank_you_message, logo_base64, logo_url } = req.body;
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) return res.status(403).json({ error: 'You do not own a business.' });
 
     const updates = [];
     const values = [];
+    let idx = 1;
 
-    if (business_name?.trim()) { updates.push('business_name = ?'); values.push(business_name.trim()); }
-    if (business_type?.trim()) { updates.push('business_type = ?'); values.push(business_type.trim()); }
-    if (address !== undefined)  { updates.push('address = ?'); values.push(address.trim()); }
-    if (thank_you_message !== undefined) { updates.push('thank_you_message = ?'); values.push(thank_you_message.trim()); }
-    if (logo_base64 !== undefined) { updates.push('logo_base64 = ?'); values.push(logo_base64); }
-    if (logo_url !== undefined)    { updates.push('logo_url = ?'); values.push(logo_url); }
+    if (business_name?.trim()) { updates.push(`business_name = $${idx++}`); values.push(business_name.trim()); }
+    if (business_type?.trim()) { updates.push(`business_type = $${idx++}`); values.push(business_type.trim()); }
+    if (address !== undefined)  { updates.push(`address = $${idx++}`); values.push(address.trim()); }
+    if (thank_you_message !== undefined) { updates.push(`thank_you_message = $${idx++}`); values.push(thank_you_message.trim()); }
+    if (logo_base64 !== undefined) { updates.push(`logo_base64 = $${idx++}`); values.push(logo_base64); }
+    if (logo_url !== undefined)    { updates.push(`logo_url = $${idx++}`); values.push(logo_url); }
 
     if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update.' });
 
     values.push(business.id);
-    db.run(`UPDATE businesses SET ${updates.join(', ')} WHERE id = ?`, values);
-    saveDB();
+    await pool.query(`UPDATE businesses SET ${updates.join(', ')} WHERE id = $${idx}`, values);
 
-    const updated = rowToObj(db.exec('SELECT * FROM businesses WHERE id = ?', [business.id]));
-    console.log(`[business/update] Updated business_id=${business.id}`);
-    res.json({ success: true, business: updated });
+    const { rows: bizRows } = await pool.query('SELECT * FROM businesses WHERE id = $1', [business.id]);
+    res.json({ success: true, business: bizRows[0] });
   } catch (err) {
     console.error('[business/update]', err.message);
     res.status(500).json({ error: 'Server error updating business.' });
@@ -599,25 +503,21 @@ router.patch('/update', authMiddleware, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE /api/business/member/:employeeId  (alias for /members/:employeeId)
 // ─────────────────────────────────────────────────────────────────────────────
-router.delete('/member/:employeeId', authMiddleware, (req, res) => {
+router.delete('/member/:employeeId', authMiddleware, async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const db = getDB();
-    const business = getOwnedBusiness(db, req.employee.id);
+    const business = await getOwnedBusiness(pool, req.employee.id);
     if (!business) return res.status(403).json({ error: 'You do not own a business.' });
 
-    const member = rowToObj(db.exec(
-      'SELECT id FROM team_members WHERE business_id = ? AND employee_id = ?',
+    const { rows: memberRows } = await pool.query(
+      'SELECT id FROM team_members WHERE business_id = $1 AND employee_id = $2',
       [business.id, employeeId]
-    ));
-    if (!member) return res.status(404).json({ error: 'Member not found.' });
+    );
+    if (memberRows.length === 0) return res.status(404).json({ error: 'Member not found.' });
 
-    db.run('DELETE FROM team_members WHERE business_id = ? AND employee_id = ?', [business.id, employeeId]);
-    // Reset employee's business linkage
-    db.run("UPDATE employees SET business_id = NULL, account_type = 'individual' WHERE id = ?", [employeeId]);
-    saveDB();
+    await pool.query('DELETE FROM team_members WHERE business_id = $1 AND employee_id = $2', [business.id, employeeId]);
+    await pool.query("UPDATE employees SET business_id = NULL, account_type = 'individual' WHERE id = $1", [employeeId]);
 
-    console.log(`[business/member] Removed employee_id=${employeeId} from business_id=${business.id}`);
     res.json({ success: true });
   } catch (err) {
     console.error('[business/member DELETE]', err.message);
@@ -627,23 +527,21 @@ router.delete('/member/:employeeId', authMiddleware, (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/member-business
-// Returns the business that this logged-in employee belongs to as a member
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/member-business', authMiddleware, (req, res) => {
+router.get('/member-business', authMiddleware, async (req, res) => {
   try {
-    const db = getDB();
     const employeeId = req.employee.id;
 
-    const business = rowToObj(db.exec(
+    const { rows: bizRows } = await pool.query(
       `SELECT b.id, b.business_name, b.business_type, b.logo_url, b.logo_base64, b.address, b.thank_you_message
        FROM businesses b
        JOIN team_members tm ON tm.business_id = b.id
-       WHERE tm.employee_id = ?
+       WHERE tm.employee_id = $1
        LIMIT 1`,
       [employeeId]
-    ));
+    );
 
-    res.json({ business: business || null });
+    res.json({ business: bizRows[0] || null });
   } catch (err) {
     console.error('[business/member-business]', err.message);
     res.status(500).json({ error: 'Server error.' });
@@ -652,47 +550,36 @@ router.get('/member-business', authMiddleware, (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/business/public/:username
-// Public — no auth required
-// Returns business info for the employee with that username
-// Used by tourist tip page to show business branding
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/public/:username', (req, res) => {
+router.get('/public/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const db = getDB();
 
-    // Find employee by username
-    const employee = rowToObj(
-      db.exec('SELECT id, business_id FROM employees WHERE username = ?', [username])
-    );
-
-    if (!employee) {
+    const { rows: empRows } = await pool.query('SELECT id, business_id FROM employees WHERE username = $1', [username]);
+    if (empRows.length === 0) {
       return res.json({ business: null });
     }
+    const employee = empRows[0];
 
-    // Check direct business_id on employee first
     let business = null;
     if (employee.business_id) {
-      business = rowToObj(
-        db.exec(
-          'SELECT id, business_name, logo_url, logo_base64, thank_you_message FROM businesses WHERE id = ?',
-          [employee.business_id]
-        )
+      const { rows: bizRows } = await pool.query(
+        'SELECT id, business_name, logo_url, logo_base64, thank_you_message FROM businesses WHERE id = $1',
+        [employee.business_id]
       );
+      business = bizRows[0];
     }
 
-    // Also check team_members table
     if (!business) {
-      business = rowToObj(
-        db.exec(
-          `SELECT b.id, b.business_name, b.logo_url, b.logo_base64, b.thank_you_message
-           FROM businesses b
-           JOIN team_members tm ON tm.business_id = b.id
-           WHERE tm.employee_id = ?
-           LIMIT 1`,
-          [employee.id]
-        )
+      const { rows: bizRows2 } = await pool.query(
+        `SELECT b.id, b.business_name, b.logo_url, b.logo_base64, b.thank_you_message
+         FROM businesses b
+         JOIN team_members tm ON tm.business_id = b.id
+         WHERE tm.employee_id = $1
+         LIMIT 1`,
+        [employee.id]
       );
+      business = bizRows2[0];
     }
 
     res.json({ business: business || null });
@@ -703,5 +590,3 @@ router.get('/public/:username', (req, res) => {
 });
 
 module.exports = router;
-
-

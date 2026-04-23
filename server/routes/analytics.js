@@ -1,21 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 
-function rowsToObjects(result) {
-  if (!result || result.length === 0) return [];
-  const cols = result[0].columns;
-  return result[0].values.map(vals => {
-    const obj = {};
-    cols.forEach((col, i) => { obj[col] = vals[i]; });
-    return obj;
-  });
-}
-
 // POST /api/analytics/track  (public — used by TipPage)
-router.post('/track', (req, res) => {
+router.post('/track', async (req, res) => {
   try {
     const { event, username, amount } = req.body;
     
@@ -24,19 +14,16 @@ router.post('/track', (req, res) => {
       return res.status(400).json({ error: 'Event and username are required.' });
     }
 
-    const db = getDB();
-    
-    const rows = db.exec('SELECT id FROM employees WHERE username = ?', [username]);
-    if (rows.length === 0 || rows[0].values.length === 0) {
+    const { rows } = await pool.query('SELECT id FROM employees WHERE username = $1', [username]);
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Employee not found for analytics.' });
     }
-    const employeeId = rows[0].values[0][0];
+    const employeeId = rows[0].id;
 
-    db.run(
-      'INSERT INTO analytics (employee_id, event, amount) VALUES (?, ?, ?)',
+    await pool.query(
+      'INSERT INTO analytics (employee_id, event, amount) VALUES ($1, $2, $3)',
       [employeeId, event, amount === undefined ? null : amount]
     );
-    saveDB();
 
     res.json({ success: true });
   } catch (err) {
@@ -46,10 +33,9 @@ router.post('/track', (req, res) => {
 });
 
 // GET /api/analytics/all  (admin only)
-router.get('/all', authMiddleware, adminMiddleware, (req, res) => {
+router.get('/all', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    const result = db.exec(`
+    const { rows } = await pool.query(`
       SELECT 
         a.id,
         a.event,
@@ -62,7 +48,7 @@ router.get('/all', authMiddleware, adminMiddleware, (req, res) => {
       ORDER BY a.created_at DESC
     `);
 
-    res.json({ events: rowsToObjects(result) });
+    res.json({ events: rows });
   } catch (err) {
     console.error('Analytics all error:', err.message);
     res.status(500).json({ error: 'Server error fetching analytics.' });
@@ -70,17 +56,15 @@ router.get('/all', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 // GET /api/analytics/summary  (admin only)
-router.get('/summary', authMiddleware, adminMiddleware, (req, res) => {
+router.get('/summary', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const db = getDB();
+    const { rows: totalRows } = await pool.query('SELECT COUNT(*) as total FROM analytics');
+    const { rows: clicksRows } = await pool.query("SELECT COUNT(*) as total FROM analytics WHERE event = 'click_payment'");
+    const { rows: viewsRows } = await pool.query("SELECT COUNT(*) as total FROM analytics WHERE event = 'view_message'");
 
-    const totalResult = db.exec('SELECT COUNT(*) as total FROM analytics');
-    const clicksResult = db.exec("SELECT COUNT(*) as total FROM analytics WHERE event = 'click_payment'");
-    const viewsResult = db.exec("SELECT COUNT(*) as total FROM analytics WHERE event = 'view_message'");
-
-    const total_events = totalResult.length > 0 ? totalResult[0].values[0][0] : 0;
-    const total_clicks = clicksResult.length > 0 ? clicksResult[0].values[0][0] : 0;
-    const total_views = viewsResult.length > 0 ? viewsResult[0].values[0][0] : 0;
+    const total_events = parseInt(totalRows[0].total, 10);
+    const total_clicks = parseInt(clicksRows[0].total, 10);
+    const total_views = parseInt(viewsRows[0].total, 10);
 
     res.json({ total_events, total_clicks, total_views });
   } catch (err) {
@@ -88,12 +72,11 @@ router.get('/summary', authMiddleware, adminMiddleware, (req, res) => {
     res.status(500).json({ error: 'Server error fetching summary.' });
   }
 });
+
 // DELETE /api/analytics/reset  (admin only)
-router.delete('/reset', authMiddleware, adminMiddleware, (req, res) => {
+router.delete('/reset', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const db = getDB();
-    db.run('DELETE FROM analytics');
-    saveDB();
+    await pool.query('DELETE FROM analytics');
     res.json({ success: true, message: 'Analytics data cleared' });
   } catch (err) {
     console.error('Analytics reset error:', err.message);

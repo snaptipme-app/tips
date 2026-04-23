@@ -1,34 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 
 // POST /api/tips/create — public
-router.post('/create', (req, res) => {
+router.post('/create', async (req, res) => {
   try {
     const { employee_username, amount } = req.body;
-    const db = getDB();
 
     if (!employee_username || !amount || amount <= 0) {
       return res.status(400).json({ error: 'Valid employee username and amount are required.' });
     }
 
-    const rows = db.exec('SELECT id FROM employees WHERE username = ?', [employee_username]);
-    if (rows.length === 0 || rows[0].values.length === 0) {
+    const { rows } = await pool.query('SELECT id FROM employees WHERE username = $1', [employee_username]);
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Employee not found.' });
     }
 
-    const employeeId = rows[0].values[0][0];
+    const employeeId = rows[0].id;
 
     // Insert tip
-    db.run('INSERT INTO tips (employee_id, amount, status) VALUES (?, ?, ?)', [employeeId, amount, 'completed']);
+    const { rows: tipRows } = await pool.query(
+      'INSERT INTO tips (employee_id, amount, status) VALUES ($1, $2, $3) RETURNING id',
+      [employeeId, amount, 'completed']
+    );
+    const tipId = tipRows[0].id;
 
     // Update employee balance
-    db.run('UPDATE employees SET balance = balance + ? WHERE id = ?', [amount, employeeId]);
-
-    saveDB();
-
-    const tipIdResult = db.exec('SELECT last_insert_rowid() as id');
-    const tipId = tipIdResult[0].values[0][0];
+    await pool.query('UPDATE employees SET balance = balance + $1 WHERE id = $2', [amount, employeeId]);
 
     console.log(`[tips] Tip of $${amount} sent to @${employee_username}`);
 

@@ -4,18 +4,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 const { upload, getImageUrl } = require('../middleware/upload');
 const { sendOTPEmail } = require('../utils/sendEmail');
-
-function rowToObj(result) {
-  if (!result || result.length === 0 || result[0].values.length === 0) return null;
-  const cols = result[0].columns;
-  const vals = result[0].values[0];
-  const obj = {};
-  cols.forEach((col, i) => { obj[col] = vals[i]; });
-  return obj;
-}
 
 function generateOTP() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -49,13 +40,11 @@ router.post('/send-otp', async (req, res) => {
     const otpHash = await bcrypt.hash(otp, 10);
     const expiresAt = Date.now() + 5 * 60 * 1000;
 
-    const db = getDB();
-    db.run('DELETE FROM otps WHERE email = ?', [normalizedEmail]);
-    db.run(
-      'INSERT INTO otps (email, otp_hash, attempts, expires_at, verified) VALUES (?, ?, 0, ?, 0)',
+    await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);
+    await pool.query(
+      'INSERT INTO otps (email, otp_hash, attempts, expires_at, verified) VALUES ($1, $2, 0, $3, 0)',
       [normalizedEmail, otpHash, expiresAt]
     );
-    saveDB();
 
     await sendOTPEmail(normalizedEmail, otp);
     console.log(`OTP email sent to ${normalizedEmail}`);
@@ -70,7 +59,6 @@ router.post('/send-otp', async (req, res) => {
 // POST /api/auth/verify-otp
 router.post('/verify-otp', async (req, res) => {
   try {
-    // Mobile sends 'otp', legacy may send 'code' — accept both
     const { email, otp, code } = req.body;
     const otpCode = otp || code;
     console.log('[verify-otp] received:', { email, otpCode: otpCode ? '***' + String(otpCode).slice(-2) : undefined });
@@ -81,41 +69,35 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const db = getDB();
 
-    const otpRecord = rowToObj(
-      db.exec('SELECT * FROM otps WHERE email = ? ORDER BY created_at DESC LIMIT 1', [normalizedEmail])
-    );
+    const { rows } = await pool.query('SELECT * FROM otps WHERE email = $1 ORDER BY created_at DESC LIMIT 1', [normalizedEmail]);
+    const otpRecord = rows[0];
 
     if (!otpRecord) {
       return res.status(400).json({ error: 'No verification code found. Please request a new one.' });
     }
 
     if (Date.now() > otpRecord.expires_at) {
-      db.run('DELETE FROM otps WHERE email = ?', [normalizedEmail]);
-      saveDB();
+      await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);
       return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
     }
 
     if (otpRecord.attempts >= MAX_ATTEMPTS) {
-      db.run('DELETE FROM otps WHERE email = ?', [normalizedEmail]);
-      saveDB();
+      await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
     }
 
     const isValid = await bcrypt.compare(otpCode.trim(), otpRecord.otp_hash);
 
     if (!isValid) {
-      db.run('UPDATE otps SET attempts = attempts + 1 WHERE email = ?', [normalizedEmail]);
-      saveDB();
+      await pool.query('UPDATE otps SET attempts = attempts + 1 WHERE email = $1', [normalizedEmail]);
       const remaining = MAX_ATTEMPTS - otpRecord.attempts - 1;
       return res.status(400).json({
         error: `Invalid code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`,
       });
     }
 
-    db.run('UPDATE otps SET verified = 1 WHERE email = ?', [normalizedEmail]);
-    saveDB();
+    await pool.query('UPDATE otps SET verified = 1 WHERE email = $1', [normalizedEmail]);
 
     res.json({ verified: true, message: 'Email verified successfully.' });
   } catch (err) {
@@ -128,7 +110,6 @@ router.post('/verify-otp', async (req, res) => {
 router.post('/register', upload.single('profileImage'), async (req, res) => {
   try {
     const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency } = req.body;
-    const db = getDB();
 
     if (!firstName || !lastName || !email || !rawUsername || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
@@ -142,10 +123,8 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
     const username = rawUsername.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
 
-    const otpRecord = rowToObj(
-      db.exec('SELECT * FROM otps WHERE email = ? AND verified = 1', [normalizedEmail])
-    );
-    if (!otpRecord) {
+    const { rows: otpRows } = await pool.query('SELECT * FROM otps WHERE email = $1 AND verified = 1', [normalizedEmail]);
+    if (otpRows.length === 0) {
       return res.status(400).json({ error: 'Email not verified. Please complete OTP verification first.' });
     }
 
@@ -160,17 +139,13 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
 
-    const existingUsername = rowToObj(
-      db.exec('SELECT id FROM employees WHERE username = ?', [username])
-    );
-    if (existingUsername) {
+    const { rows: existingUsernames } = await pool.query('SELECT id FROM employees WHERE username = $1', [username]);
+    if (existingUsernames.length > 0) {
       return res.status(400).json({ error: 'Username is already taken.' });
     }
 
-    const existingEmail = rowToObj(
-      db.exec('SELECT id FROM employees WHERE email = ?', [normalizedEmail])
-    );
-    if (existingEmail) {
+    const { rows: existingEmails } = await pool.query('SELECT id FROM employees WHERE email = $1', [normalizedEmail]);
+    if (existingEmails.length > 0) {
       return res.status(400).json({ error: 'An account with this email already exists.' });
     }
 
@@ -183,20 +158,17 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
     }
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-    db.run(
+    const { rows: insertRows } = await pool.query(
       `INSERT INTO employees
          (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
        hashedPassword, profileImageUrl, profileImageUrl, photoBase64, accountType, userCountry, userCurrency]
     );
-    saveDB();
 
-    db.run('DELETE FROM otps WHERE email = ?', [normalizedEmail]);
-    saveDB();
+    await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);
 
-    const result = db.exec('SELECT last_insert_rowid() as id');
-    const id = result[0].values[0][0];
+    const id = insertRows[0].id;
 
     const token = jwt.sign(
       { id, username, email: normalizedEmail, is_admin: 0 },
@@ -229,7 +201,6 @@ router.post('/register', upload.single('profileImage'), async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = getDB();
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email/username and password are required.' });
@@ -237,18 +208,15 @@ router.post('/login', async (req, res) => {
 
     const identifier = email.trim().toLowerCase();
 
-    const rows = db.exec(
-      'SELECT * FROM employees WHERE email = ? OR username = ?',
+    const { rows } = await pool.query(
+      'SELECT * FROM employees WHERE email = $1 OR username = $2',
       [identifier, identifier]
     );
-    if (rows.length === 0 || rows[0].values.length === 0) {
+    if (rows.length === 0) {
       return res.status(400).json({ error: 'Invalid credentials.' });
     }
 
-    const cols = rows[0].columns;
-    const vals = rows[0].values[0];
-    const employee = {};
-    cols.forEach((col, i) => { employee[col] = vals[i]; });
+    const employee = rows[0];
 
     const validPassword = await bcrypt.compare(password, employee.password);
     if (!validPassword) {
@@ -260,7 +228,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Update last_login
-    try { db.run('UPDATE employees SET last_login = ? WHERE id = ?', [new Date().toISOString(), employee.id]); saveDB(); } catch (_) {}
+    try { await pool.query('UPDATE employees SET last_login = $1 WHERE id = $2', [new Date().toISOString(), employee.id]); } catch (_) {}
 
     const token = jwt.sign(
       { id: employee.id, username: employee.username, email: employee.email, is_admin: employee.is_admin || 0 },
@@ -305,20 +273,19 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'New password must be at least 6 characters.' });
     }
 
-    const db = getDB();
-    const rows = db.exec('SELECT password FROM employees WHERE id = ?', [req.employee.id]);
-    if (!rows || rows.length === 0 || rows[0].values.length === 0) {
+    const { rows } = await pool.query('SELECT password FROM employees WHERE id = $1', [req.employee.id]);
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Employee not found.' });
     }
-    const currentHash = rows[0].values[0][0];
+    
+    const currentHash = rows[0].password;
     const valid = await bcrypt.compare(current_password, currentHash);
     if (!valid) {
       return res.status(400).json({ error: 'Current password is incorrect.' });
     }
 
     const newHash = await bcrypt.hash(new_password, 10);
-    db.run('UPDATE employees SET password = ? WHERE id = ?', [newHash, req.employee.id]);
-    saveDB();
+    await pool.query('UPDATE employees SET password = $1 WHERE id = $2', [newHash, req.employee.id]);
 
     res.json({ success: true, message: 'Password changed successfully.' });
   } catch (err) {

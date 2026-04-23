@@ -3,23 +3,8 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 const adminAuth = require('../middleware/adminAuth');
-
-/* ── helpers ── */
-function rowsToObjs(result) {
-  if (!result || result.length === 0) return [];
-  const cols = result[0].columns;
-  return result[0].values.map(vals => {
-    const obj = {};
-    cols.forEach((col, i) => { obj[col] = vals[i]; });
-    return obj;
-  });
-}
-function rowToObj(result) {
-  const rows = rowsToObjs(result);
-  return rows[0] || null;
-}
 
 /* ── Nodemailer transporter (Brevo SMTP) ── */
 function getTransporter() {
@@ -160,52 +145,57 @@ router.post('/login', (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/stats — overview
    ══════════════════════════════════════════════════════ */
-router.get('/stats', adminAuth, (req, res) => {
+router.get('/stats', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    const totalEmployees = rowToObj(db.exec('SELECT COUNT(*) as count FROM employees'))?.count || 0;
-    const totalPayments = rowToObj(db.exec('SELECT COUNT(*) as count FROM payments'))?.count || 0;
-    const totalTips = rowToObj(db.exec('SELECT COALESCE(SUM(amount),0) as sum FROM payments'))?.sum || 0;
-    const pendingWithdrawals = rowToObj(db.exec("SELECT COUNT(*) as count FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)"))?.count || 0;
-    const pendingAmount = rowToObj(db.exec("SELECT COALESCE(SUM(w.amount),0) as sum FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)"))?.sum || 0;
+    const { rows: tEmp } = await pool.query('SELECT COUNT(*) as count FROM employees');
+    const totalEmployees = Number(tEmp[0]?.count) || 0;
+
+    const { rows: tPay } = await pool.query('SELECT COUNT(*) as count FROM payments');
+    const totalPayments = Number(tPay[0]?.count) || 0;
+
+    const { rows: tTips } = await pool.query('SELECT COALESCE(SUM(amount),0) as sum FROM payments');
+    const totalTips = Number(tTips[0]?.sum) || 0;
+
+    const { rows: pWithCount } = await pool.query("SELECT COUNT(*) as count FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)");
+    const pendingWithdrawals = Number(pWithCount[0]?.count) || 0;
+
+    const { rows: pWithSum } = await pool.query("SELECT COALESCE(SUM(w.amount),0) as sum FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)");
+    const pendingAmount = Number(pWithSum[0]?.sum) || 0;
+    
     const commission = totalTips * 0.10;
 
-    // Recent payments
-    const recentPayments = rowsToObjs(db.exec(`
+    const { rows: recentPayments } = await pool.query(`
       SELECT p.id, p.amount, p.payment_method, p.created_at,
         e.full_name, e.username, e.currency
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       ORDER BY p.created_at DESC LIMIT 10
-    `));
+    `);
 
-    // Recent withdrawals (exclude suspended users)
-    const recentWithdrawals = rowsToObjs(db.exec(`
+    const { rows: recentWithdrawals } = await pool.query(`
       SELECT w.id, w.amount, w.status, w.method, w.created_at,
         e.full_name, e.username, e.currency
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC LIMIT 5
-    `));
+    `);
 
-    // Growth: last 7 days registrations
-    const growth = rowsToObjs(db.exec(`
-      SELECT DATE(created_at) as day, COUNT(*) as count
+    const { rows: growth } = await pool.query(`
+      SELECT created_at::date as day, COUNT(*) as count
       FROM employees
-      WHERE created_at >= DATE('now', '-7 days')
-      GROUP BY DATE(created_at)
+      WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY created_at::date
       ORDER BY day
-    `));
+    `);
 
-    // Growth: last 7 days tips
-    const tipsGrowth = rowsToObjs(db.exec(`
-      SELECT DATE(created_at) as day, COUNT(*) as count
+    const { rows: tipsGrowth } = await pool.query(`
+      SELECT created_at::date as day, COUNT(*) as count
       FROM payments
-      WHERE created_at >= DATE('now', '-7 days')
-      GROUP BY DATE(created_at)
+      WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY created_at::date
       ORDER BY day
-    `));
+    `);
 
     res.json({
       totalEmployees, totalPayments, totalTips, pendingWithdrawals,
@@ -221,16 +211,15 @@ router.get('/stats', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/users
    ══════════════════════════════════════════════════════ */
-router.get('/users', adminAuth, (req, res) => {
+router.get('/users', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    const users = rowsToObjs(db.exec(`
+    const { rows: users } = await pool.query(`
       SELECT id, username, full_name, first_name, last_name, email,
         account_type, country, currency, balance, created_at,
         is_suspended, photo_base64, profile_image_url, job_title, last_login
       FROM employees
       ORDER BY created_at DESC
-    `));
+    `);
     res.json({ users });
   } catch (err) {
     console.error('[admin/users]', err.message);
@@ -241,12 +230,10 @@ router.get('/users', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    PATCH /api/admin/users/:id/suspend
    ══════════════════════════════════════════════════════ */
-router.patch('/users/:id/suspend', adminAuth, (req, res) => {
+router.patch('/users/:id/suspend', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
     console.log('[admin] Suspending user:', req.params.id);
-    db.run('UPDATE employees SET is_suspended = 1 WHERE id = ?', [req.params.id]);
-    saveDB();
+    await pool.query('UPDATE employees SET is_suspended = 1 WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'User suspended.' });
   } catch (err) {
     console.error('[admin/users/suspend]', err.message);
@@ -257,11 +244,9 @@ router.patch('/users/:id/suspend', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    PATCH /api/admin/users/:id/reactivate
    ══════════════════════════════════════════════════════ */
-router.patch('/users/:id/reactivate', adminAuth, (req, res) => {
+router.patch('/users/:id/reactivate', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    db.run('UPDATE employees SET is_suspended = 0 WHERE id = ?', [req.params.id]);
-    saveDB();
+    await pool.query('UPDATE employees SET is_suspended = 0 WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'User reactivated.' });
   } catch (err) {
     console.error('[admin/users/reactivate]', err.message);
@@ -272,17 +257,16 @@ router.patch('/users/:id/reactivate', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    DELETE /api/admin/users/:id
    ══════════════════════════════════════════════════════ */
-router.delete('/users/:id', adminAuth, (req, res) => {
+router.delete('/users/:id', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
     const uid = req.params.id;
     console.log('[admin] Deleting user:', uid);
-    try { db.run('DELETE FROM payments WHERE employee_id = ?', [uid]); } catch (_) {}
-    try { db.run('DELETE FROM withdrawals WHERE employee_id = ?', [uid]); } catch (_) {}
-    try { db.run('DELETE FROM team_members WHERE employee_id = ?', [uid]); } catch (_) {}
-    try { db.run('DELETE FROM invitations WHERE employee_id = ?', [uid]); } catch (_) {}
-    db.run('DELETE FROM employees WHERE id = ?', [uid]);
-    saveDB();
+    await pool.query('DELETE FROM payments WHERE employee_id = $1', [uid]);
+    await pool.query('DELETE FROM withdrawals WHERE employee_id = $1', [uid]);
+    await pool.query('DELETE FROM team_members WHERE employee_id = $1', [uid]);
+    await pool.query('DELETE FROM invitations WHERE business_id IN (SELECT id FROM businesses WHERE owner_id = $1)', [uid]);
+    await pool.query('DELETE FROM businesses WHERE owner_id = $1', [uid]);
+    await pool.query('DELETE FROM employees WHERE id = $1', [uid]);
     res.json({ success: true, message: 'User permanently deleted.' });
   } catch (err) {
     console.error('[admin/users/delete]', err.message);
@@ -295,19 +279,16 @@ router.delete('/users/:id', adminAuth, (req, res) => {
    ══════════════════════════════════════════════════════ */
 router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    const user = rowToObj(db.exec('SELECT * FROM employees WHERE id = ?', [req.params.id]));
+    const { rows: uRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [req.params.id]);
+    const user = uRows[0];
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
-    // Generate 8-char password
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     let tempPw = '';
     for (let i = 0; i < 8; i++) tempPw += chars[Math.floor(Math.random() * chars.length)];
     const hash = await bcrypt.hash(tempPw, 10);
-    db.run('UPDATE employees SET password = ? WHERE id = ?', [hash, req.params.id]);
-    saveDB();
+    await pool.query('UPDATE employees SET password = $1 WHERE id = $2', [hash, req.params.id]);
 
-    // Send email
     await sendEmail(user.email, {
       subject: 'SnapTip — Your password has been reset',
       html: `
@@ -338,10 +319,9 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/withdrawals
    ══════════════════════════════════════════════════════ */
-router.get('/withdrawals', adminAuth, (req, res) => {
+router.get('/withdrawals', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    const withdrawals = rowsToObjs(db.exec(`
+    const { rows: withdrawals } = await pool.query(`
       SELECT
         w.id, w.amount, w.fee, w.net_amount, w.method,
         w.account_details, w.contact_phone, w.status, w.created_at,
@@ -351,7 +331,7 @@ router.get('/withdrawals', adminAuth, (req, res) => {
       INNER JOIN employees e ON e.id = w.employee_id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
-    `));
+    `);
     res.json({ withdrawals });
   } catch (err) {
     console.error('[admin/withdrawals GET]', err.message);
@@ -365,15 +345,15 @@ router.get('/withdrawals', adminAuth, (req, res) => {
 router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDB();
-    const withdrawal = rowToObj(db.exec('SELECT * FROM withdrawals WHERE id = ?', [id]));
+    const { rows: wRows } = await pool.query('SELECT * FROM withdrawals WHERE id = $1', [id]);
+    const withdrawal = wRows[0];
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
     if (withdrawal.status === 'paid') return res.status(400).json({ error: 'Already marked as paid.' });
 
-    db.run("UPDATE withdrawals SET status = 'paid' WHERE id = ?", [id]);
-    saveDB();
+    await pool.query("UPDATE withdrawals SET status = 'paid' WHERE id = $1", [id]);
 
-    const employee = rowToObj(db.exec('SELECT * FROM employees WHERE id = ?', [withdrawal.employee_id]));
+    const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
+    const employee = eRows[0];
     if (employee?.email) {
       sendEmail(employee.email, buildWithdrawalPaidEmail(employee, withdrawal)).catch(console.error);
     }
@@ -391,16 +371,16 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const db = getDB();
-    const withdrawal = rowToObj(db.exec('SELECT * FROM withdrawals WHERE id = ?', [id]));
+    const { rows: wRows } = await pool.query('SELECT * FROM withdrawals WHERE id = $1', [id]);
+    const withdrawal = wRows[0];
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
 
     // Refund balance
-    db.run("UPDATE withdrawals SET status = 'rejected' WHERE id = ?", [id]);
-    db.run('UPDATE employees SET balance = balance + ? WHERE id = ?', [Number(withdrawal.amount), withdrawal.employee_id]);
-    saveDB();
+    await pool.query("UPDATE withdrawals SET status = 'rejected' WHERE id = $1", [id]);
+    await pool.query('UPDATE employees SET balance = balance + $1 WHERE id = $2', [Number(withdrawal.amount), withdrawal.employee_id]);
 
-    const employee = rowToObj(db.exec('SELECT * FROM employees WHERE id = ?', [withdrawal.employee_id]));
+    const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
+    const employee = eRows[0];
     if (employee?.email) {
       sendEmail(employee.email, buildWithdrawalRejectedEmail(employee, withdrawal, reason)).catch(console.error);
     }
@@ -414,26 +394,26 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/businesses
    ══════════════════════════════════════════════════════ */
-router.get('/businesses', adminAuth, (req, res) => {
+router.get('/businesses', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    const businesses = rowsToObjs(db.exec(`
+    const { rows: businesses } = await pool.query(`
       SELECT b.id, b.business_name, b.business_type, b.logo_url, b.address, b.created_at, b.owner_id,
         e.full_name as owner_name, e.email as owner_email, e.country
       FROM businesses b
       LEFT JOIN employees e ON e.id = b.owner_id
-    `));
+    `);
 
     // Enrich with team count and total tips
     for (const biz of businesses) {
-      const teamCount = rowToObj(db.exec('SELECT COUNT(*) as c FROM team_members WHERE business_id = ?', [biz.id]))?.c || 0;
-      const totalTips = rowToObj(db.exec(`
+      const { rows: cRows } = await pool.query('SELECT COUNT(*) as c FROM team_members WHERE business_id = $1', [biz.id]);
+      biz.team_count = Number(cRows[0]?.c) || 0;
+
+      const { rows: sRows } = await pool.query(`
         SELECT COALESCE(SUM(p.amount),0) as s FROM payments p
         INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-        WHERE tm.business_id = ?
-      `, [biz.id]))?.s || 0;
-      biz.team_count = teamCount;
-      biz.total_tips = totalTips;
+        WHERE tm.business_id = $1
+      `, [biz.id]);
+      biz.total_tips = Number(sRows[0]?.s) || 0;
     }
     res.json({ businesses });
   } catch (err) {
@@ -445,12 +425,10 @@ router.get('/businesses', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    DELETE /api/admin/businesses/:id
    ══════════════════════════════════════════════════════ */
-router.delete('/businesses/:id', adminAuth, (req, res) => {
+router.delete('/businesses/:id', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-    db.run('DELETE FROM team_members WHERE business_id = ?', [req.params.id]);
-    db.run('DELETE FROM businesses WHERE id = ?', [req.params.id]);
-    saveDB();
+    await pool.query('DELETE FROM team_members WHERE business_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM businesses WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Business deleted.' });
   } catch (err) {
     console.error('[admin/businesses/delete]', err.message);
@@ -461,35 +439,35 @@ router.delete('/businesses/:id', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/transactions
    ══════════════════════════════════════════════════════ */
-router.get('/transactions', adminAuth, (req, res) => {
+router.get('/transactions', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
     const { range } = req.query; // today, week, month, all
     let dateFilter = '';
-    if (range === 'today') dateFilter = "AND DATE(p.created_at) = DATE('now')";
-    else if (range === 'week') dateFilter = "AND p.created_at >= DATE('now', '-7 days')";
-    else if (range === 'month') dateFilter = "AND p.created_at >= DATE('now', '-30 days')";
+    if (range === 'today') dateFilter = "AND p.created_at::date = CURRENT_DATE";
+    else if (range === 'week') dateFilter = "AND p.created_at >= CURRENT_DATE - INTERVAL '7 days'";
+    else if (range === 'month') dateFilter = "AND p.created_at >= CURRENT_DATE - INTERVAL '30 days'";
 
-    const transactions = rowsToObjs(db.exec(`
+    const { rows: transactions } = await pool.query(`
       SELECT p.id, p.amount, p.payment_method, p.created_at, p.currency as pay_currency,
         e.full_name, e.username, e.currency
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       WHERE 1=1 ${dateFilter}
       ORDER BY p.created_at DESC
-    `));
+    `);
 
-    const summary = rowToObj(db.exec(`
+    const { rows: summaryRows } = await pool.query(`
       SELECT COUNT(*) as count, COALESCE(SUM(amount),0) as total
       FROM payments p
       WHERE 1=1 ${dateFilter}
-    `));
+    `);
+    const summary = summaryRows[0];
 
     res.json({
       transactions,
-      totalVolume: summary?.total || 0,
-      totalCommission: (summary?.total || 0) * 0.10,
-      totalCount: summary?.count || 0,
+      totalVolume: Number(summary?.total) || 0,
+      totalCommission: (Number(summary?.total) || 0) * 0.10,
+      totalCount: Number(summary?.count) || 0,
     });
   } catch (err) {
     console.error('[admin/transactions]', err.message);
@@ -500,12 +478,9 @@ router.get('/transactions', adminAuth, (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/admin/analytics
    ══════════════════════════════════════════════════════ */
-router.get('/analytics', adminAuth, (req, res) => {
+router.get('/analytics', adminAuth, async (req, res) => {
   try {
-    const db = getDB();
-
-    // Top 10 employees by tips
-    const topEmployees = rowsToObjs(db.exec(`
+    const { rows: topEmployees } = await pool.query(`
       SELECT e.id, e.full_name, e.username, e.country, e.currency,
         COALESCE(SUM(p.amount),0) as total_tips, COUNT(p.id) as tip_count
       FROM employees e
@@ -513,20 +488,18 @@ router.get('/analytics', adminAuth, (req, res) => {
       GROUP BY e.id
       ORDER BY total_tips DESC
       LIMIT 10
-    `));
+    `);
 
-    // Top 5 countries by user count
-    const topCountriesByUsers = rowsToObjs(db.exec(`
+    const { rows: topCountriesByUsers } = await pool.query(`
       SELECT country, COUNT(*) as count
       FROM employees
       WHERE country IS NOT NULL AND country != ''
       GROUP BY country
       ORDER BY count DESC
       LIMIT 5
-    `));
+    `);
 
-    // Top 5 countries by tip volume
-    const topCountriesByTips = rowsToObjs(db.exec(`
+    const { rows: topCountriesByTips } = await pool.query(`
       SELECT e.country, COALESCE(SUM(p.amount),0) as total
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
@@ -534,25 +507,23 @@ router.get('/analytics', adminAuth, (req, res) => {
       GROUP BY e.country
       ORDER BY total DESC
       LIMIT 5
-    `));
+    `);
 
-    // Average tip amount
-    const avgTip = rowToObj(db.exec('SELECT COALESCE(AVG(amount),0) as avg FROM payments'))?.avg || 0;
+    const { rows: avgTipRow } = await pool.query('SELECT COALESCE(AVG(amount),0) as avg FROM payments');
+    const avgTip = Number(avgTipRow[0]?.avg) || 0;
 
-    // Payment method breakdown
-    const methodBreakdown = rowsToObjs(db.exec(`
+    const { rows: methodBreakdown } = await pool.query(`
       SELECT payment_method, COUNT(*) as count, COALESCE(SUM(amount),0) as total
       FROM payments
       GROUP BY payment_method
-    `));
+    `);
 
-    // Peak hours
-    const peakHours = rowsToObjs(db.exec(`
-      SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count
+    const { rows: peakHours } = await pool.query(`
+      SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count
       FROM payments
       GROUP BY hour
       ORDER BY hour
-    `));
+    `);
 
     res.json({
       topEmployees, topCountriesByUsers, topCountriesByTips,

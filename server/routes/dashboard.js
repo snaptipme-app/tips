@@ -1,54 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { getDB } = require('../db');
+const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 
-function rowToObj(result) {
-  if (!result || result.length === 0 || result[0].values.length === 0) return null;
-  const cols = result[0].columns;
-  const vals = result[0].values[0];
-  const obj = {};
-  cols.forEach((col, i) => { obj[col] = vals[i]; });
-  return obj;
-}
-
-function rowsToArray(result) {
-  if (!result || result.length === 0) return [];
-  const cols = result[0].columns;
-  return result[0].values.map(vals => {
-    const obj = {};
-    cols.forEach((col, i) => { obj[col] = vals[i]; });
-    return obj;
-  });
-}
-
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const employeeId = req.employee.id;
-    const db = getDB();
 
-    const employee = rowToObj(
-      db.exec(
-        'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, email, balance, account_type, job_title, business_id, country, currency, created_at FROM employees WHERE id = ?',
-        [employeeId]
-      )
+    const { rows: empRows } = await pool.query(
+      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, email, balance, account_type, job_title, business_id, country, currency, created_at FROM employees WHERE id = $1',
+      [employeeId]
     );
 
+    const employee = empRows[0];
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found.' });
     }
 
-    const tipStats = rowToObj(
-      db.exec('SELECT COALESCE(SUM(amount), 0) as total_tips, COUNT(*) as tip_count FROM tips WHERE employee_id = ?', [employeeId])
-    ) || { total_tips: 0, tip_count: 0 };
+    const { rows: tipStatsRows } = await pool.query('SELECT COALESCE(SUM(amount), 0) as total_tips, COUNT(*) as tip_count FROM tips WHERE employee_id = $1', [employeeId]);
+    const tipStats = tipStatsRows[0] || { total_tips: 0, tip_count: 0 };
 
-    const recentTips = rowsToArray(
-      db.exec('SELECT id, amount, status, created_at FROM tips WHERE employee_id = ? ORDER BY created_at DESC LIMIT 20', [employeeId])
-    );
-
-    const recentWithdrawals = rowsToArray(
-      db.exec('SELECT id, amount, method, account_details, status, created_at FROM withdrawals WHERE employee_id = ? ORDER BY created_at DESC LIMIT 10', [employeeId])
-    );
+    const { rows: recentTips } = await pool.query('SELECT id, amount, status, created_at FROM tips WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20', [employeeId]);
+    const { rows: recentWithdrawals } = await pool.query('SELECT id, amount, method, account_details, status, created_at FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 10', [employeeId]);
 
     const emp = {
       ...employee,

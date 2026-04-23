@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
-const { getDB } = require('../db');
+const { pool } = require('../db');
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,12 +15,10 @@ function authMiddleware(req, res, next) {
     req.employee = decoded;
 
     // ── Real-time suspension check ──
-    // Even with a valid JWT, check if the account has been suspended since login
     try {
-      const db = getDB();
-      const result = db.exec('SELECT is_suspended FROM employees WHERE id = ?', [decoded.id]);
-      if (result.length > 0 && result[0].values.length > 0) {
-        const isSuspended = result[0].values[0][0];
+      const { rows } = await pool.query('SELECT is_suspended FROM employees WHERE id = $1', [decoded.id]);
+      if (rows.length > 0) {
+        const isSuspended = rows[0].is_suspended;
         if (isSuspended === 1 || isSuspended === true) {
           console.log(`[auth] Blocked suspended user id=${decoded.id} from accessing ${req.method} ${req.originalUrl}`);
           return res.status(403).json({
@@ -30,7 +28,6 @@ function authMiddleware(req, res, next) {
         }
       }
     } catch (dbErr) {
-      // If DB check fails, log but still allow request (fail-open for DB issues only)
       console.error('[auth] Suspension check DB error:', dbErr.message);
     }
 

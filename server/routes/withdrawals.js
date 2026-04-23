@@ -1,21 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { getDB, saveDB } = require('../db');
+const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
-
-function rowsToObjs(result) {
-  if (!result || result.length === 0) return [];
-  const cols = result[0].columns;
-  return result[0].values.map(vals => {
-    const obj = {};
-    cols.forEach((col, i) => { obj[col] = vals[i]; });
-    return obj;
-  });
-}
-function rowToObj(result) {
-  const rows = rowsToObjs(result);
-  return rows[0] || null;
-}
 
 /* ── Method fee & minimum config ─────────────────────────────────────── */
 const METHOD_CONFIG = {
@@ -39,11 +25,10 @@ const METHOD_CONFIG = {
    Creates a pending withdrawal and immediately deducts
    the amount from the employee's balance.
    ══════════════════════════════════════════════════════ */
-router.post('/request', authMiddleware, (req, res) => {
+router.post('/request', authMiddleware, async (req, res) => {
   try {
     const employeeId = req.employee.id;
     const { amount, method, account_details, contact_phone } = req.body;
-    const db = getDB();
 
     /* ── Validation ── */
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
@@ -73,15 +58,16 @@ router.post('/request', authMiddleware, (req, res) => {
     const netAmount = amt - fee;
 
     /* ── Check balance ── */
-    const employee = rowToObj(db.exec('SELECT balance FROM employees WHERE id = ?', [employeeId]));
-    if (!employee) return res.status(404).json({ error: 'Employee not found.' });
-    if (Number(employee.balance) < amt) {
+    const { rows: employeeRows } = await pool.query('SELECT balance FROM employees WHERE id = $1', [employeeId]);
+    if (employeeRows.length === 0) return res.status(404).json({ error: 'Employee not found.' });
+    
+    if (Number(employeeRows[0].balance) < amt) {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
 
     /* ── Deduct balance immediately (prevents double-spending) ── */
-    db.run(
-      'UPDATE employees SET balance = balance - ? WHERE id = ?',
+    await pool.query(
+      'UPDATE employees SET balance = balance - $1 WHERE id = $2',
       [amt, employeeId]
     );
 
@@ -90,32 +76,33 @@ router.post('/request', authMiddleware, (req, res) => {
       ? JSON.stringify(account_details)
       : String(account_details);
 
-    db.run(
+    await pool.query(
       `INSERT INTO withdrawals
          (employee_id, amount, fee, net_amount, method, account_details, contact_phone, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
       [employeeId, amt, fee, netAmount, method, accountJson, String(contact_phone).trim()]
     );
-    saveDB();
 
     /* ── Return updated withdrawal history ── */
-    const withdrawals = rowsToObjs(db.exec(
+    const { rows: historyRows } = await pool.query(
       `SELECT id, amount, fee, net_amount, method, account_details, contact_phone, status, created_at
-       FROM withdrawals WHERE employee_id = ? ORDER BY created_at DESC LIMIT 20`,
+       FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20`,
       [employeeId]
-    )).map(w => ({
+    );
+
+    const withdrawals = historyRows.map(w => ({
       ...w,
       amount: Number(w.amount) || 0,
       fee: Number(w.fee) || 0,
       net_amount: Number(w.net_amount) || 0,
     }));
 
-    const updatedEmployee = rowToObj(db.exec('SELECT balance FROM employees WHERE id = ?', [employeeId]));
+    const { rows: updatedEmpRows } = await pool.query('SELECT balance FROM employees WHERE id = $1', [employeeId]);
 
     res.status(201).json({
       success: true,
       message: 'Withdrawal request submitted. Awaiting admin approval.',
-      new_balance: Number(updatedEmployee?.balance) || 0,
+      new_balance: Number(updatedEmpRows[0]?.balance) || 0,
       withdrawals,
     });
   } catch (err) {
@@ -127,15 +114,17 @@ router.post('/request', authMiddleware, (req, res) => {
 /* ══════════════════════════════════════════════════════
    GET /api/withdrawals/history   — employee's own history
    ══════════════════════════════════════════════════════ */
-router.get('/history', authMiddleware, (req, res) => {
+router.get('/history', authMiddleware, async (req, res) => {
   try {
     const employeeId = req.employee.id;
-    const db = getDB();
-    const withdrawals = rowsToObjs(db.exec(
+    
+    const { rows: historyRows } = await pool.query(
       `SELECT id, amount, fee, net_amount, method, account_details, contact_phone, status, created_at
-       FROM withdrawals WHERE employee_id = ? ORDER BY created_at DESC LIMIT 50`,
+       FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 50`,
       [employeeId]
-    )).map(w => ({
+    );
+
+    const withdrawals = historyRows.map(w => ({
       ...w,
       amount: Number(w.amount) || 0,
       fee: Number(w.fee) || 0,
