@@ -74,7 +74,7 @@ export default function Login() {
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 40 }}>
           <View style={{ marginBottom: 12 }}>
-            <SnapTipLogo size="large" />
+            <SnapTipLogo size={56} />
           </View>
           <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.5 }}>SnapTip</Text>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>Welcome back</Text>
@@ -119,6 +119,9 @@ export default function Login() {
 
         {/* Footer */}
         <View style={{ alignItems: 'center', marginTop: 24 }}>
+          <TouchableOpacity onPress={() => router.push('/forgot-password')} activeOpacity={0.8}>
+            <Text style={{ color: '#6c6cff', fontSize: 14, fontWeight: '600', marginBottom: 16 }}>Forgot your password?</Text>
+          </TouchableOpacity>
           <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
             Don't have an account?{' '}
             <Link href="/register" style={{ color: '#fff', fontWeight: '700' }}>Sign up</Link>

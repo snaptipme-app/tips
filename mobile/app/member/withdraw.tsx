@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
+import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
 
 /* ── Design tokens ── */
 const BG = '#080818';
@@ -326,7 +327,7 @@ export default function MemberWithdraw() {
             <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <SnapTipLogo size="small" />
+            <SnapTipLogo size={36} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Withdraw Earnings</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -385,7 +386,7 @@ export default function MemberWithdraw() {
             <View style={{ marginBottom: 28 }}>
               <View style={{ backgroundColor: 'rgba(108,108,255,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)', marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 16 }}>💡</Text>
+                  <Ionicons name="bulb-outline" size={16} color={ACCENT} />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>International Transfers</Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
@@ -485,7 +486,11 @@ export default function MemberWithdraw() {
       {/* ═══ Withdrawal Form Sheet ═══ */}
       <Modal visible={showForm} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <TouchableOpacity activeOpacity={1} onPress={() => !submitting && setShowForm(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {
+              // Only close if form is empty (no data entered)
+              const hasData = amount !== '' || Object.values(fieldValues).some(v => v !== '');
+              if (!submitting && !hasData) setShowForm(false);
+            }} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
             <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 44, maxHeight: '92%' }}>
               <View style={{ alignItems: 'center', paddingVertical: 12 }}><View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} /></View>
               <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
@@ -573,8 +578,11 @@ export default function MemberWithdraw() {
       <Modal visible={showSuccess} animationType="fade" transparent>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)', padding: 24 }}>
           <View style={{ backgroundColor: CARD, borderRadius: 28, padding: 32, width: '100%', maxWidth: 360, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
-            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: 'rgba(0,200,150,0.3)' }}>
-              <Text style={{ fontSize: 32 }}>✅</Text>
+            <View style={{ width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+              <Svg width={80} height={80} viewBox="0 0 80 80">
+                <Circle cx="40" cy="40" r="38" stroke="#00C896" strokeWidth="3" fill="none" />
+                <SvgPath d="M22 40 L34 52 L58 28" stroke="#00C896" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
             </View>
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' }}>Withdrawal Requested!</Text>
             {lastResult && (

@@ -111,7 +111,7 @@ export default function Home() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <SnapTipLogo size="small" />
+              <SnapTipLogo size={36} />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
               <View style={{ backgroundColor: 'rgba(108,108,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>

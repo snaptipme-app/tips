@@ -161,7 +161,7 @@ export default function Profile() {
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 40 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <SnapTipLogo size="small" />
+          <SnapTipLogo size={36} />
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('account_settings')}</Text>
         </View>
 

@@ -141,7 +141,9 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN profile_photo_base64 TEXT",
       "ALTER TABLE employees ALTER COLUMN otp_expires TYPE BIGINT",
       "ALTER TABLE otps ALTER COLUMN expires_at TYPE BIGINT",
-      "ALTER TABLE invitations ALTER COLUMN expires_at TYPE BIGINT"
+      "ALTER TABLE invitations ALTER COLUMN expires_at TYPE BIGINT",
+      "ALTER TABLE employees ADD COLUMN reset_code TEXT",
+      "ALTER TABLE employees ADD COLUMN reset_code_expires BIGINT"
     ];
 
     for (const ddl of employeeAlterTables) {

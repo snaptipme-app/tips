@@ -542,7 +542,7 @@ export default function Register() {
       >
         {/* ── Logo ── */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <SnapTipLogo size="medium" />
+          <SnapTipLogo size={44} />
         </View>
 
         {/* ── Progress Bar ── */}

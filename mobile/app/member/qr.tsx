@@ -78,7 +78,7 @@ export default function MemberQR() {
           >
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
-          <SnapTipLogo size="small" />
+          <SnapTipLogo size={36} />
           <View>
             <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('my_qr_card')}</Text>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>

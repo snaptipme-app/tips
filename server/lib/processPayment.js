@@ -27,9 +27,9 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
   );
   const payment = paymentRows[0];
 
-  // 2. Update employee balance
+  // 2. Update employee balance and total_tips
   await pool.query(
-    'UPDATE employees SET balance = balance + $1 WHERE id = $2',
+    'UPDATE employees SET balance = balance + $1, total_tips = total_tips + $1 WHERE id = $2',
     [amount, employeeId]
   );
 

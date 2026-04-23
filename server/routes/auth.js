@@ -294,4 +294,105 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'A valid email is required.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const { rows } = await pool.query('SELECT id FROM employees WHERE email = $1', [normalizedEmail]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No account found with this email.' });
+    }
+
+    const code = generateOTP();
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    await pool.query(
+      'UPDATE employees SET reset_code = $1, reset_code_expires = $2 WHERE email = $3',
+      [codeHash, expiresAt, normalizedEmail]
+    );
+
+    const { sendEmail } = require('../utils/sendEmail');
+    const htmlBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#080818;font-family:Arial,sans-serif;">
+  <div style="max-width:480px;margin:40px auto;background:linear-gradient(135deg,#1a1a3e,#0d0d2b);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+    <div style="background:linear-gradient(135deg,#6c6cff,#a855f7);padding:32px;text-align:center;">
+      <h1 style="color:white;margin:0;font-size:28px;">SnapTip</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Password Reset</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="color:rgba(255,255,255,0.7);font-size:15px;line-height:1.6;margin:0 0 24px;">Your password reset code:</p>
+      <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+        <span style="font-size:40px;font-weight:700;letter-spacing:12px;color:#00C896;">${code}</span>
+      </div>
+      <p style="color:rgba(255,255,255,0.4);font-size:13px;">This code expires in <strong style="color:#fff;">15 minutes</strong>.</p>
+      <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:16px;">If you didn't request this, you can safely ignore this email.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    await sendEmail(normalizedEmail, 'SnapTip — Reset Your Password', htmlBody);
+    console.log(`[forgot-password] Reset code sent to ${normalizedEmail}`);
+
+    res.json({ success: true, message: 'Reset code sent to your email.' });
+  } catch (err) {
+    console.error('[forgot-password]', err.message);
+    res.status(500).json({ error: 'Failed to send reset code.' });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: 'Email, code, and new password are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const { rows } = await pool.query('SELECT id, reset_code, reset_code_expires FROM employees WHERE email = $1', [normalizedEmail]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No account found with this email.' });
+    }
+
+    const employee = rows[0];
+    if (!employee.reset_code || !employee.reset_code_expires) {
+      return res.status(400).json({ error: 'No reset code found. Please request a new one.' });
+    }
+    if (Date.now() > employee.reset_code_expires) {
+      await pool.query('UPDATE employees SET reset_code = NULL, reset_code_expires = NULL WHERE id = $1', [employee.id]);
+      return res.status(400).json({ error: 'Reset code has expired. Please request a new one.' });
+    }
+
+    const isValid = await bcrypt.compare(code.trim(), employee.reset_code);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid reset code.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE employees SET password = $1, reset_code = NULL, reset_code_expires = NULL WHERE id = $2',
+      [hashedPassword, employee.id]
+    );
+
+    console.log(`[reset-password] Password reset for ${normalizedEmail}`);
+    res.json({ success: true, message: 'Password reset successfully.' });
+  } catch (err) {
+    console.error('[reset-password]', err.message);
+    res.status(500).json({ error: 'Server error resetting password.' });
+  }
+});
+
 module.exports = router;
+

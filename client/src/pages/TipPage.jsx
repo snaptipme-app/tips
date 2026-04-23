@@ -404,11 +404,10 @@ export default function TipPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#080818', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,255,102,0.2)' }}>
-                <svg width="28" height="28" viewBox="0 0 1024 1024" fill="none">
-                  <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" />
-                </svg>
-              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="48" height="48" style={{borderRadius:'12px'}}>
+                <rect width="1024" height="1024" rx="225" fill="#080818"/>
+                <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round"/>
+              </svg>
             </div>
 
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', marginTop: '14px', marginBottom: '4px' }}>{employee.full_name}</h1>

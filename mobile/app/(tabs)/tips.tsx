@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
@@ -34,14 +35,14 @@ export default function Tips() {
       setTips(data.recent_tips || data.tips || []);
       setTotalTips(data.total_tips ?? 0);
     } catch {
-      showToast('Failed to load tips.', 'error');
+      // Silently handle — show empty state, not error toast
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { fetchTips(); }, [fetchTips]);
+  useFocusEffect(useCallback(() => { fetchTips(); }, [fetchTips]));
 
   const onRefresh = () => { setRefreshing(true); fetchTips(); };
 
