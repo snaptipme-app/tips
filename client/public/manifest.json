@@ -1,0 +1,19 @@
+{
+  "short_name": "SnapTip",
+  "name": "SnapTip | Digital Tipping",
+  "description": "No cash? No problem. Receive tips directly from your phone globally with SnapTip's smart QR system.",
+  "icons": [
+    {
+      "src": "snaptip_icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#080818",
+  "background_color": "#080818",
+  "lang": "en"
+}
