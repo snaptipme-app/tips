@@ -26,27 +26,20 @@ export type PrintableQRCardProps = {
 const GREEN = '#00C896';
 const ACCENT = '#6c6cff';
 const NAVY = '#080818';
-const GRAY = '#999999';
+const GRAY = '#666666';
 const CORNER_COLOR = '#c8c8d8';
 const CORNER_SIZE = 18;
 const CORNER_THICK = 3;
 
-/* ── SnapTip Logo (lightning bolt + wordmark) ────────────────────────── */
+/* ── SnapTip Logo — standalone green bolt, no container ─────────────── */
 const SnapTipLogo = () => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path
-        d="M13 2L4.5 13.5H11L9 22L20 10H13.5L16 2Z"
-        fill={GREEN}
-        stroke={GREEN}
-        strokeWidth={0.5}
-        strokeLinejoin="round"
-      />
-    </Svg>
-    <Text style={{ fontSize: 17, fontWeight: '800', color: NAVY, letterSpacing: -0.3 }}>
-      SnapTip
-    </Text>
-  </View>
+  <Svg width={36} height={36} viewBox="0 0 24 24">
+    <Path
+      d="M13 2L4.5 13.5H11L9 22L20 10H13.5L16 2Z"
+      fill={GREEN}
+      strokeLinejoin="round"
+    />
+  </Svg>
 );
 
 /* ── Lightning bolt watermark (footer) ──────────────────────────────── */

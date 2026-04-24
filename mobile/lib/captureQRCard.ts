@@ -37,12 +37,10 @@ export const downloadAndShareQRCard = async (
     const headerSection = bizLogo
       ? `<img src="${bizLogo}" style="width:56px;height:56px;border-radius:14px;border:1px solid #eee;object-fit:cover;display:block;margin:0 auto;" />`
       : `
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="26" height="26" style="border-radius:8px;flex-shrink:0;">
-            <rect width="1024" height="1024" rx="220" fill="#080818"/>
-            <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" stroke-width="14" stroke-linejoin="round"/>
+        <div style="display:flex;justify-content:center;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="38" height="38">
+            <path d="M13 2L4.5 13.5H11L9 22L20 10H13.5L16 2Z" fill="#00C896" stroke-linejoin="round"/>
           </svg>
-          <span style="font-size:19px;font-weight:800;color:#080818;letter-spacing:-0.4px;">SnapTip</span>
         </div>`;
 
     // ── Avatar section ──
@@ -88,7 +86,7 @@ export const downloadAndShareQRCard = async (
 
           /* ── CTA ── */
           .cta-sub {
-            color: #999999;
+            color: #666666;
             font-size: 13px;
             font-weight: 400;
             margin-bottom: 5px;
