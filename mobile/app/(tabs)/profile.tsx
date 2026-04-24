@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
+import { uploadProfileImage } from '../../lib/uploadImage';
 import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
@@ -113,51 +114,31 @@ export default function Profile() {
   const uploadPhoto = async (uri: string) => {
     setUploading(true);
     try {
-      // 1. Ensure Android file:// prefix
-      const imageUri = Platform.OS === 'android' && !uri.startsWith('file://') ? `file://${uri}` : uri;
-      const filename = imageUri.split('/').pop() || 'photo.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1].toLowerCase()}` : 'image/jpeg';
+      console.log('[profile] Calling uploadProfileImage...');
+      const result = await uploadProfileImage(uri);
 
-      console.log(`[profile] Uploading FormData: uri=${imageUri}, name=${filename}, type=${type}`);
-
-      // 2. Build FormData
-      const formData = new FormData();
-      formData.append('photo', { uri: imageUri, name: filename, type } as any);
-
-      // 3. POST multipart
-      const { data: uploadData } = await api.post('/employee/upload-photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 90000, // 90s for photo upload
-      });
-
-      console.log('[profile] Upload response photo_url:', uploadData?.employee?.photo_url || 'none');
-
-      // 4. Sync AuthContext with the server's real disk-saved photo_url
-      if (uploadData?.employee) {
-        const serverEmployee = uploadData.employee;
-        const currentUserJson = await AsyncStorage.getItem('snaptip_user');
-        const currentUser = currentUserJson ? JSON.parse(currentUserJson) : (user || {});
-        const mergedUser = {
-          ...currentUser,
-          ...serverEmployee,
-          account_type: currentUser.account_type || serverEmployee.account_type,
-          country: currentUser.country || serverEmployee.country,
-          currency: currentUser.currency || serverEmployee.currency,
-        };
-        await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
-        setUser(mergedUser);
+      if (!result.success || !result.employee) {
+        throw new Error(result.error || 'Upload failed — no employee returned');
       }
+
+      // Sync AuthContext with the real server-saved photo_url (absolute https:// URL)
+      const currentUserJson = await AsyncStorage.getItem('snaptip_user');
+      const currentUser = currentUserJson ? JSON.parse(currentUserJson) : (user || {});
+      const mergedUser = {
+        ...currentUser,
+        ...result.employee,
+        account_type: currentUser.account_type || result.employee.account_type,
+        country: currentUser.country || result.employee.country,
+        currency: currentUser.currency || result.employee.currency,
+      };
+      await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
+      setUser(mergedUser);
 
       showToast('Profile photo updated!', 'success');
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Unknown error';
+      const msg = err?.message || 'Unknown error';
       console.error('[profile] Upload failed:', msg);
-      Alert.alert(
-        'Upload Failed',
-        `Could not save your photo.\n\nReason: ${msg}\n\nPlease try again.`,
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Upload Failed', `Could not save your photo.\n\nReason: ${msg}`, [{ text: 'OK' }]);
       setLocalPhotoUri('');
     } finally {
       setUploading(false);

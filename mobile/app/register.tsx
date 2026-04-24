@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
+import { uploadProfileImage } from '../lib/uploadImage';
 import { useAuth } from '../lib/AuthContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
@@ -512,38 +513,28 @@ export default function Register() {
         await api.patch('/employee/profile', { job_title: jobTitle.trim() });
       }
 
-      // 2. Upload photo via FormData if an image was selected
+      // 2. Upload photo via expo-file-system if an image was selected
       const photoUri = imageBase64Ref.current || imageUri;
       if (photoUri) {
-        const imageUriForUpload = Platform.OS === 'android' && !photoUri.startsWith('file://') ? `file://${photoUri}` : photoUri;
-        const filename = imageUriForUpload.split('/').pop() || 'photo.jpg';
-        const extMatch = /\.(\w+)$/.exec(filename);
-        const type = extMatch ? `image/${extMatch[1].toLowerCase()}` : 'image/jpeg';
+        console.log('[register] Calling uploadProfileImage, uri:', photoUri);
+        const uploadResult = await uploadProfileImage(photoUri);
 
-        console.log(`[register] Uploading FormData: uri=${imageUriForUpload}`);
-
-        const formData = new FormData();
-        formData.append('photo', { uri: imageUriForUpload, name: filename, type } as any);
-
-        const { data: uploadData } = await api.post('/employee/upload-photo', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 90000,
-        });
-
-        if (uploadData?.employee) {
-          const serverEmployee = uploadData.employee;
-          const currentUserJson = await AsyncStorage.getItem('snaptip_user');
-          const currentUser = currentUserJson ? JSON.parse(currentUserJson) : {};
-          const mergedUser = {
-            ...currentUser,
-            ...serverEmployee,
-            account_type: currentUser.account_type || serverEmployee.account_type || accountType,
-            country: currentUser.country || serverEmployee.country,
-            currency: currentUser.currency || serverEmployee.currency,
-          };
-          await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
-          setUser(mergedUser);
+        if (!uploadResult.success || !uploadResult.employee) {
+          throw new Error(uploadResult.error || 'Photo upload failed');
         }
+
+        const serverEmployee = uploadResult.employee;
+        const currentUserJson = await AsyncStorage.getItem('snaptip_user');
+        const currentUser = currentUserJson ? JSON.parse(currentUserJson) : {};
+        const mergedUser = {
+          ...currentUser,
+          ...serverEmployee,
+          account_type: currentUser.account_type || serverEmployee.account_type || accountType,
+          country: currentUser.country || serverEmployee.country,
+          currency: currentUser.currency || serverEmployee.currency,
+        };
+        await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
+        setUser(mergedUser);
       }
 
       showToast('Setup complete!', 'success');
@@ -552,11 +543,11 @@ export default function Register() {
         else router.replace('/(tabs)/home');
       }, 500);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Unknown error';
+      const msg = err?.message || 'Unknown error';
       console.error('[register] handleComplete failed:', msg);
       Alert.alert(
         'Setup Failed',
-        `Could not save your profile. ${msg}`,
+        `❌ Could not save your profile.\n\nReason: ${msg}`,
         [{ text: 'OK' }]
       );
     } finally { setLoading(false); }

@@ -1,31 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { upload, getImageUrl, multerErrorHandler } = require('../middleware/upload');
 const { saveBase64Image } = require('../lib/saveBase64Image');
 
-// ── Multer config for multipart photo uploads ──────────────────────────────
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `profile_${Date.now()}_${Math.floor(Math.random() * 10000)}${ext}`);
-  },
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only image files are allowed'));
-  },
-});
 
 // Ensure QR-settings columns exist on startup
 (async () => {
@@ -36,46 +15,40 @@ const upload = multer({
 })();
 
 // ── POST /api/employee/upload-photo ─────────────────────────────────────────
-// Multipart FormData upload — no Base64, no OOM. This is the primary photo upload.
-router.post('/upload-photo', authMiddleware, (req, res) => {
-  upload.single('photo')(req, res, async (multerErr) => {
+// Receives a multipart/form-data photo from expo-file-system FileSystem.uploadAsync.
+// No Base64, no OOM — native Android network layer handles the file:// URI directly.
+router.post('/upload-photo', authMiddleware, upload.single('photo'), multerErrorHandler, async (req, res) => {
+  try {
     const employeeId = req.employee.id;
     console.log(`[upload-photo] employee_id=${employeeId}`);
 
-    if (multerErr) {
-      console.error('[upload-photo] Multer error:', multerErr.message);
-      return res.status(400).json({ error: multerErr.message });
-    }
-
     if (!req.file) {
-      console.error('[upload-photo] No file received in request');
+      console.error('[upload-photo] No file received');
       return res.status(400).json({ error: 'No image file received by server.' });
     }
 
-    const photoUrl = `/uploads/${req.file.filename}`;
-    console.log(`[upload-photo] File saved: ${photoUrl} (${req.file.size} bytes)`);
+    // Build an absolute URL so the mobile app can display the photo immediately
+    const photoUrl = `https://snaptip.me/uploads/${req.file.filename}`;
+    console.log(`[upload-photo] Saved: ${photoUrl} (${req.file.size} bytes)`);
 
-    try {
-      await pool.query(
-        'UPDATE employees SET photo_url = $1, profile_image_url = $1 WHERE id = $2',
-        [photoUrl, employeeId]
-      );
+    await pool.query(
+      'UPDATE employees SET photo_url = $1, profile_image_url = $1 WHERE id = $2',
+      [photoUrl, employeeId]
+    );
 
-      // Return the full updated employee so the mobile app can sync AuthContext
-      const { rows } = await pool.query(
-        `SELECT id, username, full_name, email, photo_url, profile_image_url,
-                account_type, country, currency, balance, total_tips, job_title, is_admin, business_id
-         FROM employees WHERE id = $1`,
-        [employeeId]
-      );
-      const employee = rows[0] || {};
-      console.log(`[upload-photo] Success. photo_url=${employee.photo_url}`);
-      res.json({ success: true, message: 'Photo uploaded.', employee });
-    } catch (dbErr) {
-      console.error('[upload-photo] DB error:', dbErr.message);
-      res.status(500).json({ error: 'Failed to save photo to database.' });
-    }
-  });
+    const { rows } = await pool.query(
+      `SELECT id, username, full_name, email, photo_url, profile_image_url,
+              account_type, country, currency, balance, total_tips, job_title, is_admin, business_id
+       FROM employees WHERE id = $1`,
+      [employeeId]
+    );
+    const employee = rows[0] || {};
+    console.log(`[upload-photo] Success. photo_url=${employee.photo_url}`);
+    res.json({ success: true, message: 'Photo uploaded.', employee });
+  } catch (err) {
+    console.error('[upload-photo] DB error:', err.message);
+    res.status(500).json({ error: 'Failed to save photo to database.' });
+  }
 });
 
 // ── PATCH /api/employee/profile (text fields + legacy base64 fallback) ───────

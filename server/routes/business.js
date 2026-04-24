@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { sendEmail } = require('../utils/sendEmail');
+const { upload, multerErrorHandler } = require('../middleware/upload');
 
 // Ensure required_country column exists
 (async () => {
@@ -663,6 +664,31 @@ router.get('/public/:username', async (req, res) => {
   } catch (err) {
     console.error('[business/public]', err.message);
     res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// ── POST /api/business/upload-logo ───────────────────────────────────────────
+// Receives a multipart logo image via expo-file-system FileSystem.uploadAsync.
+router.post('/upload-logo', authMiddleware, upload.single('logo'), multerErrorHandler, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No logo file received.' });
+
+    const logoUrl = `https://snaptip.me/uploads/${req.file.filename}`;
+    console.log(`[upload-logo] Saved: ${logoUrl} (${req.file.size} bytes) for owner_id=${req.employee.id}`);
+
+    await pool.query(
+      'UPDATE businesses SET logo_url = $1, logo_base64 = NULL WHERE owner_id = $2',
+      [logoUrl, req.employee.id]
+    );
+
+    const { rows } = await pool.query(
+      'SELECT id, business_name, business_type, logo_url, address FROM businesses WHERE owner_id = $1',
+      [req.employee.id]
+    );
+    res.json({ success: true, logo_url: logoUrl, business: rows[0] || {} });
+  } catch (err) {
+    console.error('[upload-logo] Error:', err.message);
+    res.status(500).json({ error: 'Failed to save logo.' });
   }
 });
 
