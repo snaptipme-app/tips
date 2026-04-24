@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import AppLanding from './pages/AppLanding';
 import TipPage from './pages/TipPage';
 import Login from './pages/Login';
 import RegisterMultiStep from './pages/RegisterMultiStep';
@@ -17,14 +18,18 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* ── Root: App Landing Page ── */}
+          <Route path="/" element={<AppLanding />} />
+
+          {/* ── Web auth (kept for backwards compat / deep links) ── */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterMultiStep />} />
 
-          {/* Admin panel — self-managed auth (no ProtectedRoute) */}
+          {/* ── Admin panel (self-managed auth) ── */}
           <Route path="/admin/oh" element={<AdminPage />} />
           <Route path="/admin" element={<Navigate to="/" replace />} />
 
-          {/* Admin stats — must be above /:username catch-all */}
+          {/* ── Admin stats (must be above /:username catch-all) ── */}
           <Route
             path="/admin/stats"
             element={
@@ -36,6 +41,7 @@ function App() {
             }
           />
 
+          {/* ── Employee web dashboard ── */}
           <Route
             path="/dashboard"
             element={
@@ -52,8 +58,8 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
 
+          {/* ── Tourist tip page — catch-all MUST be last ── */}
           <Route path="/:username" element={<TipPage />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
@@ -61,3 +67,4 @@ function App() {
 }
 
 export default App;
+
