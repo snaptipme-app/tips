@@ -24,6 +24,10 @@
       }
     },
     "android": {
+      "navigationBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#00000000"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/snaptip_icon.png",
         "backgroundColor": "#080818"

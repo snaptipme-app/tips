@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 
@@ -11,14 +12,19 @@ const INACTIVE = 'rgba(255,255,255,0.3)';
 export default function TabLayout() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const isBusiness = user?.account_type === 'business';
+
+  // Dynamic height: icons (22) + label (11) + padding above (10) + safe area below + 8px breathing room
+  const tabBarPaddingBottom = insets.bottom + 8;
+  const tabBarHeight = 52 + tabBarPaddingBottom;
 
   const tabBarStyle = {
     backgroundColor: '#0d0d24',
     borderTopWidth: 0,
-    height: 80,
-    paddingBottom: 24,
+    height: tabBarHeight,
+    paddingBottom: tabBarPaddingBottom,
     paddingTop: 10,
     elevation: 0,
   };

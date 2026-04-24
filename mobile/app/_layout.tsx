@@ -1,12 +1,20 @@
 import { useEffect } from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import { AuthProvider } from '../lib/AuthContext';
 import { LanguageProvider, useLanguage } from '../lib/LanguageContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// ── Edge-to-edge: set nav bar transparent BEFORE any component renders ──
+// This runs once at module load time so it takes effect on the very first frame.
+if (Platform.OS === 'android') {
+  NavigationBar.setBackgroundColorAsync('#00000000').catch(() => {});
+  NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
+}
 
 function InnerLayout() {
   const { isRTL } = useLanguage();
@@ -16,9 +24,16 @@ function InnerLayout() {
     I18nManager.forceRTL(isRTL);
   }, [isRTL]);
 
+  // Re-apply on every focus in case the OS resets the nav bar (e.g. after a dialog)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    NavigationBar.setBackgroundColorAsync('#00000000').catch(() => {});
+    NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
+  }, []);
+
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -56,3 +71,4 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+
