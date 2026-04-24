@@ -51,7 +51,17 @@ router.patch('/profile', authMiddleware, async (req, res) => {
     await pool.query(`UPDATE employees SET ${updates.join(', ')} WHERE id = $${idx}`, values);
 
     console.log(`[employee/profile] Updated employee_id=${employeeId}, fields=${updates.length}`);
-    res.json({ success: true, message: 'Profile updated.' });
+
+    // Return the full updated employee so the mobile app can sync AuthContext immediately
+    const { rows: updatedRows } = await pool.query(
+      `SELECT id, username, full_name, email, photo_url, photo_base64, profile_image_url,
+              account_type, country, currency, balance, total_tips, job_title, is_admin, business_id
+       FROM employees WHERE id = $1`,
+      [employeeId]
+    );
+    const updatedEmployee = updatedRows[0] || {};
+    console.log(`[employee/profile] photo_url in response: ${updatedEmployee.photo_url || 'none'}`);
+    res.json({ success: true, message: 'Profile updated.', employee: updatedEmployee });
   } catch (err) {
     console.error('[employee/profile]', err.message);
     res.status(500).json({ error: 'Server error updating profile.' });

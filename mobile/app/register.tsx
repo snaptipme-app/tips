@@ -513,7 +513,31 @@ export default function Register() {
       const latestBase64 = imageBase64Ref.current || imageBase64;
       if (latestBase64) { body.photo_url = latestBase64; body.photo_base64 = latestBase64; }
       if (jobTitle.trim()) body.job_title = jobTitle.trim();
-      if (Object.keys(body).length) await api.patch('/employee/profile', body);
+
+      if (Object.keys(body).length) {
+        const { data: patchData } = await api.patch('/employee/profile', body);
+
+        // ── CRITICAL FIX: Sync AuthContext with the server's actual saved photo_url ──
+        // The backend now returns the full updated employee with the real disk-saved photo_url.
+        // We MUST call setUser() here before navigating so the home screen doesn't show a blank photo.
+        if (patchData?.employee) {
+          const serverEmployee = patchData.employee;
+          const currentUserJson = await AsyncStorage.getItem('snaptip_user');
+          const currentUser = currentUserJson ? JSON.parse(currentUserJson) : {};
+          const mergedUser = {
+            ...currentUser,
+            ...serverEmployee,
+            // Preserve account_type and country from registration step (always authoritative)
+            account_type: currentUser.account_type || serverEmployee.account_type || accountType,
+            country: currentUser.country || serverEmployee.country,
+            currency: currentUser.currency || serverEmployee.currency,
+          };
+          console.log('[register] Syncing user after photo upload, photo_url:', mergedUser.photo_url);
+          await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
+          setUser(mergedUser);
+        }
+      }
+
       showToast('Setup complete!', 'success');
       setTimeout(() => {
         if (accountType === 'business') router.replace('/business/setup');
@@ -522,7 +546,7 @@ export default function Register() {
     } catch {
       showToast('Failed to save. Try again.', 'error');
     } finally { setLoading(false); }
-  }, [imageBase64, jobTitle, accountType, router, showToast]);
+  }, [imageBase64, jobTitle, accountType, router, showToast, setUser]);
 
   const handleSkip = useCallback(() => {
     if (accountType === 'business') router.replace('/business/setup');
