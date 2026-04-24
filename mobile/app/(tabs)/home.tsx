@@ -164,9 +164,9 @@ export default function Home() {
             <TouchableOpacity
               onPress={() => router.push('/member/withdraw')}
               activeOpacity={0.85}
-              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
+              style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
-              <Ionicons name="arrow-up-circle" size={20} color="#00C896" />
+              <Ionicons name="arrow-up-circle" size={20} color="#080818" />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#080818' }}>Cash Out</Text>
             </TouchableOpacity>
             <TouchableOpacity
