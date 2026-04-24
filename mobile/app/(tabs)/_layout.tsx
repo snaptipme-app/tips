@@ -16,9 +16,9 @@ export default function TabLayout() {
 
   const isBusiness = user?.account_type === 'business';
 
-  // Dynamic height: icons (22) + label (11) + padding above (10) + safe area below + 8px breathing room
-  const tabBarPaddingBottom = insets.bottom + 8;
-  const tabBarHeight = 52 + tabBarPaddingBottom;
+  // Safe-area-aware tab bar: pushes icons above the transparent system navigation bar
+  const tabBarPaddingBottom = insets.bottom + 5;
+  const tabBarHeight = 60 + insets.bottom;
 
   const tabBarStyle = {
     backgroundColor: '#0d0d24',

@@ -5,7 +5,9 @@ import { Alert } from 'react-native';
 
 const api = axios.create({
   baseURL: 'https://snaptip.me/api',
-  timeout: 30000,
+  timeout: 60000, // 60s — generous for base64 image uploads on slow mobile connections
+  maxBodyLength: 52428800,   // 50 MB — must match server express.json({ limit: '50mb' })
+  maxContentLength: 52428800,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -38,6 +40,15 @@ api.interceptors.response.use(
     if (status === 401) {
       await AsyncStorage.removeItem('snaptip_token');
       await AsyncStorage.removeItem('snaptip_user');
+    }
+    // Network-layer failure (no internet, timeout, DNS) — show explicit Alert
+    const isNetworkError = !error.response && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+    if (isNetworkError) {
+      const networkMsg = error.code === 'ECONNABORTED'
+        ? 'Request timed out. Check your internet connection and try again.'
+        : 'Network error — could not reach SnapTip servers. Check your connection.';
+      Alert.alert('Connection Error', networkMsg, [{ text: 'OK' }]);
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   }
