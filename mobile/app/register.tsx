@@ -494,45 +494,53 @@ export default function Register() {
       if (status !== 'granted') { showToast('Camera permission required.', 'error'); return; }
     }
     const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.3 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.3 });
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
-      const b64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
       setImageUri(uri);
-      setImageBase64(b64);
-      imageBase64Ref.current = b64; // keep ref in sync immediately
+      imageBase64Ref.current = uri; // reuse ref to store URI instead of base64
+      console.log('[register] Image picked, uri:', uri);
     }
   };
 
   const handleComplete = useCallback(async () => {
     setLoading(true);
     try {
-      const body: any = {};
-      // Read from ref to avoid stale closure - ref is always up-to-date
-      const latestBase64 = imageBase64Ref.current || imageBase64;
-      if (latestBase64) { body.photo_url = latestBase64; body.photo_base64 = latestBase64; }
-      if (jobTitle.trim()) body.job_title = jobTitle.trim();
+      // 1. Upload text fields (job_title) if any
+      if (jobTitle.trim()) {
+        await api.patch('/employee/profile', { job_title: jobTitle.trim() });
+      }
 
-      if (Object.keys(body).length) {
-        const { data: patchData } = await api.patch('/employee/profile', body);
+      // 2. Upload photo via FormData if an image was selected
+      const photoUri = imageBase64Ref.current || imageUri;
+      if (photoUri) {
+        const imageUriForUpload = Platform.OS === 'android' && !photoUri.startsWith('file://') ? `file://${photoUri}` : photoUri;
+        const filename = imageUriForUpload.split('/').pop() || 'photo.jpg';
+        const extMatch = /\.(\w+)$/.exec(filename);
+        const type = extMatch ? `image/${extMatch[1].toLowerCase()}` : 'image/jpeg';
 
-        // ── CRITICAL FIX: Sync AuthContext with the server's actual saved photo_url ──
-        // The backend now returns the full updated employee with the real disk-saved photo_url.
-        // We MUST call setUser() here before navigating so the home screen doesn't show a blank photo.
-        if (patchData?.employee) {
-          const serverEmployee = patchData.employee;
+        console.log(`[register] Uploading FormData: uri=${imageUriForUpload}`);
+
+        const formData = new FormData();
+        formData.append('photo', { uri: imageUriForUpload, name: filename, type } as any);
+
+        const { data: uploadData } = await api.post('/employee/upload-photo', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 90000,
+        });
+
+        if (uploadData?.employee) {
+          const serverEmployee = uploadData.employee;
           const currentUserJson = await AsyncStorage.getItem('snaptip_user');
           const currentUser = currentUserJson ? JSON.parse(currentUserJson) : {};
           const mergedUser = {
             ...currentUser,
             ...serverEmployee,
-            // Preserve account_type and country from registration step (always authoritative)
             account_type: currentUser.account_type || serverEmployee.account_type || accountType,
             country: currentUser.country || serverEmployee.country,
             currency: currentUser.currency || serverEmployee.currency,
           };
-          console.log('[register] Syncing user after photo upload, photo_url:', mergedUser.photo_url);
           await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
           setUser(mergedUser);
         }
@@ -548,11 +556,11 @@ export default function Register() {
       console.error('[register] handleComplete failed:', msg);
       Alert.alert(
         'Setup Failed',
-        `Could not save your profile.\\n\\nReason: ${msg}\\n\\nYou can skip this step and update your photo later.`,
+        `Could not save your profile. ${msg}`,
         [{ text: 'OK' }]
       );
     } finally { setLoading(false); }
-  }, [imageBase64, jobTitle, accountType, router, showToast, setUser]);
+  }, [imageUri, jobTitle, accountType, router, showToast, setUser]);
 
   const handleSkip = useCallback(() => {
     if (accountType === 'business') router.replace('/business/setup');
