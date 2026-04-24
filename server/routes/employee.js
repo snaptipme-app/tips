@@ -18,12 +18,15 @@ router.patch('/profile', authMiddleware, async (req, res) => {
     const { photo_url, photo_base64, full_name, job_title } = req.body;
     const employeeId = req.employee.id;
 
+    console.log(`[DEBUG PATCH /profile] employee_id=${employeeId} | has photo_base64=${!!photo_base64} | base64_len=${photo_base64?.length || 0} | has photo_url=${!!photo_url} | has full_name=${!!full_name} | has job_title=${job_title !== undefined}`);
+
     const updates = [];
     const values = [];
     let idx = 1;
 
     // If base64 photo is provided, save it to disk and use the URL
     if (photo_base64) {
+      console.log('[DEBUG PATCH /profile] Attempting to save base64 image to disk...');
       try {
         const savedUrl = saveBase64Image(photo_base64, 'profile');
         updates.push(`photo_url = $${idx++}`); values.push(savedUrl);

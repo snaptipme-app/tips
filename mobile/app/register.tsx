@@ -543,8 +543,14 @@ export default function Register() {
         if (accountType === 'business') router.replace('/business/setup');
         else router.replace('/(tabs)/home');
       }, 500);
-    } catch {
-      showToast('Failed to save. Try again.', 'error');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Unknown error';
+      console.error('[register] handleComplete failed:', msg);
+      Alert.alert(
+        'Setup Failed',
+        `Could not save your profile.\\n\\nReason: ${msg}\\n\\nYou can skip this step and update your photo later.`,
+        [{ text: 'OK' }]
+      );
     } finally { setLoading(false); }
   }, [imageBase64, jobTitle, accountType, router, showToast, setUser]);
 

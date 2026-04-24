@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -112,14 +113,44 @@ export default function Profile() {
   const uploadPhoto = async (base64Image: string) => {
     setUploading(true);
     try {
-      await api.patch('/employee/profile', { photo_base64: base64Image, photo_url: base64Image });
-      if (user) {
-        const updated = { ...user, photo_base64: base64Image, profile_image_url: base64Image };
-        setUser(updated);
+      console.log('[profile] Uploading photo via base64 PATCH...');
+      const { data: patchData } = await api.patch('/employee/profile', {
+        photo_base64: base64Image,
+        photo_url: base64Image,
+      });
+      console.log('[profile] PATCH response photo_url:', patchData?.employee?.photo_url || 'none');
+
+      // ── CRITICAL: Use server's real disk-saved photo_url, not the raw base64 blob ──
+      // Storing raw base64 in AuthContext causes memory bloat and inconsistency with web tourist page.
+      if (patchData?.employee) {
+        const serverEmployee = patchData.employee;
+        const currentUserJson = await AsyncStorage.getItem('snaptip_user');
+        const currentUser = currentUserJson ? JSON.parse(currentUserJson) : (user || {});
+        const mergedUser = {
+          ...currentUser,
+          ...serverEmployee,
+          // Always preserve account_type / country / currency from stored session
+          account_type: currentUser.account_type || serverEmployee.account_type,
+          country: currentUser.country || serverEmployee.country,
+          currency: currentUser.currency || serverEmployee.currency,
+        };
+        await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
+        setUser(mergedUser);
+      } else if (user) {
+        // Fallback if server didn't return employee — at least keep localPhotoUri in memory
+        setUser({ ...user, photo_base64: base64Image });
       }
+
       showToast('Profile photo updated!', 'success');
-    } catch {
-      showToast('Failed to upload. Try again.', 'error');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Unknown error';
+      console.error('[profile] Upload failed:', msg);
+      // Always show a real Alert on APK so the failure is never silent
+      Alert.alert(
+        'Upload Failed',
+        `Could not save your photo.\n\nReason: ${msg}\n\nPlease try again.`,
+        [{ text: 'OK' }]
+      );
       setLocalPhotoUri('');
     } finally {
       setUploading(false);
