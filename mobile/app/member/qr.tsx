@@ -76,6 +76,8 @@ export default function MemberQR() {
       business,
       () => showToast('QR Card ready!', 'success'),
       () => showToast('Failed to generate card.', 'error'),
+      customMessage,
+      showPhoto,
     );
     setCapturing(false);
   };

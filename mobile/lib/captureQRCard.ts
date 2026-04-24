@@ -18,25 +18,37 @@ export const downloadAndShareQRCard = async (
   employee: EmployeeData,
   business: BusinessData,
   onSuccess?: () => void,
-  onError?: () => void
+  onError?: () => void,
+  customMessage?: string,
+  showPhoto = true,
 ): Promise<void> => {
   try {
     const qrValue = `https://snaptip.me/${employee.username}`;
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrValue)}&color=1a1a2e&bgcolor=ffffff`;
 
+    // Use qrserver.com for a clean dark QR matching our NAVY (#080818) color
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrValue)}&color=080818&bgcolor=ffffff&qzone=1`;
+
+    const ctaText = customMessage?.trim() || 'Leave a tip!';
+    const initials = (employee.full_name || '?').charAt(0).toUpperCase();
+    const photoSrc = showPhoto ? (employee.photo_url || '') : '';
     const bizLogo = business?.logo_base64 || business?.logo_url || '';
 
-    const businessSection = bizLogo
-      ? `<img src="${bizLogo}" style="width:60px;height:60px;border-radius:50%;border:2px solid #e8e8e8;object-fit:cover;" />`
-      : business?.business_name
-      ? `<div style="background:#f0f0ff;border-radius:50px;padding:6px 16px;display:inline-block;"><span style="color:#6c6cff;font-weight:700;font-size:13px;">${business.business_name}</span></div>`
-      : `<div style="background:#f5f5ff;border-radius:50px;padding:6px 14px;display:inline-block;"><span style="color:#6c6cff;font-weight:700;font-size:13px;">⚡ SnapTip</span></div>`;
+    // ── Header section: business logo OR SnapTip brand ──
+    const headerSection = bizLogo
+      ? `<img src="${bizLogo}" style="width:56px;height:56px;border-radius:14px;border:1px solid #eee;object-fit:cover;display:block;margin:0 auto;" />`
+      : `
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="26" height="26" style="border-radius:8px;flex-shrink:0;">
+            <rect width="1024" height="1024" rx="220" fill="#080818"/>
+            <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" stroke-width="14" stroke-linejoin="round"/>
+          </svg>
+          <span style="font-size:19px;font-weight:800;color:#080818;letter-spacing:-0.4px;">SnapTip</span>
+        </div>`;
 
-    // For base64 photos, pass directly; for URLs, use img src
-    const photoSrc = employee.photo_url || '';
-    const employeePhoto = photoSrc
-      ? `<img src="${photoSrc}" style="width:48px;height:48px;border-radius:50%;border:2px solid #e8e8e8;object-fit:cover;margin:0 auto;display:block;" />`
-      : `<div style="width:48px;height:48px;border-radius:50%;background:#6c6cff;margin:0 auto;line-height:48px;font-size:20px;font-weight:700;color:white;text-align:center;">${(employee.full_name || '?').charAt(0).toUpperCase()}</div>`;
+    // ── Avatar section ──
+    const avatarSection = photoSrc
+      ? `<img src="${photoSrc}" style="width:52px;height:52px;border-radius:50%;border:2.5px solid #6c6cff;object-fit:cover;display:block;margin:0 auto;" />`
+      : `<div style="width:52px;height:52px;border-radius:50%;background:#6c6cff;border:2.5px solid #a78bfa;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;line-height:52px;text-align:center;">${initials}</div>`;
 
     const html = `
       <!DOCTYPE html>
@@ -45,59 +57,176 @@ export const downloadAndShareQRCard = async (
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
           * { margin: 0; padding: 0; box-sizing: border-box; }
+
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f8;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 40px 20px;
           }
+
+          /* ── Card ── */
           .card {
-            background: white;
-            border-radius: 20px;
-            padding: 28px 24px;
-            width: 300px;
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px 28px 22px;
+            width: 320px;
             text-align: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12);
           }
-          .business-section { margin-bottom: 16px; }
-          .cta-small { color: #666; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-          .cta-big { color: #00C896; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
-          .qr-container {
-            border: 1px solid #e8e8e8;
-            border-radius: 12px;
-            padding: 12px;
+
+          /* ── Header ── */
+          .header {
+            margin-bottom: 18px;
+          }
+
+          /* ── CTA ── */
+          .cta-sub {
+            color: #999999;
+            font-size: 13px;
+            font-weight: 400;
+            margin-bottom: 5px;
+          }
+          .cta-main {
+            color: #00C896;
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 22px;
+          }
+
+          /* ── QR with scanner corners ── */
+          .qr-outer {
+            position: relative;
             display: inline-block;
-            margin-bottom: 16px;
+            padding: 16px;
+            margin-bottom: 0;
           }
-          .qr-container img { display: block; width: 180px; height: 180px; }
-          .employee-section { margin-top: 4px; }
-          .employee-name { color: #1a1a2e; font-size: 15px; font-weight: 700; margin-top: 8px; }
-          .employee-title { color: #888; font-size: 12px; margin-top: 2px; }
-          .divider { border-top: 1px solid #f0f0f0; margin: 16px 0 12px 0; }
-          .footer-secure { color: #bbb; font-size: 11px; }
-          .footer-url { color: #6c6cff; font-size: 11px; margin-top: 2px; }
+
+          /* L-shaped scanner corner brackets */
+          .corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #c8c8d8;
+            border-style: solid;
+          }
+          .corner-tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+          .corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+          .corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+          .corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+
+          .qr-outer img {
+            display: block;
+            width: 192px;
+            height: 192px;
+          }
+
+          /* ── Employee ── */
+          .emp-section {
+            margin-top: 20px;
+            text-align: center;
+          }
+          .emp-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #080818;
+            margin-top: 10px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+          }
+          .emp-title {
+            font-size: 12px;
+            font-weight: 400;
+            color: #999999;
+            margin-top: 4px;
+          }
+
+          /* ── Footer ── */
+          .footer {
+            margin-top: 18px;
+          }
+          .footer-divider {
+            border: none;
+            border-top: 1px solid #e8e8ec;
+            margin-bottom: 10px;
+          }
+          .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            position: relative;
+          }
+          .footer-text-wrap {
+            flex: 1;
+            text-align: center;
+          }
+          .footer-secure {
+            font-size: 10.5px;
+            color: #c0c0cc;
+          }
+          .footer-url {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6c6cff;
+            margin-top: 2px;
+          }
+          .footer-bolt {
+            position: absolute;
+            right: 0;
+            opacity: 0.3;
+          }
         </style>
       </head>
       <body>
         <div class="card">
-          <div class="business-section">${businessSection}</div>
-          <p class="cta-small">Enjoyed the service?</p>
-          <p class="cta-big">Leave a tip!</p>
-          <div class="qr-container">
+
+          <!-- Header -->
+          <div class="header">
+            ${headerSection}
+          </div>
+
+          <!-- CTA -->
+          <p class="cta-sub">Enjoyed the service?</p>
+          <p class="cta-main">${ctaText}</p>
+
+          <!-- QR with scanner corner brackets -->
+          <div class="qr-outer">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
             <img src="${qrImageUrl}" alt="QR Code" />
           </div>
-          <div class="employee-section">
-            ${employeePhoto}
-            <p class="employee-name">${employee.full_name}</p>
-            ${employee.job_title ? `<p class="employee-title">${employee.job_title}</p>` : ''}
+
+          <!-- Employee profile -->
+          <div class="emp-section">
+            ${showPhoto ? avatarSection : ''}
+            <p class="emp-name">${(employee.full_name || '').toUpperCase()}</p>
+            ${employee.job_title ? `<p class="emp-title">${employee.job_title}</p>` : ''}
           </div>
-          <div class="divider"></div>
-          <p class="footer-secure">Secure payment via SnapTip</p>
-          <p class="footer-url">snaptip.me/${employee.username}</p>
+
+          <!-- Footer -->
+          <div class="footer">
+            <hr class="footer-divider" />
+            <div class="footer-inner">
+              <div class="footer-text-wrap">
+                <p class="footer-secure">Secure payment via SnapTip</p>
+                <p class="footer-url">snaptip.me/${employee.username}</p>
+              </div>
+              <svg class="footer-bolt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="#c0c0cc">
+                <path d="M13 2L4.5 13.5H11L9 22L20 10H13.5L16 2Z"/>
+              </svg>
+            </div>
+          </div>
+
         </div>
       </body>
       </html>
