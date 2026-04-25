@@ -16,16 +16,25 @@ async function authMiddleware(req, res, next) {
 
     // ── Real-time suspension check ──
     try {
-      const { rows } = await pool.query('SELECT is_suspended FROM employees WHERE id = $1', [decoded.id]);
+      const { rows } = await pool.query(
+        'SELECT is_suspended, custom_message, show_photo_on_card FROM employees WHERE id = $1',
+        [decoded.id]
+      );
       if (rows.length > 0) {
-        const isSuspended = rows[0].is_suspended;
-        if (isSuspended === 1 || isSuspended === true) {
+        const dbUser = rows[0];
+        const user = {
+          ...dbUser,
+          custom_message: dbUser.custom_message || '',
+          show_photo_on_card: dbUser.show_photo_on_card ?? 1,
+        };
+        if (user.is_suspended == 1) {
           console.log(`[auth] Blocked suspended user id=${decoded.id} from accessing ${req.method} ${req.originalUrl}`);
           return res.status(403).json({
             error: 'Your account has been suspended. Please contact support.',
             code: 'ACCOUNT_SUSPENDED'
           });
         }
+        req.employee = { ...decoded, ...user };
       }
     } catch (dbErr) {
       console.error('[auth] Suspension check DB error:', dbErr.message);

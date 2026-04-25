@@ -3,7 +3,6 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../db');
-const { saveBase64Image } = require('../lib/saveBase64Image');
 const { sendOTPEmail } = require('../utils/sendEmail');
 
 function generateOTP() {
@@ -93,7 +92,7 @@ router.post('/verify-otp', async (req, res) => {
 // POST /api/auth/register  — pure JSON, no multer
 router.post('/register', async (req, res) => {
   try {
-    const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency, photoBase64 } = req.body;
+    const { firstName, lastName, email, username: rawUsername, password, account_type, country, currency } = req.body;
 
     if (!firstName || !lastName || !email || !rawUsername || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
@@ -139,31 +138,17 @@ router.post('/register', async (req, res) => {
     console.log('[register] Step 4: hashing password');
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Handle optional photo upload via base64
-    let profileImageUrl = '';
-    let photoBase64Stored = '';
-    if (photoBase64) {
-      try {
-        profileImageUrl = saveBase64Image(photoBase64, 'profile');
-        photoBase64Stored = photoBase64;
-        console.log(`[register] Photo saved: ${profileImageUrl}`);
-      } catch (imgErr) {
-        console.error('[register] Photo save failed:', imgErr.message);
-        // Non-fatal — proceed without photo
-      }
-    }
-
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-    console.log('[register] Step 5: INSERT INTO employees — columns: username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency');
+    console.log('[register] Step 5: INSERT INTO employees — columns: username, full_name, first_name, last_name, email, password, account_type, country, currency, custom_message, show_photo_on_card, reset_code_expires');
     console.log('[register] Values:', { username, fullName, email: normalizedEmail, accountType, userCountry, userCurrency });
 
     const { rows: insertRows } = await pool.query(
       `INSERT INTO employees
-         (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency)
+         (username, full_name, first_name, last_name, email, password, account_type, country, currency, custom_message, show_photo_on_card, reset_code_expires)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
-       hashedPassword, profileImageUrl, profileImageUrl, photoBase64Stored, accountType, userCountry, userCurrency]
+       hashedPassword, accountType, userCountry, userCurrency, '', 1, 0]
     );
 
     console.log('[register] Step 6: INSERT succeeded, new id =', insertRows[0]?.id);
@@ -189,9 +174,9 @@ router.post('/register', async (req, res) => {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: normalizedEmail,
-        profile_image_url: profileImageUrl,
-        photo_url: profileImageUrl,
-        photo_base64: photoBase64Stored,
+        profile_image_url: '',
+        photo_url: '',
+        photo_base64: '',
         is_admin: 0,
         account_type: accountType,
         country: userCountry,
@@ -199,6 +184,8 @@ router.post('/register', async (req, res) => {
         balance: 0,
         total_tips: 0,
         job_title: '',
+        custom_message: '',
+        show_photo_on_card: 1,
       },
     });
   } catch (err) {
@@ -211,7 +198,7 @@ router.post('/register', async (req, res) => {
     console.error('  column   :', err.column);
     console.error('  constraint:', err.constraint);
     console.error('  stack    :', err.stack);
-    res.status(500).json({ error: 'Server error during registration.', detail: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

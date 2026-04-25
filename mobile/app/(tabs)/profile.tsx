@@ -5,13 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
-import { uploadProfileImage } from '../../lib/uploadImage';
 import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
+
+const API_URL = 'https://snaptip.me';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -58,6 +60,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [localPhotoUri, setLocalPhotoUri] = useState('');
+  const [displayPhoto, setDisplayPhoto] = useState<string | null>(user?.photo_url || null);
 
 
 
@@ -74,9 +77,11 @@ export default function Profile() {
 
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 
-  const photoSrc = localPhotoUri
-    ? { uri: localPhotoUri }
-    : (user?.photo_url ? { uri: user.photo_url } : getImageSource(user?.photo_base64 || user?.profile_image_url));
+  const photoSrc = displayPhoto
+    ? { uri: displayPhoto }
+    : (localPhotoUri
+      ? { uri: localPhotoUri }
+      : (user?.photo_url ? { uri: user.photo_url + '?t=' + Date.now() } : getImageSource(user?.photo_base64 || user?.profile_image_url)));
 
   const fetchData = useCallback(async () => {
     try {
@@ -91,53 +96,72 @@ export default function Profile() {
   // ── Photo Picker (Bottom Sheet) ──
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
-    if (source === 'camera') {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        showToast('Camera permission is required.', 'error');
-        return;
+    try {
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please allow camera access in settings.');
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please allow photo access in settings.');
+          return;
+        }
       }
-    }
 
-    const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.3 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.3 });
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
 
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      console.log('[profile] Image picked, uri:', asset.uri);
-      setLocalPhotoUri(asset.uri);
-      await uploadPhoto(asset.uri);
+      if (result.canceled || !result.assets?.length) return;
+
+      const uri = result.assets[0].uri;
+      console.log('[profile] Image picked, uri:', uri);
+      setLocalPhotoUri(uri);
+      await uploadPhoto(uri);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not open image picker');
+      console.error('[profile] pickImage error:', err);
     }
   };
 
   const uploadPhoto = async (uri: string) => {
     setUploading(true);
     try {
-      console.log('[profile] Calling uploadProfileImage...');
-      const result = await uploadProfileImage(uri);
+      console.log('[profile] Uploading photo via FileSystem.uploadAsync...');
+      const token = await AsyncStorage.getItem('snaptip_token');
 
-      if (!result.success || !result.employee) {
-        const errMsg = result.error || 'Upload failed — no employee returned';
-        Alert.alert('Upload Failed', JSON.stringify(errMsg));
+      const uploadResult = await FileSystem.uploadAsync(
+        `${API_URL}/api/employee/upload-photo`,
+        uri,
+        {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: 'photo',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log('[profile] Upload status:', uploadResult.status, '| body:', uploadResult.body.slice(0, 200));
+
+      const data = JSON.parse(uploadResult.body);
+
+      if (data.photo_url) {
+        const freshUrl = data.photo_url + '?t=' + Date.now();
+        updateUser({ ...(data.employee || {}), photo_url: data.photo_url });
+        setDisplayPhoto(freshUrl);
+        await AsyncStorage.setItem('snaptip_user', JSON.stringify({ ...user, photo_url: data.photo_url }));
+        Alert.alert('Success', 'Photo updated!');
+      } else {
         setLocalPhotoUri('');
-        return;
+        Alert.alert('Upload Failed', JSON.stringify(data.error || 'Unknown error'));
       }
-
-      // Sync AuthContext with the real server-saved photo_url (absolute https:// URL)
-      const freshPhotoUrl = result.employee.photo_url
-        ? result.employee.photo_url + '?t=' + Date.now()
-        : undefined;
-      updateUser({
-        ...result.employee,
-        photo_url: freshPhotoUrl,
-      });
-
-      Alert.alert('Success', 'Profile photo uploaded!');
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
       console.error('[profile] Upload failed:', msg);
-      Alert.alert('Upload Failed', `Could not save your photo.\n\nReason: ${msg}`, [{ text: 'OK' }]);
+      Alert.alert('Upload Failed', `Could not save your photo.\n\nReason: ${msg}`);
       setLocalPhotoUri('');
     } finally {
       setUploading(false);
