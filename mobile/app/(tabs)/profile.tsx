@@ -60,7 +60,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [localPhotoUri, setLocalPhotoUri] = useState('');
-  const [displayPhoto, setDisplayPhoto] = useState<string | null>(user?.photo_url || null);
+  const [displayPhoto, setDisplayPhoto] = useState<string | null>(
+    user?.photo_url ? user.photo_url + '?t=' + Date.now() : null
+  );
 
 
 
@@ -81,7 +83,7 @@ export default function Profile() {
     ? { uri: displayPhoto }
     : (localPhotoUri
       ? { uri: localPhotoUri }
-      : (user?.photo_url ? { uri: user.photo_url + '?t=' + Date.now() } : getImageSource(user?.photo_base64 || user?.profile_image_url)));
+      : getImageSource(user?.photo_base64 || user?.profile_image_url));
 
   const fetchData = useCallback(async () => {
     try {
@@ -92,6 +94,22 @@ export default function Profile() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Sync displayPhoto from AsyncStorage on mount (handles async AuthContext load)
+  useEffect(() => {
+    const loadPhoto = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('snaptip_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.photo_url) {
+            setDisplayPhoto(parsed.photo_url + '?t=' + Date.now());
+          }
+        }
+      } catch {}
+    };
+    loadPhoto();
+  }, []);
 
   // ── Photo Picker (Bottom Sheet) ──
   const pickImage = async (source: 'camera' | 'gallery') => {
@@ -149,9 +167,10 @@ export default function Profile() {
 
       if (data.photo_url) {
         const freshUrl = data.photo_url + '?t=' + Date.now();
-        updateUser({ ...(data.employee || {}), photo_url: data.photo_url });
+        // Update local display immediately
         setDisplayPhoto(freshUrl);
-        await AsyncStorage.setItem('snaptip_user', JSON.stringify({ ...user, photo_url: data.photo_url }));
+        // Merge into AuthContext + AsyncStorage (updateUser uses functional prev — no stale closure)
+        updateUser({ photo_url: data.photo_url });
         Alert.alert('Success', 'Photo updated!');
       } else {
         setLocalPhotoUri('');
