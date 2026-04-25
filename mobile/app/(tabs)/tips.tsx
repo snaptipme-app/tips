@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, FlatList, RefreshControl, AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
@@ -28,21 +28,68 @@ export default function Tips() {
   const { toast, showToast } = useToast();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Core fetch function using direct fetch for reliability ──
   const fetchTips = useCallback(async () => {
     try {
-      const { data } = await api.get('/dashboard');
-      setTips(data.recent_tips || data.tips || []);
-      setTotalTips(data.total_tips ?? 0);
-    } catch {
-      // Silently handle — show empty state, not error toast
+      console.log('[tips-polling] Fetching tips...');
+      const token = await AsyncStorage.getItem('snaptip_token');
+      if (!token) {
+        console.log('[tips-polling] No token found, skipping');
+        return;
+      }
+
+      const response = await fetch('https://snaptip.me/api/dashboard', {
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+
+      if (!response.ok) {
+        console.log('[tips-polling] Failed:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      const tipsList = data.recent_tips || data.tips || [];
+      const total = data.total_tips ?? 0;
+
+      console.log('[tips-polling] Got', tipsList.length, 'tips, total:', total);
+
+      setTips(tipsList);
+      setTotalTips(total);
+    } catch (error: any) {
+      console.log('[tips-polling] Error:', error?.message || error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { fetchTips(); }, [fetchTips]));
+  // ── Refresh on focus ──
+  useFocusEffect(
+    useCallback(() => {
+      fetchTips();
+    }, [fetchTips])
+  );
+
+  // ── 15-second polling ──
+  useEffect(() => {
+    pollingRef.current = setInterval(fetchTips, 15000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [fetchTips]);
+
+  // ── Refresh when app comes back to foreground ──
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        console.log('[tips-polling] App became active, refreshing...');
+        fetchTips();
+      }
+    });
+    return () => subscription.remove();
+  }, [fetchTips]);
 
   const onRefresh = () => { setRefreshing(true); fetchTips(); };
 
@@ -51,7 +98,7 @@ export default function Tips() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderTip = ({ item, index }: { item: Tip; index: number }) => (
+  const renderTip = ({ item }: { item: Tip }) => (
     <View style={{
       flexDirection: 'row',
       alignItems: 'center',

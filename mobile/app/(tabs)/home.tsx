@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, AppState } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../lib/AuthContext';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
-import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
 
@@ -23,32 +23,51 @@ interface Tip {
 }
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   const { toast, showToast } = useToast();
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(user?.balance ?? 0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [tipCount, setTipCount] = useState(0);
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const prevBalanceRef = useRef<number | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const cur = user?.currency || 'MAD';
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
-  const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
+  const photoSrc = user?.photo_url
+    ? { uri: user.photo_url }
+    : getImageSource(user?.photo_base64 || user?.profile_image_url);
 
-  // Business owners: render business dashboard inline to stay in tabs
-  if (user?.account_type === 'business') {
-    // Lazy require to avoid circular deps
-    const BusinessDashboard = require('../business/dashboard').default;
-    return <BusinessDashboard />;
-  }
-
-  const fetchData = useCallback(async () => {
+  // ── Core fetch function using direct fetch for reliability ──
+  const fetchDashboard = useCallback(async () => {
     try {
-      const { data } = await api.get('/dashboard');
-      const b = data.employee?.balance ?? data.balance ?? 0;
+      console.log('[polling] Fetching dashboard...');
+      const token = await AsyncStorage.getItem('snaptip_token');
+      if (!token) {
+        console.log('[polling] No token found, skipping');
+        return;
+      }
 
+      const response = await fetch('https://snaptip.me/api/dashboard', {
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+
+      if (!response.ok) {
+        console.log('[polling] Failed:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      const b = data.employee?.balance ?? data.balance ?? 0;
+      const tips = data.total_tips ?? 0;
+      const count = data.tip_count ?? 0;
+      const recent = (data.recent_tips || data.tips || []).slice(0, 4);
+
+      console.log('[polling] Balance:', b, '| Tips:', count);
+
+      // Detect new tip — play sound + toast
       if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
         const diff = b - prevBalanceRef.current;
         playTipSound();
@@ -56,45 +75,59 @@ export default function Home() {
       }
       prevBalanceRef.current = b;
 
+      // Update local state
       setBalance(b);
-      setTotalEarned(data.total_tips ?? 0);
-      setTipCount(data.tip_count ?? 0);
-      setRecentTips((data.recent_tips || data.tips || []).slice(0, 4));
-    } catch {
-      // Silently handle — new users just see empty state, no error toast
+      setTotalEarned(tips);
+      setTipCount(count);
+      setRecentTips(recent);
+
+      // Sync balance to AuthContext (persists to AsyncStorage)
+      updateUser({ balance: b, total_tips: tips });
+    } catch (error: any) {
+      console.log('[polling] Error:', error?.message || error);
     } finally {
       setLoading(false);
     }
-  }, [cur, showToast]);
+  }, [cur, showToast, updateUser]);
 
-  useFocusEffect(useCallback(() => {
-    fetchData();
-  }, [fetchData]));
-
-  // 30-second polling for real-time balance updates
+  // ── Fetch on mount + 15-second polling ──
   useEffect(() => {
     if (user?.account_type === 'business') return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.get('/dashboard');
-        const d = res.data;
-        const b = d.employee?.balance ?? d.balance ?? 0;
-        if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
-          const diff = b - prevBalanceRef.current;
-          playTipSound();
-          showToast(`+${diff.toFixed(2)} ${cur} tip received!`, 'success');
-        }
-        prevBalanceRef.current = b;
-        setBalance(b);
-        setTotalEarned(d.total_tips ?? 0);
-        setTipCount(d.tip_count ?? 0);
-        setRecentTips((d.recent_tips || d.tips || []).slice(0, 4));
-      } catch {}
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [user?.account_type, cur, showToast]);
 
-  if (user?.account_type === 'business') return null;
+    fetchDashboard(); // immediate fetch on mount
+
+    pollingRef.current = setInterval(fetchDashboard, 15000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [fetchDashboard, user?.account_type]);
+
+  // ── Refresh when screen comes into focus ──
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.account_type !== 'business') {
+        fetchDashboard();
+      }
+    }, [fetchDashboard, user?.account_type])
+  );
+
+  // ── Refresh when app comes back to foreground ──
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && user?.account_type !== 'business') {
+        console.log('[polling] App became active, refreshing...');
+        fetchDashboard();
+      }
+    });
+    return () => subscription.remove();
+  }, [fetchDashboard, user?.account_type]);
+
+  // Business owners: render business dashboard
+  if (user?.account_type === 'business') {
+    // Lazy require to avoid circular deps
+    const BusinessDashboard = require('../business/dashboard').default;
+    return <BusinessDashboard />;
+  }
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
