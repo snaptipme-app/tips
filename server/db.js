@@ -158,10 +158,12 @@ async function initDB() {
       try { await pool.query(ddl); } catch (e) { }
     }
 
-    // Payments & Withdrawals migrations
+    // Payments, Withdrawals & Tips migrations
     const paymentAlterTables = [
-      "ALTER TABLE payments ADD COLUMN currency TEXT DEFAULT 'USD'",
-      "ALTER TABLE withdrawals ADD COLUMN admin_notes TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT",
+      "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
     ];
     for (const ddl of paymentAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }

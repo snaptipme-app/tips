@@ -8,6 +8,9 @@ type User = {
   email: string
   username: string
   photo_url?: string
+  photo_base64?: string
+  profile_image_url?: string
+  job_title?: string
   account_type: string
   country: string
   currency: string
@@ -72,7 +75,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const updateUser = useCallback((updates: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...updates } : null)
+    setUser(prev => {
+      if (!prev) return null
+      const updated = { ...prev, ...updates }
+      AsyncStorage.setItem('snaptip_user', JSON.stringify(updated))
+      return updated
+    })
   }, [])
 
   return (

@@ -373,8 +373,13 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'This invitation has expired.' });
     }
 
+    // Verify employee exists
+    const { rows: joiningEmpRows } = await pool.query('SELECT id, country FROM employees WHERE id = $1', [employeeId]);
+    if (joiningEmpRows.length === 0) {
+      return res.status(400).json({ error: 'Employee account not found. Please register first.' });
+    }
+
     // Country validation
-    const { rows: joiningEmpRows } = await pool.query('SELECT country FROM employees WHERE id = $1', [employeeId]);
     const employeeCountry = joiningEmpRows[0]?.country || '';
     const requiredCountry = invitation.required_country || '';
     if (requiredCountry && employeeCountry && requiredCountry !== employeeCountry) {

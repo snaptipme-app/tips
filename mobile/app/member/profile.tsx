@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
+import { uploadProfileImage } from '../../lib/uploadImage';
 import { Toast, useToast } from '../../components/Toast';
 
 const BG = '#080818';
@@ -39,7 +40,7 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 export default function MemberProfile() {
-  const { user, setUser, logout } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { language, changeLanguage, t } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
@@ -67,7 +68,7 @@ export default function MemberProfile() {
   const [savingWithdraw, setSavingWithdraw] = useState(false);
 
   const initials = (user?.full_name || 'M').charAt(0).toUpperCase();
-  const photoSrc = user?.photo_base64 || user?.profile_image_url || '';
+  const photoSrc = user?.photo_url || user?.photo_base64 || user?.profile_image_url || '';
 
   useEffect(() => {
     // Fetch business info
@@ -82,15 +83,18 @@ export default function MemberProfile() {
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true,
+      allowsEditing: true, aspect: [1, 1], quality: 0.3,
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      const b64 = `data:image/jpeg;base64,${asset.base64}`;
       try {
-        await api.patch('/employee/profile', { photo_base64: b64 });
-        if (user) setUser({ ...user, photo_base64: b64 });
-        showToast('Photo updated!', 'success');
+        const uploadResult = await uploadProfileImage(asset.uri);
+        if (uploadResult.success && uploadResult.employee?.photo_url) {
+          updateUser({ photo_url: uploadResult.employee.photo_url + '?t=' + Date.now() });
+          showToast('Photo updated!', 'success');
+        } else {
+          throw new Error(uploadResult.error || 'Upload failed');
+        }
       } catch { showToast('Failed to update photo.', 'error'); }
     }
   };
@@ -99,7 +103,7 @@ export default function MemberProfile() {
     setSaving(true);
     try {
       await api.patch('/employee/profile', { full_name: fullName.trim(), job_title: jobTitle.trim() });
-      if (user) setUser({ ...user, full_name: fullName.trim(), job_title: jobTitle.trim() });
+      updateUser({ full_name: fullName.trim(), job_title: jobTitle.trim() });
       showToast('Profile updated!', 'success');
     } catch { showToast('Failed to save profile.', 'error'); }
     finally { setSaving(false); }

@@ -413,7 +413,7 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
     const { rows: withdrawals } = await pool.query(`
       SELECT
         w.id, w.amount, w.fee, w.net_amount, w.method,
-        w.account_details, w.contact_phone, w.status, w.created_at, w.admin_notes,
+        w.account_details, w.contact_phone, w.status, w.created_at, w.admin_note,
         e.id as employee_id, e.full_name, e.first_name, e.username, e.email,
         e.country, e.currency, e.profile_image_url, e.photo_base64,
         e.created_at as emp_created_at
@@ -488,9 +488,9 @@ router.patch('/withdrawals/:id/note', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
-    // Ensure admin_notes column exists
-    try { await pool.query('ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_notes TEXT'); } catch (_) {}
-    await pool.query('UPDATE withdrawals SET admin_notes = $1 WHERE id = $2', [note || '', id]);
+    // Ensure admin_note column exists
+    try { await pool.query('ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT'); } catch (_) {}
+    await pool.query('UPDATE withdrawals SET admin_note = $1 WHERE id = $2', [note || '', id]);
     res.json({ success: true });
   } catch (err) {
     console.error('[admin/withdrawals/note]', err.message);

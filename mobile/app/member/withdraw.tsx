@@ -171,7 +171,7 @@ interface Withdrawal { id: number; amount: number; fee: number; net_amount: numb
    ══════════════════════════════════════════════════════════════════════ */
 export default function MemberWithdraw() {
   const router = useRouter();
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const { t } = useLanguage();
   const { toast, showToast } = useToast();
 
@@ -302,7 +302,7 @@ export default function MemberWithdraw() {
       });
       const newBalance = data.new_balance ?? (balance - amt);
       setBalance(newBalance);
-      if (user) setUser({ ...user, balance: newBalance });
+      if (user) updateUser({ balance: newBalance });
       if (data.withdrawals) setWithdrawals(data.withdrawals);
       setLastResult({ amount: amt, fee: feeToStore, net, method: activeMethod.label, currency: cur, processingTime: activeMethod.processingTime });
       setShowForm(false);

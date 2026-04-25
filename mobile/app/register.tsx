@@ -284,7 +284,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function Register() {
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { updateUser } = useAuth();
   const { language, changeLanguage } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
@@ -473,13 +473,13 @@ export default function Register() {
       const userData = { ...data.employee, account_type: accountType, country: selectedCountry, currency: countryInfo.currency };
       await AsyncStorage.setItem('snaptip_token', data.token);
       await AsyncStorage.setItem('snaptip_user', JSON.stringify(userData));
-      setUser(userData);
+      updateUser(userData);
       showToast('Account created!', 'success');
       setStep(4);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Registration failed.', 'error');
     } finally { setLoading(false); }
-  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, setUser, showToast]);
+  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, updateUser, showToast]);
 
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 
@@ -524,17 +524,13 @@ export default function Register() {
         }
 
         const serverEmployee = uploadResult.employee;
-        const currentUserJson = await AsyncStorage.getItem('snaptip_user');
-        const currentUser = currentUserJson ? JSON.parse(currentUserJson) : {};
-        const mergedUser = {
-          ...currentUser,
+        const freshPhotoUrl = serverEmployee.photo_url
+          ? serverEmployee.photo_url + '?t=' + Date.now()
+          : undefined;
+        updateUser({
           ...serverEmployee,
-          account_type: currentUser.account_type || serverEmployee.account_type || accountType,
-          country: currentUser.country || serverEmployee.country,
-          currency: currentUser.currency || serverEmployee.currency,
-        };
-        await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
-        setUser(mergedUser);
+          photo_url: freshPhotoUrl,
+        });
       }
 
       showToast('Setup complete!', 'success');
@@ -551,7 +547,7 @@ export default function Register() {
         [{ text: 'OK' }]
       );
     } finally { setLoading(false); }
-  }, [imageUri, jobTitle, accountType, router, showToast, setUser]);
+  }, [imageUri, jobTitle, accountType, router, showToast, updateUser]);
 
   const handleSkip = useCallback(() => {
     if (accountType === 'business') router.replace('/business/setup');

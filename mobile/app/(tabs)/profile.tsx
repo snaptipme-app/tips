@@ -49,7 +49,7 @@ interface Withdrawal {
 }
 
 export default function Profile() {
-  const { user, logout, setUser } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { language, changeLanguage, t, languageLabel, LANG_INFO } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
@@ -76,7 +76,7 @@ export default function Profile() {
 
   const photoSrc = localPhotoUri
     ? { uri: localPhotoUri }
-    : getImageSource(user?.photo_base64 || user?.profile_image_url);
+    : (user?.photo_url ? { uri: user.photo_url } : getImageSource(user?.photo_base64 || user?.profile_image_url));
 
   const fetchData = useCallback(async () => {
     try {
@@ -122,17 +122,13 @@ export default function Profile() {
       }
 
       // Sync AuthContext with the real server-saved photo_url (absolute https:// URL)
-      const currentUserJson = await AsyncStorage.getItem('snaptip_user');
-      const currentUser = currentUserJson ? JSON.parse(currentUserJson) : (user || {});
-      const mergedUser = {
-        ...currentUser,
+      const freshPhotoUrl = result.employee.photo_url
+        ? result.employee.photo_url + '?t=' + Date.now()
+        : undefined;
+      updateUser({
         ...result.employee,
-        account_type: currentUser.account_type || result.employee.account_type,
-        country: currentUser.country || result.employee.country,
-        currency: currentUser.currency || result.employee.currency,
-      };
-      await AsyncStorage.setItem('snaptip_user', JSON.stringify(mergedUser));
-      setUser(mergedUser);
+        photo_url: freshPhotoUrl,
+      });
 
       showToast('Profile photo updated!', 'success');
     } catch (err: any) {
@@ -151,7 +147,7 @@ export default function Profile() {
     setEditSaving(true);
     try {
       await api.patch('/employee/profile', { full_name: editName.trim() });
-      if (user) setUser({ ...user, full_name: editName.trim() });
+      updateUser({ full_name: editName.trim() });
       setShowEditModal(false);
       showToast('Profile updated!', 'success');
     } catch (e: any) {

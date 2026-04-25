@@ -26,7 +26,7 @@ const METHODS = ['CIH Bank', 'Cash Plus', 'Wafa Cash', 'Other Bank'];
 export default function JoinBusiness() {
   const params = useLocalSearchParams();
   const inviteToken = params.token as string;
-  const { token: authToken, user, setUser, login } = useAuth();
+  const { token: authToken, user, updateUser, login } = useAuth();
   const router = useRouter();
   const { toast, showToast } = useToast();
 
@@ -86,7 +86,7 @@ export default function JoinBusiness() {
     try {
       const { data } = await api.post(`/business/join/${inviteToken}`);
       if (data.employee && user) {
-        setUser({ ...user, ...data.employee, account_type: 'member' });
+        updateUser({ ...data.employee, account_type: 'member' });
       }
       setBusinessName(data.business_name || businessName);
       animateStep(() => setStep('success'));
@@ -158,7 +158,7 @@ export default function JoinBusiness() {
       if (joinedEmployee && joinToken) {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         await AsyncStorage.setItem('snaptip_token', joinToken);
-        setUser({ ...joinedEmployee, photo_base64: photoB64 });
+        updateUser({ ...joinedEmployee, photo_base64: photoB64 });
       }
       animateStep(() => setStep('success'));
     } catch {
