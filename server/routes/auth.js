@@ -107,6 +107,7 @@ router.post('/register', async (req, res) => {
     const username = rawUsername.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
 
+    console.log('[register] Step 1: checking OTP verification for', normalizedEmail);
     const { rows: otpRows } = await pool.query('SELECT * FROM otps WHERE email = $1 AND verified = 1', [normalizedEmail]);
     if (otpRows.length === 0) {
       return res.status(400).json({ error: 'Email not verified. Please complete OTP verification first.' });
@@ -123,16 +124,19 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
 
+    console.log('[register] Step 2: checking username uniqueness:', username);
     const { rows: existingUsernames } = await pool.query('SELECT id FROM employees WHERE username = $1', [username]);
     if (existingUsernames.length > 0) {
       return res.status(400).json({ error: 'Username is already taken.' });
     }
 
+    console.log('[register] Step 3: checking email uniqueness:', normalizedEmail);
     const { rows: existingEmails } = await pool.query('SELECT id FROM employees WHERE email = $1', [normalizedEmail]);
     if (existingEmails.length > 0) {
       return res.status(400).json({ error: 'An account with this email already exists.' });
     }
 
+    console.log('[register] Step 4: hashing password');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Handle optional photo upload via base64
@@ -151,6 +155,9 @@ router.post('/register', async (req, res) => {
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
+    console.log('[register] Step 5: INSERT INTO employees — columns: username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency');
+    console.log('[register] Values:', { username, fullName, email: normalizedEmail, accountType, userCountry, userCurrency });
+
     const { rows: insertRows } = await pool.query(
       `INSERT INTO employees
          (username, full_name, first_name, last_name, email, password, profile_image_url, photo_url, photo_base64, account_type, country, currency)
@@ -158,6 +165,8 @@ router.post('/register', async (req, res) => {
       [username, fullName, firstName.trim(), lastName.trim(), normalizedEmail,
        hashedPassword, profileImageUrl, profileImageUrl, photoBase64Stored, accountType, userCountry, userCurrency]
     );
+
+    console.log('[register] Step 6: INSERT succeeded, new id =', insertRows[0]?.id);
 
     await pool.query('DELETE FROM otps WHERE email = $1', [normalizedEmail]);
 
@@ -168,6 +177,8 @@ router.post('/register', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    console.log('[register] Step 7: registration complete for', username);
 
     res.status(201).json({
       token,
@@ -191,8 +202,16 @@ router.post('/register', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Register error:', err.message);
-    res.status(500).json({ error: 'Server error during registration.' });
+    console.error('[CRITICAL DB ERROR] Register route failed:');
+    console.error('  message  :', err.message);
+    console.error('  code     :', err.code);       // PostgreSQL error code e.g. '42703' = undefined column
+    console.error('  detail   :', err.detail);     // e.g. 'Key (email)=(...) already exists.'
+    console.error('  hint     :', err.hint);
+    console.error('  table    :', err.table);
+    console.error('  column   :', err.column);
+    console.error('  constraint:', err.constraint);
+    console.error('  stack    :', err.stack);
+    res.status(500).json({ error: 'Server error during registration.', detail: err.message });
   }
 });
 
