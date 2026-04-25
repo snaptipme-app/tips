@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LANGUAGE_KEY = 'snaptip_language';
@@ -453,7 +453,7 @@ const LanguageContext = createContext<LanguageContextType>({
   LANG_INFO,
 });
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
+export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState('en');
   const [loaded, setLoaded] = useState(false);
 

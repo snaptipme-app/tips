@@ -1,66 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { Redirect } from 'expo-router';
-import { useAuth } from '../lib/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
-import api from '../lib/api';
+import { useEffect } from 'react'
+import { router } from 'expo-router'
+import { useAuth } from '../lib/AuthContext'
+import { View, ActivityIndicator } from 'react-native'
 
 export default function Index() {
-  const { token, user, loading } = useAuth();
-  const [checking, setChecking] = useState(true);
-  const [destination, setDestination] = useState<string | null>(null);
-
-  // Safety timeout: if auth loading takes more than 5 seconds, force splash away
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (checking) {
-        console.warn('[index] Safety timeout — forcing splash hide');
-        setDestination('/login');
-        setChecking(false);
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [checking]);
+  const { user, isLoading } = useAuth()
 
   useEffect(() => {
-    if (loading) return;
+    if (isLoading) return
 
-    if (!token) {
-      setDestination('/login');
-      setChecking(false);
-      return;
+    if (!user) {
+      router.replace('/login')
+      return
     }
 
-    // Business owners: check if they have a business set up
-    if (user?.account_type === 'business') {
-      api.get('/business/me')
-        .then(() => {
-          setDestination('/(tabs)/home');
-        })
-        .catch(() => {
-          // No business yet → go to setup
-          setDestination('/business/setup');
-        })
-        .finally(() => setChecking(false));
+    if (user.account_type === 'business') {
+      router.replace('/business/dashboard')
     } else {
-      setDestination('/(tabs)/home');
-      setChecking(false);
+      router.replace('/(tabs)/home')
     }
-  }, [token, user, loading]);
+  }, [user, isLoading])
 
-  useEffect(() => {
-    if (!checking && destination) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [checking, destination]);
-
-  if (loading || checking) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#080818', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#6c6cff" />
-      </View>
-    );
-  }
-
-  return <Redirect href={destination as any} />;
+  return (
+    <View style={{ flex: 1, backgroundColor: '#080818', justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator color="#00C896" size="large" />
+    </View>
+  )
 }

@@ -1,74 +1,53 @@
-import React, { useEffect } from 'react';
-import { I18nManager, Platform } from 'react-native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import * as NavigationBar from 'expo-navigation-bar';
-import { AuthProvider } from '../lib/AuthContext';
-import { LanguageProvider, useLanguage } from '../lib/LanguageContext';
+import { Stack, router, useSegments } from 'expo-router'
+import { useEffect } from 'react'
+import { AuthProvider, useAuth } from '../lib/AuthContext'
+import { setNavigateToLogin } from '../lib/api'
+import { LanguageProvider } from '../lib/LanguageContext'
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
+function RootLayoutNav() {
+  const { user, isLoading } = useAuth()
+  const segments = useSegments()
 
-// ── Edge-to-edge: set nav bar transparent BEFORE any component renders ──
-// This runs once at module load time so it takes effect on the very first frame.
-if (Platform.OS === 'android') {
-  NavigationBar.setBackgroundColorAsync('#00000000').catch(() => {});
-  NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
-}
-
-function InnerLayout() {
-  const { isRTL } = useLanguage();
+  // Register navigation callback — router is safe to use here
+  useEffect(() => {
+    setNavigateToLogin(() => {
+      router.replace('/login')
+    })
+  }, [])
 
   useEffect(() => {
-    I18nManager.allowRTL(isRTL);
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
+    if (isLoading) return
 
-  // Re-apply on every focus in case the OS resets the nav bar (e.g. after a dialog)
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    NavigationBar.setBackgroundColorAsync('#00000000').catch(() => {});
-    NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
-  }, []);
+    const inAuthGroup = segments[0] === '(tabs)' || 
+                        segments[0] === 'business' || 
+                        segments[0] === 'member'
+
+    if (!user && inAuthGroup) {
+      router.replace('/login')
+    }
+  }, [user, isLoading, segments])
 
   return (
-    <>
-      <StatusBar style="light" translucent />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#080818' },
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="support" />
-        <Stack.Screen name="business/setup" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="business/team" />
-        <Stack.Screen name="business/invite" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="business/dashboard" />
-        <Stack.Screen name="business/transactions" />
-        <Stack.Screen name="business/profile-settings" />
-        <Stack.Screen name="member/dashboard" />
-        <Stack.Screen name="member/qr" />
-        <Stack.Screen name="member/withdraw" />
-        <Stack.Screen name="member/profile" />
-        <Stack.Screen name="join/[token]" />
-      </Stack>
-    </>
-  );
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="register" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="business" />
+      <Stack.Screen name="member" />
+      <Stack.Screen name="join" />
+      <Stack.Screen name="support" />
+    </Stack>
+  )
 }
 
 export default function RootLayout() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <InnerLayout />
+        <RootLayoutNav />
       </LanguageProvider>
     </AuthProvider>
-  );
+  )
 }
-

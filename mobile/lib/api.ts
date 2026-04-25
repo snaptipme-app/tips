@@ -1,56 +1,49 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const api = axios.create({
-  baseURL: 'https://snaptip.me/api',
-  timeout: 60000, // 60s — generous for base64 image uploads on slow mobile connections
-  maxBodyLength: 52428800,   // 50 MB — must match server express.json({ limit: '50mb' })
-  maxContentLength: 52428800,
-  headers: { 'Content-Type': 'application/json' },
-});
+const BASE_URL = 'https://snaptip.me/api'
 
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('snaptip_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// Navigation callback — set by AuthContext after router is ready
+let _navigateToLogin: (() => void) | null = null
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const status = error.response?.status;
-    const code = error.response?.data?.code;
+export const setNavigateToLogin = (fn: () => void) => {
+  _navigateToLogin = fn
+}
 
-    // Account suspended — force immediate logout
-    if (status === 403 && code === 'ACCOUNT_SUSPENDED') {
-      console.log('[api] Account suspended — forcing logout');
-      await AsyncStorage.removeItem('snaptip_token');
-      await AsyncStorage.removeItem('snaptip_user');
-      Alert.alert(
-        'Account Suspended',
-        'Your account has been suspended. Please contact support.',
-        [{ text: 'OK', onPress: () => { const { router } = require('expo-router'); router.replace('/login'); } }]
-      );
-      return Promise.reject(error);
-    }
+const getToken = async (): Promise<string | null> => {
+  return AsyncStorage.getItem('snaptip_token')
+}
 
-    // Token expired or invalid — silent logout
-    if (status === 401) {
-      await AsyncStorage.removeItem('snaptip_token');
-      await AsyncStorage.removeItem('snaptip_user');
-    }
-    // Network-layer failure (no internet, timeout, DNS) — show explicit Alert
-    const isNetworkError = !error.response && (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
-    if (isNetworkError) {
-      const networkMsg = error.code === 'ECONNABORTED'
-        ? 'Request timed out. Check your internet connection and try again.'
-        : 'Network error — could not reach SnapTip servers. Check your connection.';
-      Alert.alert('Connection Error', networkMsg, [{ text: 'OK' }]);
-      return Promise.reject(error);
-    }
-    return Promise.reject(error);
+export const apiRequest = async (
+  path: string,
+  options: RequestInit = {}
+): Promise<any> => {
+  const token = await getToken()
+  
+  const response = await fetch(BASE_URL + path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(options.headers || {}),
+    },
+  })
+
+  if (response.status === 401 || response.status === 403) {
+    await AsyncStorage.removeItem('snaptip_token')
+    await AsyncStorage.removeItem('snaptip_user')
+    if (_navigateToLogin) _navigateToLogin()
+    throw new Error('Unauthorized')
   }
-);
 
-export default api;
+  const data = await response.json()
+  return data
+}
+
+export const api = {
+  get: (path: string) => apiRequest(path, { method: 'GET' }),
+  post: (path: string, body: any) => apiRequest(path, { method: 'POST', body: JSON.stringify(body) }),
+  patch: (path: string, body: any) => apiRequest(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (path: string) => apiRequest(path, { method: 'DELETE' }),
+}
+
+export default api
