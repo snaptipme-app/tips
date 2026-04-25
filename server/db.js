@@ -129,43 +129,48 @@ async function initDB() {
       )
     `);
 
-    // Add necessary columns to employees if omitted in early versions
-    // Since we create it fresh here, we might just try adding columns that might exist in migrations
+    // ── Employee column migrations (idempotent) ──
     const employeeAlterTables = [
-      "ALTER TABLE employees ADD COLUMN profile_image_url TEXT DEFAULT ''",
-      "ALTER TABLE employees ADD COLUMN photo_base64 TEXT DEFAULT ''",
-      "ALTER TABLE employees ADD COLUMN phone_number TEXT DEFAULT ''",
-      "ALTER TABLE employees ADD COLUMN is_admin INTEGER DEFAULT 0",
-      "ALTER TABLE employees ADD COLUMN business_id INTEGER",
-      "ALTER TABLE employees ADD COLUMN withdrawal_method TEXT",
-      "ALTER TABLE employees ADD COLUMN withdrawal_account TEXT",
-      "ALTER TABLE employees ADD COLUMN profile_photo_base64 TEXT",
-      "ALTER TABLE employees ALTER COLUMN otp_expires TYPE BIGINT",
-      "ALTER TABLE otps ALTER COLUMN expires_at TYPE BIGINT",
-      "ALTER TABLE invitations ALTER COLUMN expires_at TYPE BIGINT",
-      "ALTER TABLE employees ADD COLUMN reset_code TEXT",
-      "ALTER TABLE employees ADD COLUMN reset_code_expires BIGINT"
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_image_url TEXT DEFAULT ''",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo_base64 TEXT DEFAULT ''",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo_url TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS phone_number TEXT DEFAULT ''",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_admin INTEGER DEFAULT 0",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS business_id INTEGER",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS withdrawal_method TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS withdrawal_account TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_photo_base64 TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Morocco'",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS custom_message TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code_expires BIGINT",
     ];
-
     for (const ddl of employeeAlterTables) {
-      try { await pool.query(ddl); } catch (e) { /* might already exist */ }
+      try { await pool.query(ddl); } catch (e) { /* already exists */ }
     }
 
+    // ── Business column migrations ──
     const businessAlterTables = [
-      "ALTER TABLE businesses ADD COLUMN logo_base64 TEXT"
+      "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
     ];
     for (const ddl of businessAlterTables) {
       try { await pool.query(ddl); } catch (e) { }
     }
 
-    // Payments, Withdrawals & Tips migrations
-    const paymentAlterTables = [
+    // ── Payments, Withdrawals, Tips & Invitations migrations ──
+    const otherAlterTables = [
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS contact_phone TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS net_amount REAL",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details TEXT",
       "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
+      "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT",
     ];
-    for (const ddl of paymentAlterTables) {
+    for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
     }
 
