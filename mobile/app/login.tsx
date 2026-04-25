@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/AuthContext';
+import api from '../lib/api';
 import SnapTipLogo from '../components/SnapTipLogo';
 import { Toast, useToast } from '../components/Toast';
 
@@ -51,10 +52,15 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await login(identifier.trim().toLowerCase(), password);
+      // Call the login API, then hand the real JWT + user object to AuthContext
+      const { data } = await api.post('/auth/login', {
+        email: identifier.trim().toLowerCase(),
+        password,
+      });
+      await login(data.token, data.employee);
       router.replace('/(tabs)/home');
     } catch (err: any) {
-      showToast(err.response?.data?.error || 'Invalid credentials.', 'error');
+      showToast(err.response?.data?.error || err.message || 'Invalid credentials.', 'error');
     } finally {
       setLoading(false);
     }

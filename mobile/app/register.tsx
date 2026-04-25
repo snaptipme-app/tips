@@ -284,7 +284,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function Register() {
   const router = useRouter();
-  const { updateUser } = useAuth();
+  const { login, updateUser } = useAuth();
   const { language, changeLanguage } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
@@ -459,7 +459,9 @@ export default function Register() {
     try {
       const countryInfo = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
       console.log('Registering with account_type:', accountType, 'country:', selectedCountry);
-      const { data } = await api.post('/auth/register', {
+
+      // api returns the body directly (not axios-wrapped), so no { data } destructuring
+      const result = await api.post('/auth/register', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim().toLowerCase(),
@@ -469,17 +471,26 @@ export default function Register() {
         country: selectedCountry,
         currency: countryInfo.currency,
       });
-      console.log('Register response account_type:', data.employee?.account_type);
-      const userData = { ...data.employee, account_type: accountType, country: selectedCountry, currency: countryInfo.currency };
-      await AsyncStorage.setItem('snaptip_token', data.token);
-      await AsyncStorage.setItem('snaptip_user', JSON.stringify(userData));
-      updateUser(userData);
+
+      console.log('[register] result.data keys:', Object.keys(result?.data || {}));
+
+      const userData = {
+        ...result.data.employee,
+        account_type: accountType,
+        country: selectedCountry,
+        currency: countryInfo.currency,
+      };
+
+      // login() sets token + user in AuthContext state AND persists to AsyncStorage
+      await login(result.data.token, userData as any);
+
       showToast('Account created!', 'success');
       setStep(4);
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Registration failed.', 'error');
+      console.error('[register] handleStep3 error:', e?.message, e);
+      showToast(e.response?.data?.error || e?.message || 'Registration failed.', 'error');
     } finally { setLoading(false); }
-  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, updateUser, showToast]);
+  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, login, showToast]);
 
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 

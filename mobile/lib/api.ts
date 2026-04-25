@@ -13,12 +13,19 @@ const getToken = async (): Promise<string | null> => {
   return AsyncStorage.getItem('snaptip_token')
 }
 
+// Build an axios-shaped error so all catch blocks using e.response?.data?.error work
+const makeApiError = (message: string, status: number, body: any) => {
+  const err: any = new Error(message)
+  err.response = { status, data: body }
+  return err
+}
+
 export const apiRequest = async (
   path: string,
   options: RequestInit = {}
-): Promise<any> => {
+): Promise<{ data: any }> => {
   const token = await getToken()
-  
+
   const response = await fetch(BASE_URL + path, {
     ...options,
     headers: {
@@ -28,22 +35,30 @@ export const apiRequest = async (
     },
   })
 
+  // Parse body once (always try JSON; fall back to empty object)
+  let body: any = {}
+  try { body = await response.json() } catch {}
+
   if (response.status === 401 || response.status === 403) {
     await AsyncStorage.removeItem('snaptip_token')
     await AsyncStorage.removeItem('snaptip_user')
     if (_navigateToLogin) _navigateToLogin()
-    throw new Error('Unauthorized')
+    throw makeApiError(body?.error || 'Unauthorized', response.status, body)
   }
 
-  const data = await response.json()
-  return data
+  if (!response.ok) {
+    throw makeApiError(body?.error || `HTTP ${response.status}`, response.status, body)
+  }
+
+  // Return axios-compatible wrapper so all callers can use const { data } = await api.xxx
+  return { data: body }
 }
 
 export const api = {
-  get: (path: string) => apiRequest(path, { method: 'GET' }),
-  post: (path: string, body: any) => apiRequest(path, { method: 'POST', body: JSON.stringify(body) }),
-  patch: (path: string, body: any) => apiRequest(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: (path: string) => apiRequest(path, { method: 'DELETE' }),
+  get:    (path: string)             => apiRequest(path, { method: 'GET' }),
+  post:   (path: string, body?: any) => apiRequest(path, { method: 'POST',  body: body !== undefined ? JSON.stringify(body) : undefined }),
+  patch:  (path: string, body: any)  => apiRequest(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: (path: string)             => apiRequest(path, { method: 'DELETE' }),
 }
 
 export default api
