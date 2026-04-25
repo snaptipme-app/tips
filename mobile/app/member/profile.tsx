@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Image, Modal, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Image, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,11 +91,13 @@ export default function MemberProfile() {
         const uploadResult = await uploadProfileImage(asset.uri);
         if (uploadResult.success && uploadResult.employee?.photo_url) {
           updateUser({ photo_url: uploadResult.employee.photo_url + '?t=' + Date.now() });
-          showToast('Photo updated!', 'success');
+          Alert.alert('Success', 'Profile photo uploaded!');
         } else {
-          throw new Error(uploadResult.error || 'Upload failed');
+          Alert.alert('Upload Failed', JSON.stringify(uploadResult.error || 'Unknown error'));
         }
-      } catch { showToast('Failed to update photo.', 'error'); }
+      } catch (e: any) {
+        Alert.alert('Upload Failed', e?.message || 'Unknown error');
+      }
     }
   };
 

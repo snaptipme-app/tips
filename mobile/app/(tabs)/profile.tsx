@@ -118,7 +118,10 @@ export default function Profile() {
       const result = await uploadProfileImage(uri);
 
       if (!result.success || !result.employee) {
-        throw new Error(result.error || 'Upload failed — no employee returned');
+        const errMsg = result.error || 'Upload failed — no employee returned';
+        Alert.alert('Upload Failed', JSON.stringify(errMsg));
+        setLocalPhotoUri('');
+        return;
       }
 
       // Sync AuthContext with the real server-saved photo_url (absolute https:// URL)
@@ -130,7 +133,7 @@ export default function Profile() {
         photo_url: freshPhotoUrl,
       });
 
-      showToast('Profile photo updated!', 'success');
+      Alert.alert('Success', 'Profile photo uploaded!');
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
       console.error('[profile] Upload failed:', msg);

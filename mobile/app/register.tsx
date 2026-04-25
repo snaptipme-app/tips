@@ -520,7 +520,9 @@ export default function Register() {
         const uploadResult = await uploadProfileImage(photoUri);
 
         if (!uploadResult.success || !uploadResult.employee) {
-          throw new Error(uploadResult.error || 'Photo upload failed');
+          Alert.alert('Upload Failed', JSON.stringify(uploadResult.error || 'Photo upload failed'));
+          setLoading(false);
+          return;
         }
 
         const serverEmployee = uploadResult.employee;
@@ -531,6 +533,8 @@ export default function Register() {
           ...serverEmployee,
           photo_url: freshPhotoUrl,
         });
+
+        Alert.alert('Success', 'Profile photo uploaded!');
       }
 
       showToast('Setup complete!', 'success');
