@@ -147,8 +147,8 @@ export default function Profile() {
   const uploadPhoto = async (uri: string) => {
     setUploading(true);
     try {
-      console.log('[profile] Uploading photo via FileSystem.uploadAsync...');
       const token = await AsyncStorage.getItem('snaptip_token');
+      console.log('[profile] Uploading photo...');
 
       const uploadResult = await FileSystem.uploadAsync(
         `${API_URL}/api/employee/upload-photo`,
@@ -161,24 +161,36 @@ export default function Profile() {
         }
       );
 
-      console.log('[profile] Upload status:', uploadResult.status, '| body:', uploadResult.body.slice(0, 200));
+      console.log('[profile] status:', uploadResult.status, '| body:', uploadResult.body.slice(0, 300));
 
-      const data = JSON.parse(uploadResult.body);
+      // Guard against empty / non-JSON body
+      let data: any = {};
+      try { data = JSON.parse(uploadResult.body); } catch {}
 
-      if (data.photo_url) {
-        const freshUrl = data.photo_url + '?t=' + Date.now();
-        // Update local display immediately
+      if (uploadResult.status !== 200) {
+        setLocalPhotoUri('');
+        Alert.alert('Upload Failed', data.error || `Server error (${uploadResult.status})`);
+        return;
+      }
+
+      // Server returns { success, message, employee: { photo_url, ... } }
+      // photo_url lives inside employee, NOT at the top level
+      const photoUrl = data.employee?.photo_url || data.photo_url;
+
+      if (photoUrl) {
+        const freshUrl = photoUrl + '?t=' + Date.now();
         setDisplayPhoto(freshUrl);
-        // Merge into AuthContext + AsyncStorage (updateUser uses functional prev — no stale closure)
-        updateUser({ photo_url: data.photo_url });
+        // Spread full employee so balance, job_title, etc. stay in sync too
+        updateUser({ ...(data.employee || {}), photo_url: photoUrl });
         Alert.alert('Success', 'Photo updated!');
       } else {
         setLocalPhotoUri('');
-        Alert.alert('Upload Failed', JSON.stringify(data.error || 'Unknown error'));
+        console.error('[profile] No photo_url in response:', uploadResult.body);
+        Alert.alert('Upload Failed', data.error || 'No photo URL in server response');
       }
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
-      console.error('[profile] Upload failed:', msg);
+      console.error('[profile] Upload error:', msg, err);
       Alert.alert('Upload Failed', `Could not save your photo.\n\nReason: ${msg}`);
       setLocalPhotoUri('');
     } finally {
