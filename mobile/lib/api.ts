@@ -1,6 +1,5 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
 import { Alert } from 'react-native';
 
 const api = axios.create({
@@ -31,7 +30,7 @@ api.interceptors.response.use(
       Alert.alert(
         'Account Suspended',
         'Your account has been suspended. Please contact support.',
-        [{ text: 'OK', onPress: () => router.replace('/login') }]
+        [{ text: 'OK', onPress: () => { const { router } = require('expo-router'); router.replace('/login'); } }]
       );
       return Promise.reject(error);
     }
