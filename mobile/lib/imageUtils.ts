@@ -1,4 +1,4 @@
-const API_BASE = 'http://156.67.28.181:5000';
+const API_BASE = 'https://snaptip.me';
 
 /**
  * Returns an Image-compatible source for any photo value from the backend.

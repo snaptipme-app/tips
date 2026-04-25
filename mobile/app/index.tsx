@@ -10,6 +10,18 @@ export default function Index() {
   const [checking, setChecking] = useState(true);
   const [destination, setDestination] = useState<string | null>(null);
 
+  // Safety timeout: if auth loading takes more than 5 seconds, force splash away
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (checking) {
+        console.warn('[index] Safety timeout — forcing splash hide');
+        setDestination('/login');
+        setChecking(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [checking]);
+
   useEffect(() => {
     if (loading) return;
 
