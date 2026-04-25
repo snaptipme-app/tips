@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
@@ -97,27 +97,26 @@ export default function Profile() {
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
     try {
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Please allow camera access in settings.');
-          return;
+      const options = { mediaType: 'photo' as const, quality: 0.7 as const, includeBase64: false };
+
+      const response = await new Promise<any>((resolve) => {
+        if (source === 'camera') {
+          launchCamera(options, resolve);
+        } else {
+          launchImageLibrary(options, resolve);
         }
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Please allow photo access in settings.');
-          return;
-        }
+      });
+
+      if (response.didCancel) return;
+      if (response.errorCode) {
+        Alert.alert('Error', response.errorMessage || 'Could not open image picker');
+        return;
       }
+      if (!response.assets?.length) return;
 
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+      const uri = response.assets[0].uri;
+      if (!uri) return;
 
-      if (result.canceled || !result.assets?.length) return;
-
-      const uri = result.assets[0].uri;
       console.log('[profile] Image picked, uri:', uri);
       setLocalPhotoUri(uri);
       await uploadPhoto(uri);
