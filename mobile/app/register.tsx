@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { uploadProfileImage } from '../lib/uploadImage';
@@ -501,18 +501,46 @@ export default function Register() {
 
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
-    if (source === 'camera') {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') { showToast('Camera permission required.', 'error'); return; }
-    }
-    const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.3 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.3 });
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
+    try {
+      const options = { mediaType: 'photo' as const, quality: 0.3 as const, includeBase64: false };
+
+      const response = await new Promise<any>((resolve) => {
+        if (source === 'camera') {
+          launchCamera(options, resolve);
+        } else {
+          launchImageLibrary(options, resolve);
+        }
+      });
+
+      if (response.didCancel) return;
+
+      if (response.errorCode === 'permission') {
+        Alert.alert(
+          'Permission Required',
+          source === 'camera'
+            ? 'Camera access is required to take a photo. Please enable it in your device Settings.'
+            : 'Photo library access is required to choose a photo. Please enable it in your device Settings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (response.errorCode) {
+        Alert.alert('Error', response.errorMessage || 'Could not open image picker.');
+        return;
+      }
+
+      if (!response.assets?.length) return;
+
+      const uri = response.assets[0].uri;
+      if (!uri) return;
+
       setImageUri(uri);
-      imageBase64Ref.current = uri; // reuse ref to store URI instead of base64
+      imageBase64Ref.current = uri;
       console.log('[register] Image picked, uri:', uri);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not open image picker.');
+      console.error('[register] pickImage error:', err);
     }
   };
 
