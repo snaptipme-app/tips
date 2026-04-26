@@ -3,6 +3,7 @@
     "main": "expo-router/entry",
     "name": "SnapTip",
     "slug": "snaptip",
+    "owner": "hittedevv",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/snaptip_icon.png",
@@ -58,7 +59,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "969142d7-4479-465b-9ce8-46fe9e32e9c2"
+        "projectId": "d53512d7-5a91-49c2-8a37-764e896bbcac"
       }
     }
   }
