@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { getAdminToken, clearAdminToken } from './AdminLogin';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const BG='#080818',CARD='#0f0f2e',BORDER='rgba(255,255,255,0.06)',ACCENT='#6c6cff',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#a855f7';
+const BG='#080818',CARD='#0d1117',BORDER='rgba(255,255,255,0.06)',ACCENT='#6c6cff',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#a855f7';
 const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
 const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#6c6cff',USD:'#00C896',AED:'#a855f7',GBP:'#06b6d4'};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
@@ -13,7 +14,6 @@ const fmtAmount=(n,c)=>{if(!c)return Number(n||0).toFixed(2);const sym={USD:'$',
 const CountryBadge=({country})=>{const code=COUNTRY_CODES[country]||'??';return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'2px 7px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',letterSpacing:.3}}>{code}</span>;}
 const CurrencyPill=({currency,amount})=>{const color=getCurrencyColor(currency);return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:`${color}18`,border:`1px solid ${color}40`,borderRadius:50,padding:'3px 10px',fontSize:12,fontWeight:700,color,whiteSpace:'nowrap'}}>{fmtAmount(amount,currency)}</span>}
 
-/* SVG Icons */
 const I={
   overview:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   users:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
@@ -26,6 +26,8 @@ const I={
   ban:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
   trash:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>,
   lock:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  arrowDown:<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+  arrowUp:<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
 };
 const NAV=[
   {key:'overview',icon:I.overview,label:'Overview'},
@@ -59,12 +61,33 @@ export default function AdminDashboard({onLogout}){
       *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:${BG}}
       @keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
       ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
-      @media(max-width:900px){.admin-sidebar{display:none!important}.admin-main{margin-left:0!important;padding-top:70px!important}}
+      @media(max-width:900px){.admin-sidebar{display:none!important}.admin-topbar{display:none!important}.admin-main{margin-left:0!important;padding-top:70px!important}}
       @media(min-width:901px){.admin-mobile-bar{display:none!important}}
-      table{width:100%;border-collapse:collapse}th{text-align:left;padding:10px 12px;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid ${BORDER}}
-      td{padding:10px 12px;color:rgba(255,255,255,.7);font-size:13px;border-bottom:1px solid ${BORDER}}tr:hover td{background:rgba(255,255,255,.02)}
+      .overview-grid{grid-template-columns:repeat(4,1fr)}
+      .overview-main{grid-template-columns:30% 1fr}
+      .overview-bottom{grid-template-columns:1fr 1fr}
+      @media(max-width:1200px){.overview-grid{grid-template-columns:repeat(2,1fr)!important}.overview-main{grid-template-columns:1fr!important}}
+      @media(max-width:700px){.overview-grid{grid-template-columns:1fr!important}.overview-bottom{grid-template-columns:1fr!important}}
+      table{width:100%;border-collapse:collapse}
+      th{text-align:left;padding:10px 12px;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid ${BORDER}}
+      td{padding:10px 12px;color:rgba(255,255,255,.7);font-size:13px;border-bottom:1px solid ${BORDER}}
+      tr:hover td{background:rgba(255,255,255,.02)}
+      .admin-sidebar button:hover{background:rgba(108,108,255,0.08)!important}
     `}</style>
     <Toast toast={toast}/>
+
+    {/* Fixed top header (desktop) */}
+    <div className="admin-topbar" style={{position:'fixed',top:0,left:240,right:0,height:64,background:'#0a0a1a',borderBottom:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',zIndex:40}}>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <span style={{color:'rgba(255,255,255,.3)',fontSize:13}}>Admin</span>
+        <span style={{color:'rgba(255,255,255,.2)',fontSize:13,margin:'0 4px'}}>/</span>
+        <span style={{color:'#fff',fontSize:13,fontWeight:600,textTransform:'capitalize'}}>{section}</span>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <span style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Logged in as Admin</span>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(108,108,255,.2)',border:`2px solid ${ACCENT}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:ACCENT,flexShrink:0}}>AD</div>
+      </div>
+    </div>
 
     {/* Mobile top bar */}
     <div className="admin-mobile-bar" style={{position:'fixed',top:0,left:0,right:0,height:56,background:CARD,borderBottom:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',zIndex:100}}>
@@ -85,23 +108,30 @@ export default function AdminDashboard({onLogout}){
     </div>}
 
     {/* Desktop sidebar */}
-    <div className="admin-sidebar" style={{position:'fixed',left:0,top:0,bottom:0,width:220,background:CARD,borderRight:`1px solid ${BORDER}`,padding:'24px 16px',display:'flex',flexDirection:'column',zIndex:50}}>
-      <div style={{marginBottom:32}}><div style={{fontSize:20,fontWeight:800,color:'#fff'}}>SnapTip</div><p style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:4}}>Admin Panel</p></div>
+    <div className="admin-sidebar" style={{position:'fixed',left:0,top:0,bottom:0,width:240,background:BG,borderRight:`1px solid ${BORDER}`,padding:'24px 16px',display:'flex',flexDirection:'column',zIndex:50}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:32}}>
+        <div style={{width:36,height:36,borderRadius:9,background:GREEN,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#080818"><polygon points="13 2 4.5 13.5 11 13.5 11 22 19.5 10.5 13 10.5 13 2"/></svg>
+        </div>
+        <div>
+          <div style={{fontSize:15,fontWeight:800,color:'#fff'}}>SnapTip</div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:1}}>Admin Panel</div>
+        </div>
+      </div>
       <div style={{flex:1}}>
-        {NAV.map(n=><button key={n.key} onClick={()=>setSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'11px 14px',border:'none',borderRadius:12,background:section===n.key?'rgba(108,108,255,.12)':'transparent',color:section===n.key?ACCENT:'rgba(255,255,255,.5)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left',transition:'all .15s'}}>
+        {NAV.map(n=><button key={n.key} onClick={()=>setSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'11px 14px',border:'none',borderLeft:section===n.key?`3px solid ${ACCENT}`:'3px solid transparent',borderRadius:10,background:section===n.key?'rgba(108,108,255,.15)':'transparent',color:section===n.key?'#fff':'rgba(255,255,255,.45)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left',transition:'all .15s',paddingLeft:section===n.key?11:14}}>
           <span style={{display:'flex'}}>{n.icon}</span>{n.label}
           {n.key==='withdrawals'&&pendingCount>0&&<span style={{marginLeft:'auto',background:YELLOW,color:'#000',fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:50}}>{pendingCount}</span>}
         </button>)}
       </div>
       <div style={{borderTop:`1px solid ${BORDER}`,paddingTop:16}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.25)',marginBottom:8}}>Logged in as <strong style={{color:'#fff'}}>Admin</strong></p>
         <Btn onClick={handleLogout} bg='rgba(239,68,68,.1)' color={RED} small style={{width:'100%'}}>Logout</Btn>
       </div>
     </div>
 
-    {/* Main */}
-    <div className="admin-main" style={{marginLeft:220,minHeight:'100dvh',padding:'24px 28px'}}>
-      {section==='overview'&&<OverviewSection showToast={showToast} onLogout={onLogout}/>}
+    {/* Main content */}
+    <div className="admin-main" style={{marginLeft:240,minHeight:'100dvh',padding:'88px 28px 24px'}}>
+      {section==='overview'&&<OverviewSection showToast={showToast} onLogout={onLogout} onNavigate={switchSection}/>}
       {section==='users'&&<UsersSection showToast={showToast} onLogout={onLogout}/>}
       {section==='withdrawals'&&<WithdrawalsSection showToast={showToast} onLogout={onLogout} onUpdate={()=>api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0))}/>}
       {section==='businesses'&&<BusinessesSection showToast={showToast} onLogout={onLogout}/>}
@@ -112,78 +142,183 @@ export default function AdminDashboard({onLogout}){
 }
 
 /* ═══ OVERVIEW ═══ */
-function OverviewSection({showToast,onLogout}){
-  const[data,setData]=useState(null);const[loading,setLoading]=useState(true);
-  useEffect(()=>{api().get('/stats').then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}else showToast('Failed','error')}).finally(()=>setLoading(false));},[]);
-  if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>;
-  if(!data)return null;
-  const tipsByCurrency=data.tipsByCurrency||[];
-  const maxR=Math.max(...(data.growth||[]).map(g=>g.count),1),maxT=Math.max(...(data.tipsGrowth||[]).map(g=>g.count),1);
+function OverviewSection({showToast,onLogout,onNavigate}){
+  const[stats,setStats]=useState(null);
+  const[weekData,setWeekData]=useState(null);
+  const[monthData,setMonthData]=useState(null);
+  const[loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    Promise.all([
+      api().get('/stats'),
+      api().get('/transactions',{params:{range:'week'}}),
+      api().get('/transactions',{params:{range:'month'}}),
+    ])
+      .then(([s,w,m])=>{setStats(s.data);setWeekData(w.data);setMonthData(m.data);})
+      .catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout();}else showToast('Failed to load dashboard','error');})
+      .finally(()=>setLoading(false));
+  },[]);
+
+  const chartData=useMemo(()=>{
+    const txns=weekData?.transactions||[];
+    const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
+    const grouped={};
+    txns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+Number(t.amount);});
+    return days.map(day=>({
+      label:new Date(day+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+      amount:Number((grouped[day]||0).toFixed(2)),
+    }));
+  },[weekData]);
+
+  const sparkPoints=useMemo(()=>{
+    const g=stats?.tipsGrowth||[];
+    if(g.length<2)return'';
+    const max=Math.max(...g.map(d=>Number(d.count)),1);
+    return g.map((d,i)=>{
+      const x=(i/(g.length-1))*60;
+      const y=22-(Number(d.count)/max)*18;
+      return`${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+  },[stats]);
+
+  const Spark=({color})=>(
+    <svg width="60" height="24" style={{flexShrink:0}}>
+      {sparkPoints&&<polyline points={sparkPoints} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>}
+    </svg>
+  );
+
+  if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading dashboard...</p>;
+
+  const tipsByCurrency=stats?.tipsByCurrency||[];
+  const totalTipsSum=tipsByCurrency.reduce((a,c)=>a+Number(c.total),0);
+  const primaryCurrency=tipsByCurrency.length===1?tipsByCurrency[0].currency:null;
+  const fmtVal=(v,c)=>c==='MAD'?`${v.toFixed(2)} MAD`:`$${v.toFixed(2)}`;
+
+  const todayStr=new Date().toISOString().slice(0,10);
+  const todayTxns=(weekData?.transactions||[]).filter(t=>t.created_at?.slice(0,10)===todayStr);
+  const todayVol=todayTxns.reduce((a,t)=>a+Number(t.amount),0);
+
+  const hourAgo=Date.now()-3600000;
+  const hourTxns=(weekData?.transactions||[]).filter(t=>new Date(t.created_at).getTime()>=hourAgo);
+  const hourVol=hourTxns.reduce((a,t)=>a+Number(t.amount),0);
+
+  const tg=stats?.tipsGrowth||[];
+  const half=Math.floor(tg.length/2);
+  const oldCount=tg.slice(0,half).reduce((a,d)=>a+Number(d.count),0);
+  const newCount=tg.slice(half).reduce((a,d)=>a+Number(d.count),0);
+  const weekPct=oldCount>0?Math.round(((newCount-oldCount)/oldCount)*100):(newCount>0?100:0);
+
+  const statCards=[
+    {period:'Month',mainLabel:'Tips Volume',mainValue:fmtVal(monthData?.totalVolume||0,primaryCurrency),secLabel:'Commission',secValue:fmtVal((monthData?.totalVolume||0)*0.1,primaryCurrency),color:ACCENT,pct:weekPct},
+    {period:'Week',mainLabel:'Tips Volume',mainValue:fmtVal(weekData?.totalVolume||0,primaryCurrency),secLabel:'Transactions',secValue:weekData?.totalCount||0,color:GREEN,pct:weekPct},
+    {period:'Day',mainLabel:'Tips Volume',mainValue:fmtVal(todayVol,primaryCurrency),secLabel:'Transactions',secValue:todayTxns.length,color:YELLOW,pct:0},
+    {period:'Hour',mainLabel:'Activity',mainValue:fmtVal(hourVol,primaryCurrency),secLabel:'Transactions',secValue:hourTxns.length,color:PURPLE,pct:0},
+  ];
+
+  const weekCommission=weekData?.totalCommission||0;
+  const monthCommission=monthData?.totalCommission||0;
+  const avgTip=weekData?.totalCount>0?(weekData?.totalVolume||0)/(weekData?.totalCount):0;
+
   return(<>
-    <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:24}}>Dashboard Overview</h1>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:28}}>
-      {/* Total Users */}
-      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Total Users</p>
-        <p style={{fontSize:28,fontWeight:800,color:ACCENT}}>{data.totalEmployees}</p>
-      </div>
-      {/* Tips by Currency — multi-currency card */}
-      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`,gridColumn:tipsByCurrency.length>2?'span 2':'auto'}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:10}}>Tips Collected</p>
-        {tipsByCurrency.length===0
-          ?<p style={{fontSize:20,fontWeight:800,color:GREEN}}>0.00</p>
-          :<div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
-            {tipsByCurrency.map(t=><CurrencyPill key={t.currency} currency={t.currency} amount={t.total}/>)}
+    {/* TOP STATS BAR */}
+    <div className="overview-grid" style={{display:'grid',gap:12,marginBottom:20}}>
+      {statCards.map(card=>(
+        <div key={card.period} style={{background:CARD,borderRadius:16,padding:'18px 20px',border:`1px solid ${BORDER}`,display:'flex',flexDirection:'column',gap:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.6}}>{card.period}</span>
+            <span style={{fontSize:11,fontWeight:700,color:card.pct>=0?GREEN:RED,background:card.pct>=0?'rgba(0,200,150,.1)':'rgba(239,68,68,.1)',borderRadius:50,padding:'2px 8px'}}>{card.pct>=0?'+':''}{card.pct}%</span>
           </div>
-        }
-        <p style={{fontSize:11,color:'rgba(255,255,255,.25)',marginTop:8}}>{data.totalPayments} transactions</p>
-      </div>
-      {/* Commission */}
-      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Commission (10%)</p>
-        {tipsByCurrency.length>0
-          ?<div style={{display:'flex',flexWrap:'wrap',gap:6}}>{tipsByCurrency.map(t=><CurrencyPill key={t.currency} currency={t.currency} amount={t.total*0.1}/>)}</div>
-          :<p style={{fontSize:20,fontWeight:800,color:PURPLE}}>0.00</p>}
-      </div>
-      {/* Pending Withdrawals */}
-      <div style={{background:CARD,borderRadius:16,padding:'20px 22px',border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:11,color:'rgba(255,255,255,.4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:600,marginBottom:8}}>Pending Withdrawals</p>
-        <p style={{fontSize:28,fontWeight:800,color:YELLOW}}>{data.pendingWithdrawals}</p>
-        <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{fmtMoney(data.pendingAmount,'MAD')}</p>
-      </div>
+          <div>
+            <p style={{fontSize:11,color:'rgba(255,255,255,.35)',marginBottom:3}}>{card.mainLabel}</p>
+            <p style={{fontSize:19,fontWeight:800,color:'#fff',letterSpacing:-.3,lineHeight:1.1}}>{card.mainValue}</p>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+            <div>
+              <p style={{fontSize:11,color:'rgba(255,255,255,.35)',marginBottom:2}}>{card.secLabel}</p>
+              <p style={{fontSize:13,fontWeight:700,color:card.color}}>{card.secValue}</p>
+            </div>
+            <Spark color={card.color}/>
+          </div>
+        </div>
+      ))}
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:14,marginBottom:28}}>
-      <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:16}}>New Users (Last 7 Days)</p>
-        <div style={{display:'flex',alignItems:'flex-end',gap:8,height:100}}>
-          {(data.growth||[]).map((g,i)=><div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-            <span style={{fontSize:11,fontWeight:700,color:ACCENT}}>{g.count}</span>
-            <div style={{width:'100%',background:ACCENT,borderRadius:6,height:`${Math.max((g.count/maxR)*80,4)}px`}}/>
-            <span style={{fontSize:9,color:'rgba(255,255,255,.3)'}}>{g.day?.slice(5)}</span>
-          </div>)}
-          {(!data.growth||!data.growth.length)&&<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No data yet</p>}
+
+    {/* MAIN 2-COLUMN AREA */}
+    <div className="overview-main" style={{display:'grid',gap:16,marginBottom:16}}>
+      {/* LEFT: commission + stats */}
+      <div style={{background:CARD,borderRadius:20,padding:'28px 24px',border:`1px solid ${BORDER}`,display:'flex',flexDirection:'column',gap:28}}>
+        <div>
+          <p style={{fontSize:11,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.6,fontWeight:700,marginBottom:10}}>Platform Commission</p>
+          <p style={{fontSize:34,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{fmtVal(weekCommission,primaryCurrency)}</p>
+          <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:6}}>This week</p>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          {[
+            {icon:I.transactions,label:'Total Tips',value:stats?.totalPayments||0,color:'rgba(255,255,255,.8)'},
+            {icon:I.analytics,label:'Avg Tip Amount',value:fmtVal(avgTip,primaryCurrency),color:GREEN},
+            {icon:I.withdrawals,label:'Platform Income',value:fmtVal(monthCommission,primaryCurrency),color:ACCENT},
+          ].map(row=>(
+            <div key={row.label} style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:36,height:36,borderRadius:10,background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.4)',flexShrink:0}}>{row.icon}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontSize:11,color:'rgba(255,255,255,.35)',marginBottom:2}}>{row.label}</p>
+                <p style={{fontSize:15,fontWeight:700,color:row.color}}>{row.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:16}}>Tips (Last 7 Days)</p>
-        <div style={{display:'flex',alignItems:'flex-end',gap:8,height:100}}>
-          {(data.tipsGrowth||[]).map((g,i)=><div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-            <span style={{fontSize:11,fontWeight:700,color:GREEN}}>{g.count}</span>
-            <div style={{width:'100%',background:GREEN,borderRadius:6,height:`${Math.max((g.count/maxT)*80,4)}px`}}/>
-            <span style={{fontSize:9,color:'rgba(255,255,255,.3)'}}>{g.day?.slice(5)}</span>
-          </div>)}
-          {(!data.tipsGrowth||!data.tipsGrowth.length)&&<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No data yet</p>}
-        </div>
+
+      {/* RIGHT: line chart */}
+      <div style={{background:'#1a2744',borderRadius:20,padding:'24px 24px 16px',border:`1px solid ${BORDER}`}}>
+        <p style={{fontSize:14,fontWeight:700,color:'#fff',marginBottom:20}}>Tips Trend (Last 7 Days)</p>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{top:24,right:16,bottom:0,left:0}}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" vertical={false}/>
+            <XAxis dataKey="label" tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false} width={50} tickFormatter={v=>`$${v}`}/>
+            <Tooltip
+              contentStyle={{background:'#0d1117',border:`1px solid ${BORDER}`,borderRadius:10,color:'#fff',fontSize:13}}
+              formatter={v=>[`$${Number(v).toFixed(2)}`,'Volume']}
+              labelStyle={{color:'rgba(255,255,255,.5)',marginBottom:4}}
+            />
+            <Line
+              type="monotone"
+              dataKey="amount"
+              stroke="#ffffff"
+              strokeWidth={2}
+              dot={({cx,cy,value,index})=>(
+                <g key={index}>
+                  <circle cx={cx} cy={cy} r={4} fill="#ffffff" stroke="#1a2744" strokeWidth={2}/>
+                  {value>0&&<text x={cx} y={cy-10} textAnchor="middle" fill="rgba(255,255,255,.75)" fontSize={10} fontWeight="600">${value.toFixed(0)}</text>}
+                </g>
+              )}
+              activeDot={{r:6,fill:'#ffffff',stroke:ACCENT,strokeWidth:2}}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:14}}>
-      <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`,overflow:'auto'}}>
-        <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:12}}>Recent Payments</p>
-        {data.recentPayments?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Date</th></tr></thead><tbody>{data.recentPayments.map((p,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{p.full_name||p.username}</td><td><CurrencyPill currency={p.currency} amount={p.amount}/></td><td>{fmtDate(p.created_at)}</td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No payments yet</p>}
+
+    {/* BOTTOM ROW */}
+    <div className="overview-bottom" style={{display:'grid',gap:16}}>
+      <div onClick={()=>onNavigate('withdrawals')} style={{background:'linear-gradient(135deg,#ef4444 0%,#dc2626 100%)',borderRadius:20,padding:'28px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid rgba(239,68,68,.3)',transition:'opacity .2s'}}
+        onMouseEnter={e=>e.currentTarget.style.opacity='0.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+        <div>
+          <p style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Pending Withdrawals</p>
+          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{Number(stats?.pendingAmount||0).toFixed(2)} <span style={{fontSize:16,fontWeight:600}}>MAD</span></p>
+          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{stats?.pendingWithdrawals||0} pending request{stats?.pendingWithdrawals!==1?'s':''}</p>
+        </div>
+        <div style={{color:'rgba(255,255,255,.6)',flexShrink:0}}>{I.arrowDown}</div>
       </div>
-      <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`,overflow:'auto'}}>
-        <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:12}}>Recent Withdrawals</p>
-        {data.recentWithdrawals?.length?<table><thead><tr><th>Employee</th><th>Amount</th><th>Status</th></tr></thead><tbody>{data.recentWithdrawals.map((w,i)=><tr key={i}><td style={{fontWeight:600,color:'#fff'}}>{w.full_name||w.username}</td><td><CurrencyPill currency={w.currency} amount={w.amount}/></td><td><StatusBadge status={w.status}/></td></tr>)}</tbody></table>:<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No withdrawals yet</p>}
+      <div onClick={()=>onNavigate('transactions')} style={{background:'linear-gradient(135deg,#7c3aed 0%,#6c6cff 100%)',borderRadius:20,padding:'28px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid rgba(108,108,255,.3)',transition:'opacity .2s'}}
+        onMouseEnter={e=>e.currentTarget.style.opacity='0.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+        <div>
+          <p style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Total Tips Collected</p>
+          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{primaryCurrency==='MAD'?`${totalTipsSum.toFixed(2)} MAD`:`$${totalTipsSum.toFixed(2)}`}</p>
+          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{stats?.totalPayments||0} transaction{stats?.totalPayments!==1?'s':''}</p>
+        </div>
+        <div style={{color:'rgba(255,255,255,.6)',flexShrink:0}}>{I.arrowUp}</div>
       </div>
     </div>
   </>);
@@ -215,7 +350,6 @@ function UsersSection({showToast,onLogout}){
 
   const filtered=useMemo(()=>{let list=users;if(filterType==='members')list=list.filter(u=>u.account_type==='member'||u.account_type==='individual');if(filterType==='business')list=list.filter(u=>u.account_type==='business');if(filterType==='suspended')list=list.filter(u=>u.is_suspended);if(search){const q=search.toLowerCase();list=list.filter(u=>(u.full_name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.country||'').toLowerCase().includes(q))}return list},[users,filterType,search]);
 
-  /* Central action handler — called by every button */
   const doAction=async(action,userId,userName)=>{
     console.log('[admin] doAction:',action,'userId:',userId);
     const token=localStorage.getItem('snaptip_admin_token');
@@ -418,7 +552,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search by name or @username..." style={{maxWidth:260}}/>
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(108,108,255,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
-      <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#0f0f2e'}}>{m==='all'?'All Methods':m}</option>)}</select>
+      <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#0d1117'}}>{m==='all'?'All Methods':m}</option>)}</select>
       <span style={{fontSize:12,color:'rgba(255,255,255,.3)',marginLeft:'auto'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
