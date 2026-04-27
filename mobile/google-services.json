@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "850047884823",
+    "project_id": "me-snaptip-app",
+    "storage_bucket": "me-snaptip-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:850047884823:android:9abe95960d2a3d4b714652",
+        "android_client_info": {
+          "package_name": "me.snaptip.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6rtEn8LWyKCgKVM-o6Go4JMzFbvfX_dY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

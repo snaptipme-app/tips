@@ -26,6 +26,7 @@
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "navigationBar": {
         "barStyle": "light-content",
         "backgroundColor": "#00000000"
