@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { uploadProfileImage } from '../lib/uploadImage';
@@ -502,42 +502,48 @@ export default function Register() {
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
     try {
-      const options = { mediaType: 'photo' as const, quality: 0.3 as const, includeBase64: false };
-
-      const response = await new Promise<any>((resolve) => {
-        if (source === 'camera') {
-          launchCamera(options, resolve);
-        } else {
-          launchImageLibrary(options, resolve);
+      // Request the appropriate permission before launching
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Camera access is required to take a photo. Please enable it in your device Settings.',
+            [{ text: 'OK' }]
+          );
+          return;
         }
-      });
-
-      if (response.didCancel) return;
-
-      if (response.errorCode === 'permission') {
-        Alert.alert(
-          'Permission Required',
-          source === 'camera'
-            ? 'Camera access is required to take a photo. Please enable it in your device Settings.'
-            : 'Photo library access is required to choose a photo. Please enable it in your device Settings.',
-          [{ text: 'OK' }]
-        );
-        return;
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Photo library access is required to choose a photo. Please enable it in your device Settings.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
       }
 
-      if (response.errorCode) {
-        Alert.alert('Error', response.errorMessage || 'Could not open image picker.');
-        return;
-      }
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      };
 
-      if (!response.assets?.length) return;
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync(pickerOptions)
+        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
-      const uri = response.assets[0].uri;
+      if (result.canceled || !result.assets?.length) return;
+
+      const uri = result.assets[0].uri;
       if (!uri) return;
 
       setImageUri(uri);
       imageBase64Ref.current = uri;
-      console.log('[register] Image picked, uri:', uri);
+      console.log('[register] Image picked (cropped), uri:', uri);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not open image picker.');
       console.error('[register] pickImage error:', err);

@@ -6,13 +6,33 @@ const { upload, getImageUrl, multerErrorHandler } = require('../middleware/uploa
 const { saveBase64Image } = require('../lib/saveBase64Image');
 
 
-// Ensure QR-settings columns exist on startup
+// Ensure required columns exist on startup
 (async () => {
   try {
     await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS custom_message TEXT');
     await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1');
+    await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS push_token TEXT');
   } catch (_) {}
 })();
+
+// ── POST /api/employee/push-token ────────────────────────────────────────────
+router.post('/push-token', authMiddleware, async (req, res) => {
+  try {
+    const { push_token } = req.body;
+    if (!push_token) return res.status(400).json({ error: 'push_token is required.' });
+
+    await pool.query(
+      'UPDATE employees SET push_token = $1 WHERE id = $2',
+      [push_token, req.employee.id]
+    );
+
+    console.log(`[push-token] Saved token for employee_id=${req.employee.id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[push-token]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
 
 // ── POST /api/employee/upload-photo ─────────────────────────────────────────
 // Receives a multipart/form-data photo from expo-file-system FileSystem.uploadAsync.

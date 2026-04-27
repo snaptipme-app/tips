@@ -39,7 +39,8 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -49,6 +50,11 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-notifications", {
+        "icon": "./assets/images/snaptip_icon.png",
+        "color": "#00C896",
+        "sounds": ["./assets/sounds/tip_received.mp3"]
+      }],
       "expo-image-picker",
       "expo-web-browser",
       "expo-av"

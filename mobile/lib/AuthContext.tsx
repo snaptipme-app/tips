@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { setNavigateToLogin } from './api'
+import { registerForPushNotifications } from './notifications'
 
 type User = {
   id: number
@@ -52,6 +53,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (storedToken && storedUser) {
         setToken(storedToken)
         setUser(JSON.parse(storedUser))
+        // Re-register push token on every app start (token can rotate)
+        registerForPushNotifications(storedToken).catch(console.error)
       }
     } catch (error) {
       console.error('Auth load error:', error)
@@ -65,6 +68,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem('snaptip_user', JSON.stringify(newUser))
     setToken(newToken)
     setUser(newUser)
+    // Register push token after fresh login (fire-and-forget)
+    registerForPushNotifications(newToken).catch(console.error)
   }
 
   const logout = async () => {
