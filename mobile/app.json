@@ -53,9 +53,11 @@
       ["expo-notifications", {
         "icon": "./assets/images/snaptip_icon.png",
         "color": "#00C896",
-        "sounds": ["./assets/sounds/tip_received.mp3"]
+        "sounds": [
+          "./assets/sounds/notification.mp3",
+          "./assets/sounds/tip_received.mp3"
+        ]
       }],
-      "expo-image-picker",
       "expo-web-browser",
       "expo-av"
     ],

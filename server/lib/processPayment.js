@@ -9,7 +9,11 @@ function sendExpoPush(pushToken, title, body, data) {
     to: pushToken,
     title,
     body,
-    sound: 'tip_received.mp3',
+    // channelId routes to our 'tips' Android channel (which defines the custom sound)
+    channelId: 'tips',
+    // 'default' on iOS plays the system sound; Android uses the channel sound
+    sound: 'default',
+    priority: 'high',
     data: data || {},
   });
 

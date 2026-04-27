@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { uploadProfileImage } from '../lib/uploadImage';
@@ -499,53 +500,69 @@ export default function Register() {
     setShowPhotoSheet(true);
   }, []);
 
+  // ── Crop raw URI to centered 800×800 square ──
+  const cropToSquare = (rawUri: string): Promise<string> =>
+    new Promise((resolve, reject) => {
+      Image.getSize(
+        rawUri,
+        async (width, height) => {
+          try {
+            const size = Math.min(width, height);
+            const originX = Math.floor((width - size) / 2);
+            const originY = Math.floor((height - size) / 2);
+            const result = await ImageManipulator.manipulateAsync(
+              rawUri,
+              [
+                { crop: { originX, originY, width: size, height: size } },
+                { resize: { width: 800 } },
+              ],
+              { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            resolve(result.uri);
+          } catch (e) { reject(e); }
+        },
+        (e) => reject(new Error('Image size error: ' + e))
+      );
+    });
+
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
     try {
-      // Request the appropriate permission before launching
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission Required',
-            'Camera access is required to take a photo. Please enable it in your device Settings.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission Required',
-            'Photo library access is required to choose a photo. Please enable it in your device Settings.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
+      // react-native-image-picker handles permissions automatically on Android
+      const options = { mediaType: 'photo' as const, quality: 1.0 as const, includeBase64: false };
+
+      const response = await new Promise<any>((resolve) => {
+        if (source === 'camera') launchCamera(options, resolve);
+        else launchImageLibrary(options, resolve);
+      });
+
+      if (response.didCancel) return;
+      if (response.errorCode === 'permission') {
+        Alert.alert(
+          'Permission Required',
+          source === 'camera'
+            ? 'Camera access is required. Please enable it in your device Settings.'
+            : 'Photo library access is required. Please enable it in your device Settings.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
+      if (response.errorCode) {
+        Alert.alert('Error', response.errorMessage || 'Could not open image picker.');
+        return;
+      }
+      if (!response.assets?.length) return;
 
-      const pickerOptions: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      };
+      const rawUri = response.assets[0].uri;
+      if (!rawUri) return;
 
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync(pickerOptions)
-        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const uri = result.assets[0].uri;
-      if (!uri) return;
-
-      setImageUri(uri);
-      imageBase64Ref.current = uri;
-      console.log('[register] Image picked (cropped), uri:', uri);
+      // Auto-crop to centered square and resize to 800×800 before upload
+      const croppedUri = await cropToSquare(rawUri);
+      setImageUri(croppedUri);
+      imageBase64Ref.current = croppedUri;
+      console.log('[register] Image cropped, uri:', croppedUri);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not open image picker.');
+      Alert.alert('Error', err.message || 'Could not process image.');
       console.error('[register] pickImage error:', err);
     }
   };
