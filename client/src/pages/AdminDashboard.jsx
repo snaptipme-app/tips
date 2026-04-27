@@ -11,6 +11,8 @@ function api(){return axios.create({baseURL:'/api/admin',headers:{Authorization:
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
 const fmtMoney=(n,c='USD')=>`${Number(n||0).toFixed(2)} ${c}`;
 const fmtAmount=(n,c)=>{if(!c)return Number(n||0).toFixed(2);const sym={USD:'$',EUR:'€',GBP:'£'};return sym[c]?`${sym[c]}${Number(n||0).toFixed(2)}`:`${Number(n||0).toFixed(2)} ${c}`;};
+const CURRENCIES=[{code:'USD',flag:'🇺🇸',sym:'$',pre:true},{code:'EUR',flag:'🇪🇺',sym:'€',pre:true},{code:'MAD',flag:'🇲🇦',sym:'MAD',pre:false},{code:'AED',flag:'🇦🇪',sym:'AED',pre:false}];
+const fmtCur=(n,code)=>{const c=CURRENCIES.find(x=>x.code===code)||CURRENCIES[0];const v=Number(n||0).toFixed(2);return c.pre?`${c.sym}${v}`:`${v} ${c.sym}`;};
 const CountryBadge=({country})=>{const code=COUNTRY_CODES[country]||'??';return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'2px 7px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',letterSpacing:.3}}>{code}</span>;}
 const CurrencyPill=({currency,amount})=>{const color=getCurrencyColor(currency);return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:`${color}18`,border:`1px solid ${color}40`,borderRadius:50,padding:'3px 10px',fontSize:12,fontWeight:700,color,whiteSpace:'nowrap'}}>{fmtAmount(amount,currency)}</span>}
 
@@ -146,40 +148,45 @@ function OverviewSection({showToast,onLogout,onNavigate}){
   const[stats,setStats]=useState(null);
   const[weekData,setWeekData]=useState(null);
   const[monthData,setMonthData]=useState(null);
+  const[withdrawalsData,setWithdrawalsData]=useState(null);
   const[loading,setLoading]=useState(true);
+  const[selectedCurrency,setSelectedCurrency]=useState('USD');
 
   useEffect(()=>{
     Promise.all([
       api().get('/stats'),
       api().get('/transactions',{params:{range:'week'}}),
       api().get('/transactions',{params:{range:'month'}}),
+      api().get('/withdrawals'),
     ])
-      .then(([s,w,m])=>{setStats(s.data);setWeekData(w.data);setMonthData(m.data);})
+      .then(([s,w,m,wd])=>{
+        setStats(s.data);setWeekData(w.data);setMonthData(m.data);setWithdrawalsData(wd.data);
+        const tbc=s.data?.tipsByCurrency||[];
+        if(tbc.length>0){const most=tbc.reduce((a,b)=>Number(b.count)>Number(a.count)?b:a);setSelectedCurrency(most.currency);}
+      })
       .catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout();}else showToast('Failed to load dashboard','error');})
       .finally(()=>setLoading(false));
   },[]);
 
+  const weekTxns=useMemo(()=>(weekData?.transactions||[]).filter(t=>t.currency===selectedCurrency),[weekData,selectedCurrency]);
+  const monthTxns=useMemo(()=>(monthData?.transactions||[]).filter(t=>t.currency===selectedCurrency),[monthData,selectedCurrency]);
+
   const chartData=useMemo(()=>{
-    const txns=weekData?.transactions||[];
     const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
     const grouped={};
-    txns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+Number(t.amount);});
-    return days.map(day=>({
-      label:new Date(day+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),
-      amount:Number((grouped[day]||0).toFixed(2)),
-    }));
-  },[weekData]);
+    weekTxns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+Number(t.amount);});
+    return days.map(day=>({label:new Date(day+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:Number((grouped[day]||0).toFixed(2))}));
+  },[weekTxns]);
 
   const sparkPoints=useMemo(()=>{
-    const g=stats?.tipsGrowth||[];
-    if(g.length<2)return'';
-    const max=Math.max(...g.map(d=>Number(d.count)),1);
-    return g.map((d,i)=>{
-      const x=(i/(g.length-1))*60;
-      const y=22-(Number(d.count)/max)*18;
-      return`${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-  },[stats]);
+    const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
+    const grouped={};
+    weekTxns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+1;});
+    const counts=days.map(day=>grouped[day]||0);
+    if(counts.every(c=>c===0))return'';
+    const max=Math.max(...counts,1);
+    return counts.map((c,i)=>{const x=(i/(counts.length-1))*60;const y=22-(c/max)*18;return`${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
+  },[weekTxns]);
 
   const Spark=({color})=>(
     <svg width="60" height="24" style={{flexShrink:0}}>
@@ -189,37 +196,56 @@ function OverviewSection({showToast,onLogout,onNavigate}){
 
   if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading dashboard...</p>;
 
-  const tipsByCurrency=stats?.tipsByCurrency||[];
-  const totalTipsSum=tipsByCurrency.reduce((a,c)=>a+Number(c.total),0);
-  const primaryCurrency=tipsByCurrency.length===1?tipsByCurrency[0].currency:null;
-  const fmtVal=(v,c)=>c==='MAD'?`${v.toFixed(2)} MAD`:`$${v.toFixed(2)}`;
+  const weekVol=weekTxns.reduce((a,t)=>a+Number(t.amount),0);
+  const monthVol=monthTxns.reduce((a,t)=>a+Number(t.amount),0);
+  const weekCount=weekTxns.length;
+  const weekCommission=weekVol*0.1;
+  const monthCommission=monthVol*0.1;
+  const avgTip=weekCount>0?weekVol/weekCount:0;
 
   const todayStr=new Date().toISOString().slice(0,10);
-  const todayTxns=(weekData?.transactions||[]).filter(t=>t.created_at?.slice(0,10)===todayStr);
+  const todayTxns=weekTxns.filter(t=>t.created_at?.slice(0,10)===todayStr);
   const todayVol=todayTxns.reduce((a,t)=>a+Number(t.amount),0);
 
   const hourAgo=Date.now()-3600000;
-  const hourTxns=(weekData?.transactions||[]).filter(t=>new Date(t.created_at).getTime()>=hourAgo);
+  const hourTxns=weekTxns.filter(t=>new Date(t.created_at).getTime()>=hourAgo);
   const hourVol=hourTxns.reduce((a,t)=>a+Number(t.amount),0);
 
-  const tg=stats?.tipsGrowth||[];
-  const half=Math.floor(tg.length/2);
-  const oldCount=tg.slice(0,half).reduce((a,d)=>a+Number(d.count),0);
-  const newCount=tg.slice(half).reduce((a,d)=>a+Number(d.count),0);
-  const weekPct=oldCount>0?Math.round(((newCount-oldCount)/oldCount)*100):(newCount>0?100:0);
+  const days7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
+  const oldVol=weekTxns.filter(t=>days7.slice(0,3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(t.amount),0);
+  const newVol=weekTxns.filter(t=>days7.slice(3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(t.amount),0);
+  const weekPct=oldVol>0?Math.round(((newVol-oldVol)/oldVol)*100):(newVol>0?100:0);
+
+  const currencyStats=(stats?.tipsByCurrency||[]).find(c=>c.currency===selectedCurrency)||{total:0,count:0};
+  const pendingWds=(withdrawalsData?.withdrawals||[]).filter(w=>w.status==='pending'&&w.currency===selectedCurrency);
+  const pendingAmt=pendingWds.reduce((a,w)=>a+Number(w.net_amount||w.amount||0),0);
+  const pendingCount=pendingWds.length;
 
   const statCards=[
-    {period:'Month',mainLabel:'Tips Volume',mainValue:fmtVal(monthData?.totalVolume||0,primaryCurrency),secLabel:'Commission',secValue:fmtVal((monthData?.totalVolume||0)*0.1,primaryCurrency),color:ACCENT,pct:weekPct},
-    {period:'Week',mainLabel:'Tips Volume',mainValue:fmtVal(weekData?.totalVolume||0,primaryCurrency),secLabel:'Transactions',secValue:weekData?.totalCount||0,color:GREEN,pct:weekPct},
-    {period:'Day',mainLabel:'Tips Volume',mainValue:fmtVal(todayVol,primaryCurrency),secLabel:'Transactions',secValue:todayTxns.length,color:YELLOW,pct:0},
-    {period:'Hour',mainLabel:'Activity',mainValue:fmtVal(hourVol,primaryCurrency),secLabel:'Transactions',secValue:hourTxns.length,color:PURPLE,pct:0},
+    {period:'Month',mainLabel:'Tips Volume',mainValue:fmtCur(monthVol,selectedCurrency),secLabel:'Commission',secValue:fmtCur(monthCommission,selectedCurrency),color:ACCENT,pct:weekPct},
+    {period:'Week',mainLabel:'Tips Volume',mainValue:fmtCur(weekVol,selectedCurrency),secLabel:'Transactions',secValue:weekCount,color:GREEN,pct:weekPct},
+    {period:'Day',mainLabel:'Tips Volume',mainValue:fmtCur(todayVol,selectedCurrency),secLabel:'Transactions',secValue:todayTxns.length,color:YELLOW,pct:0},
+    {period:'Hour',mainLabel:'Activity',mainValue:fmtCur(hourVol,selectedCurrency),secLabel:'Transactions',secValue:hourTxns.length,color:PURPLE,pct:0},
   ];
 
-  const weekCommission=weekData?.totalCommission||0;
-  const monthCommission=monthData?.totalCommission||0;
-  const avgTip=weekData?.totalCount>0?(weekData?.totalVolume||0)/(weekData?.totalCount):0;
-
   return(<>
+    {/* HEADER + CURRENCY SELECTOR */}
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}>
+      <div>
+        <h1 style={{fontSize:22,fontWeight:800,color:'#fff',marginBottom:4}}>Overview</h1>
+        <p style={{fontSize:13,color:'rgba(255,255,255,.35)'}}>Showing data for {selectedCurrency}</p>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <span style={{fontSize:12,color:'rgba(255,255,255,.35)',fontWeight:600}}>Currency</span>
+        <div style={{position:'relative'}}>
+          <select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(255,255,255,.07)',border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 36px 9px 14px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>
+            {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#0d1117'}}>{c.flag} {c.code}</option>)}
+          </select>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2.5" style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+    </div>
+
     {/* TOP STATS BAR */}
     <div className="overview-grid" style={{display:'grid',gap:12,marginBottom:20}}>
       {statCards.map(card=>(
@@ -249,14 +275,14 @@ function OverviewSection({showToast,onLogout,onNavigate}){
       <div style={{background:CARD,borderRadius:20,padding:'28px 24px',border:`1px solid ${BORDER}`,display:'flex',flexDirection:'column',gap:28}}>
         <div>
           <p style={{fontSize:11,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.6,fontWeight:700,marginBottom:10}}>Platform Commission</p>
-          <p style={{fontSize:34,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{fmtVal(weekCommission,primaryCurrency)}</p>
-          <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:6}}>This week</p>
+          <p style={{fontSize:34,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{fmtCur(weekCommission,selectedCurrency)}</p>
+          <p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:6}}>This week · {selectedCurrency}</p>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:16}}>
           {[
-            {icon:I.transactions,label:'Total Tips',value:stats?.totalPayments||0,color:'rgba(255,255,255,.8)'},
-            {icon:I.analytics,label:'Avg Tip Amount',value:fmtVal(avgTip,primaryCurrency),color:GREEN},
-            {icon:I.withdrawals,label:'Platform Income',value:fmtVal(monthCommission,primaryCurrency),color:ACCENT},
+            {icon:I.transactions,label:'Total Tips',value:currencyStats.count||0,color:'rgba(255,255,255,.8)'},
+            {icon:I.analytics,label:'Avg Tip Amount',value:fmtCur(avgTip,selectedCurrency),color:GREEN},
+            {icon:I.withdrawals,label:'Platform Income',value:fmtCur(monthCommission,selectedCurrency),color:ACCENT},
           ].map(row=>(
             <div key={row.label} style={{display:'flex',alignItems:'center',gap:12}}>
               <div style={{width:36,height:36,borderRadius:10,background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.4)',flexShrink:0}}>{row.icon}</div>
@@ -271,26 +297,21 @@ function OverviewSection({showToast,onLogout,onNavigate}){
 
       {/* RIGHT: line chart */}
       <div style={{background:'#1a2744',borderRadius:20,padding:'24px 24px 16px',border:`1px solid ${BORDER}`}}>
-        <p style={{fontSize:14,fontWeight:700,color:'#fff',marginBottom:20}}>Tips Trend (Last 7 Days)</p>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+          <p style={{fontSize:14,fontWeight:700,color:'#fff'}}>Tips Trend (Last 7 Days)</p>
+          <span style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.4)',background:'rgba(255,255,255,.06)',borderRadius:50,padding:'4px 10px'}}>{selectedCurrency}</span>
+        </div>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{top:24,right:16,bottom:0,left:0}}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" vertical={false}/>
             <XAxis dataKey="label" tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false}/>
-            <YAxis tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false} width={50} tickFormatter={v=>`$${v}`}/>
-            <Tooltip
-              contentStyle={{background:'#0d1117',border:`1px solid ${BORDER}`,borderRadius:10,color:'#fff',fontSize:13}}
-              formatter={v=>[`$${Number(v).toFixed(2)}`,'Volume']}
-              labelStyle={{color:'rgba(255,255,255,.5)',marginBottom:4}}
-            />
-            <Line
-              type="monotone"
-              dataKey="amount"
-              stroke="#ffffff"
-              strokeWidth={2}
+            <YAxis tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false} width={56} tickFormatter={v=>fmtCur(v,selectedCurrency)}/>
+            <Tooltip contentStyle={{background:'#0d1117',border:`1px solid ${BORDER}`,borderRadius:10,color:'#fff',fontSize:13}} formatter={v=>[fmtCur(v,selectedCurrency),'Volume']} labelStyle={{color:'rgba(255,255,255,.5)',marginBottom:4}}/>
+            <Line type="monotone" dataKey="amount" stroke="#ffffff" strokeWidth={2}
               dot={({cx,cy,value,index})=>(
                 <g key={index}>
                   <circle cx={cx} cy={cy} r={4} fill="#ffffff" stroke="#1a2744" strokeWidth={2}/>
-                  {value>0&&<text x={cx} y={cy-10} textAnchor="middle" fill="rgba(255,255,255,.75)" fontSize={10} fontWeight="600">${value.toFixed(0)}</text>}
+                  {value>0&&<text x={cx} y={cy-10} textAnchor="middle" fill="rgba(255,255,255,.75)" fontSize={10} fontWeight="600">{fmtCur(value,selectedCurrency)}</text>}
                 </g>
               )}
               activeDot={{r:6,fill:'#ffffff',stroke:ACCENT,strokeWidth:2}}
@@ -306,8 +327,8 @@ function OverviewSection({showToast,onLogout,onNavigate}){
         onMouseEnter={e=>e.currentTarget.style.opacity='0.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
         <div>
           <p style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Pending Withdrawals</p>
-          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{Number(stats?.pendingAmount||0).toFixed(2)} <span style={{fontSize:16,fontWeight:600}}>MAD</span></p>
-          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{stats?.pendingWithdrawals||0} pending request{stats?.pendingWithdrawals!==1?'s':''}</p>
+          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{fmtCur(pendingAmt,selectedCurrency)}</p>
+          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{pendingCount} pending request{pendingCount!==1?'s':''}</p>
         </div>
         <div style={{color:'rgba(255,255,255,.6)',flexShrink:0}}>{I.arrowDown}</div>
       </div>
@@ -315,8 +336,8 @@ function OverviewSection({showToast,onLogout,onNavigate}){
         onMouseEnter={e=>e.currentTarget.style.opacity='0.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
         <div>
           <p style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Total Tips Collected</p>
-          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{primaryCurrency==='MAD'?`${totalTipsSum.toFixed(2)} MAD`:`$${totalTipsSum.toFixed(2)}`}</p>
-          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{stats?.totalPayments||0} transaction{stats?.totalPayments!==1?'s':''}</p>
+          <p style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:-1,lineHeight:1}}>{fmtCur(currencyStats.total||0,selectedCurrency)}</p>
+          <p style={{fontSize:13,color:'rgba(255,255,255,.65)',marginTop:8}}>{currencyStats.count||0} transaction{currencyStats.count!==1?'s':''}</p>
         </div>
         <div style={{color:'rgba(255,255,255,.6)',flexShrink:0}}>{I.arrowUp}</div>
       </div>
