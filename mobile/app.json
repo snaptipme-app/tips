@@ -21,7 +21,8 @@
       "icon": "./assets/images/snaptip_icon.png",
       "infoPlist": {
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
-        "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos."
+        "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos.",
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -35,12 +36,16 @@
       },
       "package": "me.snaptip.app",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE"
       ]
     },
     "web": {
@@ -50,14 +55,25 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-notifications", {
-        "icon": "./assets/images/snaptip_icon.png",
-        "color": "#00C896",
-        "sounds": [
-          "./assets/sounds/notification.mp3",
-          "./assets/sounds/tip_received.mp3"
-        ]
-      }],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/snaptip_icon.png",
+          "color": "#00C896",
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/sounds/notification.mp3",
+            "./assets/sounds/tip_received.mp3"
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SnapTip needs photo library access to select profile photos.",
+          "cameraPermission": "SnapTip needs camera access to take profile photos."
+        }
+      ],
       "expo-web-browser",
       "expo-av"
     ],

@@ -7,26 +7,9 @@ const PERM_ASKED_KEY = 'snaptip_notif_asked'
 const API_URL = 'https://snaptip.me/api'
 const PROJECT_ID = 'd53512d7-5a91-49c2-8a37-764e896bbcac'
 
-// Show notifications even when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-})
+// NOTE: setNotificationHandler is in app/_layout.tsx at module level so it
+// runs before any notification arrives, even before AuthContext is mounted.
 
-/**
- * Registers the device for Expo Push Notifications.
- *
- * - Requests permission (Android 13+ POST_NOTIFICATIONS, iOS)
- * - Creates the Android 'tips' notification channel with custom sound
- * - Obtains an Expo Push Token and saves it to the server
- *
- * Safe to call on every login/app-start. Errors never crash the app.
- *
- * @param authToken  The user's JWT for the push-token save endpoint
- */
 export async function registerForPushNotifications(authToken: string): Promise<void> {
   if (!Device.isDevice) {
     console.log('[notifications] Skipping — not a physical device')
@@ -34,21 +17,32 @@ export async function registerForPushNotifications(authToken: string): Promise<v
   }
 
   try {
-    // ── 1. Create Android notification channel FIRST ─────────────────────────
-    // The channel must exist before the token is used; the sound file must be
-    // bundled via expo-notifications plugin in app.json.
+    // ── 1. Create Android notification channels ───────────────────────────────
+    // Both channels use notification.mp3 with MAX importance.
+    // 'default' is used when the server sends without a channelId.
+    // 'tips' is used when the server explicitly sets channelId: 'tips'.
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('tips', {
-        name: 'Tips',
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'SnapTip',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        sound: 'notification.mp3',   // matches the file in assets/sounds/
+        sound: 'notification.mp3',
         lightColor: '#00C896',
         enableLights: true,
         enableVibrate: true,
         showBadge: true,
       })
-      console.log('[notifications] Android channel "tips" ready')
+      await Notifications.setNotificationChannelAsync('tips', {
+        name: 'Tips',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: 'notification.mp3',
+        lightColor: '#00C896',
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
+      })
+      console.log('[notifications] Android channels ready (default + tips)')
     }
 
     // ── 2. Request permission ─────────────────────────────────────────────────
@@ -57,7 +51,6 @@ export async function registerForPushNotifications(authToken: string): Promise<v
     if (currentStatus !== 'granted') {
       const alreadyAsked = await AsyncStorage.getItem(PERM_ASKED_KEY)
       const { status: requestedStatus } = await Notifications.requestPermissionsAsync()
-
       await AsyncStorage.setItem(PERM_ASKED_KEY, 'asked')
 
       if (requestedStatus !== 'granted') {
@@ -100,7 +93,6 @@ export async function registerForPushNotifications(authToken: string): Promise<v
       console.log('[notifications] Push token saved to server successfully')
     }
   } catch (err: any) {
-    // Never let a notification error crash the app
     console.error('[notifications] registerForPushNotifications error:', err.message)
   }
 }
