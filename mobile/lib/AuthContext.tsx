@@ -68,8 +68,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem('snaptip_user', JSON.stringify(newUser))
     setToken(newToken)
     setUser(newUser)
-    // Register push token after fresh login (fire-and-forget)
-    registerForPushNotifications(newToken).catch(console.error)
+    // Delay slightly so navigation transition completes before the permission
+    // dialog appears — avoids the dialog being swallowed during screen change
+    setTimeout(() => {
+      registerForPushNotifications(newToken).catch(err =>
+        console.error('[auth] registerForPushNotifications failed:', err)
+      )
+    }, 800)
   }
 
   const logout = async () => {

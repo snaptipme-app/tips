@@ -4,23 +4,46 @@ import { Platform, Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const PERM_ASKED_KEY = 'snaptip_notif_asked'
-const API_URL = 'https://snaptip.me/api'
-const PROJECT_ID = 'd53512d7-5a91-49c2-8a37-764e896bbcac'
+const PUSH_TOKEN_KEY  = 'snaptip_push_token'
+const API_URL         = 'https://snaptip.me/api'
+const PROJECT_ID      = 'd53512d7-5a91-49c2-8a37-764e896bbcac'
 
-// NOTE: setNotificationHandler is in app/_layout.tsx at module level so it
-// runs before any notification arrives, even before AuthContext is mounted.
+// Retry helper — getExpoPushTokenAsync can fail on first call right after
+// permission grant while FCM is still initialising on the device.
+async function getTokenWithRetry(attempts = 3): Promise<string | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      console.log(`[notifications] getExpoPushTokenAsync attempt ${i + 1}/${attempts}`)
+      const data = await Notifications.getExpoPushTokenAsync({ projectId: PROJECT_ID })
+      const token = data?.data ?? null
+      if (token) {
+        console.log('[notifications] Token obtained:', token)
+        return token
+      }
+      console.warn('[notifications] Token was empty on attempt', i + 1)
+    } catch (err: any) {
+      // Log full error — native errors often have no .message, so stringify
+      const msg = err?.message ?? JSON.stringify(err) ?? String(err)
+      console.error(`[notifications] getExpoPushTokenAsync error (attempt ${i + 1}):`, msg)
+      if (i < attempts - 1) {
+        // Exponential back-off: 2 s, 4 s
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)))
+      }
+    }
+  }
+  return null
+}
 
 export async function registerForPushNotifications(authToken: string): Promise<void> {
+  console.log('[notifications] registerForPushNotifications called, device:', Device.isDevice)
+
   if (!Device.isDevice) {
-    console.log('[notifications] Skipping — not a physical device')
+    console.log('[notifications] Not a physical device — skipping')
     return
   }
 
   try {
     // ── 1. Create Android notification channels ───────────────────────────────
-    // Both channels use notification.mp3 with MAX importance.
-    // 'default' is used when the server sends without a channelId.
-    // 'tips' is used when the server explicitly sets channelId: 'tips'.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'SnapTip',
@@ -42,42 +65,47 @@ export async function registerForPushNotifications(authToken: string): Promise<v
         enableVibrate: true,
         showBadge: true,
       })
-      console.log('[notifications] Android channels ready (default + tips)')
+      console.log('[notifications] Android channels ready')
     }
 
     // ── 2. Request permission ─────────────────────────────────────────────────
     const { status: currentStatus } = await Notifications.getPermissionsAsync()
+    console.log('[notifications] Current permission status:', currentStatus)
 
     if (currentStatus !== 'granted') {
       const alreadyAsked = await AsyncStorage.getItem(PERM_ASKED_KEY)
-      const { status: requestedStatus } = await Notifications.requestPermissionsAsync()
+      const { status: newStatus } = await Notifications.requestPermissionsAsync()
+      // Mark as asked BEFORE checking result so the alert only shows once
       await AsyncStorage.setItem(PERM_ASKED_KEY, 'asked')
+      console.log('[notifications] Permission after request:', newStatus)
 
-      if (requestedStatus !== 'granted') {
+      if (newStatus !== 'granted') {
         if (!alreadyAsked) {
           Alert.alert(
             'Enable Notifications',
-            'Enable notifications to receive instant alerts when you get a tip. You can turn them on any time in your device Settings.',
+            'Enable notifications to receive instant tip alerts. You can turn them on any time in Settings.',
             [{ text: 'OK' }]
           )
         }
-        console.log('[notifications] Permission denied — skipping token registration')
+        console.log('[notifications] Permission denied — aborting')
         return
       }
     }
 
-    // ── 3. Obtain Expo Push Token ─────────────────────────────────────────────
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: PROJECT_ID })
-    const pushToken = tokenData?.data
+    // ── 3. Get Expo Push Token (retry up to 3×) ───────────────────────────────
+    const pushToken = await getTokenWithRetry(3)
 
     if (!pushToken) {
-      console.error('[notifications] getExpoPushTokenAsync returned empty token')
+      console.error('[notifications] Failed to obtain push token after 3 attempts')
       return
     }
 
-    console.log('[notifications] Push token obtained:', pushToken)
+    // Cache token locally — also lets AuthContext skip the server call when
+    // token hasn't changed (reduces unnecessary network requests)
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushToken)
 
     // ── 4. Save token to server ───────────────────────────────────────────────
+    console.log('[notifications] Saving push token to server...')
     const res = await fetch(`${API_URL}/employee/push-token`, {
       method: 'POST',
       headers: {
@@ -87,12 +115,14 @@ export async function registerForPushNotifications(authToken: string): Promise<v
       body: JSON.stringify({ push_token: pushToken }),
     })
 
+    const body = await res.text()
     if (!res.ok) {
-      console.error('[notifications] Server rejected push-token save, status:', res.status)
+      console.error(`[notifications] Server rejected push-token — status=${res.status} body=${body}`)
     } else {
-      console.log('[notifications] Push token saved to server successfully')
+      console.log('[notifications] Push token saved to server ✓', pushToken)
     }
   } catch (err: any) {
-    console.error('[notifications] registerForPushNotifications error:', err.message)
+    const msg = err?.message ?? JSON.stringify(err) ?? String(err)
+    console.error('[notifications] registerForPushNotifications fatal error:', msg)
   }
 }
