@@ -22,7 +22,19 @@
       "infoPlist": {
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos.",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "snaptip.me": {
+              "NSIncludesSubdomains": true,
+              "NSExceptionRequiresForwardSecrecy": true,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2"
+            }
+          }
+        }
       }
     },
     "android": {
@@ -76,7 +88,8 @@
         }
       ],
       "expo-web-browser",
-      "expo-av"
+      "expo-av",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

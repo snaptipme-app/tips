@@ -9,7 +9,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { setItem as secureSet, SecureKeys } from '../../lib/secureStorage';
 import { Toast, useToast } from '../../components/Toast';
+
+// Whitelist invite-token format: alphanumeric + dash/underscore, 8–128 chars.
+// Keeps malformed/long values from hitting the API and prevents path injection.
+const isValidInviteToken = (t: any): t is string =>
+  typeof t === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(t);
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -61,11 +67,15 @@ export default function JoinBusiness() {
 
   // Step 0: Fetch invite info
   useEffect(() => {
-    if (!inviteToken) { setError('Invalid invitation link — no token found.'); setStep('error'); return; }
+    if (!isValidInviteToken(inviteToken)) {
+      setError('Invalid invitation link.');
+      setStep('error');
+      return;
+    }
 
     (async () => {
       try {
-        const { data } = await api.get(`/business/invite-info/${inviteToken}`);
+        const { data } = await api.get(`/business/invite-info/${encodeURIComponent(inviteToken)}`);
         setBusinessName(data.business_name || 'Unknown Business');
         setBusinessType(data.business_type || '');
         if (data.email && data.email !== 'link_invite') {
@@ -121,10 +131,11 @@ export default function JoinBusiness() {
       const regToken = regRes.data.token;
       setJoinToken(regToken);
 
-      // Join business using the new token
-      const joinRes = await api.post(`/business/join/${inviteToken}`, {}, {
-        headers: { Authorization: `Bearer ${regToken}` },
-      });
+      // Persist the freshly-issued token so subsequent api.* calls authenticate as the new user.
+      await secureSet(SecureKeys.TOKEN, regToken);
+
+      // Join business using the new (now-stored) token
+      const joinRes = await api.post(`/business/join/${encodeURIComponent(inviteToken)}`);
 
       const emp = joinRes.data.employee || regRes.data.employee;
       setJoinedEmployee({ ...emp, account_type: 'member' });
@@ -150,14 +161,12 @@ export default function JoinBusiness() {
     setWLoading(true);
     try {
       if (!skip && wMethod && joinToken) {
-        await api.patch('/employee/withdrawal-method', { method: wMethod, account: wAccount }, {
-          headers: { Authorization: `Bearer ${joinToken}` },
-        });
+        // Token already in SecureStore from handleRegisterAndJoin → api wrapper picks it up.
+        await api.patch('/employee/withdrawal-method', { method: wMethod, account: wAccount });
       }
-      // Complete login
+      // Complete login — token is already in SecureStore; just sync the user state.
       if (joinedEmployee && joinToken) {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        await AsyncStorage.setItem('snaptip_token', joinToken);
+        await secureSet(SecureKeys.TOKEN, joinToken);
         updateUser({ ...joinedEmployee, photo_base64: photoB64 });
       }
       animateStep(() => setStep('success'));

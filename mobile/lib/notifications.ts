@@ -2,11 +2,11 @@ import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
 import { Platform, Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { setItem as secureSet, SecureKeys } from './secureStorage'
 
-const PERM_ASKED_KEY = 'snaptip_notif_asked'
-const PUSH_TOKEN_KEY  = 'snaptip_push_token'
-const API_URL         = 'https://snaptip.me/api'
-const PROJECT_ID      = 'd53512d7-5a91-49c2-8a37-764e896bbcac'
+const PERM_ASKED_KEY = 'snaptip_notif_asked'    // non-sensitive flag — stays in AsyncStorage
+const API_URL        = 'https://snaptip.me/api'
+const PROJECT_ID     = 'd53512d7-5a91-49c2-8a37-764e896bbcac'
 
 // Retry helper — getExpoPushTokenAsync can fail on first call right after
 // permission grant while FCM is still initialising on the device.
@@ -100,9 +100,9 @@ export async function registerForPushNotifications(authToken: string): Promise<v
       return
     }
 
-    // Cache token locally — also lets AuthContext skip the server call when
-    // token hasn't changed (reduces unnecessary network requests)
-    await AsyncStorage.setItem(PUSH_TOKEN_KEY, pushToken)
+    // Cache token in SecureStore — also lets us skip the server call later
+    // when the token hasn't changed.
+    await secureSet(SecureKeys.PUSH, pushToken)
 
     // ── 4. Save token to server ───────────────────────────────────────────────
     console.log('[notifications] Saving push token to server...')

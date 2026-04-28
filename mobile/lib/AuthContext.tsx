@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { setNavigateToLogin } from './api'
 import { registerForPushNotifications } from './notifications'
+import { getItem, setItem, removeItem, getJSON, setJSON, SecureKeys } from './secureStorage'
 
 type User = {
   id: number
@@ -48,11 +47,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadStoredAuth = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem('snaptip_token')
-      const storedUser = await AsyncStorage.getItem('snaptip_user')
+      const storedToken = await getItem(SecureKeys.TOKEN)
+      const storedUser = await getJSON<User>(SecureKeys.USER)
       if (storedToken && storedUser) {
         setToken(storedToken)
-        setUser(JSON.parse(storedUser))
+        setUser(storedUser)
         // Re-register push token on every app start (token can rotate)
         registerForPushNotifications(storedToken).catch(console.error)
       }
@@ -64,8 +63,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const login = async (newToken: string, newUser: User) => {
-    await AsyncStorage.setItem('snaptip_token', newToken)
-    await AsyncStorage.setItem('snaptip_user', JSON.stringify(newUser))
+    await setItem(SecureKeys.TOKEN, newToken)
+    await setJSON(SecureKeys.USER, newUser) // photo_base64 stripped automatically
     setToken(newToken)
     setUser(newUser)
     // Delay slightly so navigation transition completes before the permission
@@ -78,8 +77,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const logout = async () => {
-    await AsyncStorage.removeItem('snaptip_token')
-    await AsyncStorage.removeItem('snaptip_user')
+    await removeItem(SecureKeys.TOKEN)
+    await removeItem(SecureKeys.USER)
+    await removeItem(SecureKeys.PUSH)
     setToken(null)
     setUser(null)
   }
@@ -88,7 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(prev => {
       if (!prev) return null
       const updated = { ...prev, ...updates }
-      AsyncStorage.setItem('snaptip_user', JSON.stringify(updated))
+      // Persist (photo_base64 stripped by setJSON)
+      setJSON(SecureKeys.USER, updated).catch(err =>
+        console.error('[auth] persist user failed:', err)
+      )
       return updated
     })
   }, [])

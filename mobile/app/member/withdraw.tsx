@@ -10,6 +10,7 @@ import api from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
+import { useScreenCaptureProtection } from '../../lib/security';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
 
@@ -170,6 +171,10 @@ interface Withdrawal { id: number; amount: number; fee: number; net_amount: numb
    MAIN COMPONENT
    ══════════════════════════════════════════════════════════════════════ */
 export default function MemberWithdraw() {
+  // Screen contains bank/account details — block screenshots & screen recording
+  // for the lifetime of this screen (auto-released on unmount).
+  useScreenCaptureProtection();
+
   const router = useRouter();
   const { user, updateUser } = useAuth();
   const { t } = useLanguage();

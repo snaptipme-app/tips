@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getItem, removeItem, SecureKeys } from './secureStorage'
 
 const BASE_URL = 'https://snaptip.me/api'
 
@@ -10,7 +10,7 @@ export const setNavigateToLogin = (fn: () => void) => {
 }
 
 const getToken = async (): Promise<string | null> => {
-  return AsyncStorage.getItem('snaptip_token')
+  return getItem(SecureKeys.TOKEN)
 }
 
 // Build an axios-shaped error so all catch blocks using e.response?.data?.error work
@@ -40,8 +40,8 @@ export const apiRequest = async (
   try { body = await response.json() } catch {}
 
   if (response.status === 401 || response.status === 403) {
-    await AsyncStorage.removeItem('snaptip_token')
-    await AsyncStorage.removeItem('snaptip_user')
+    await removeItem(SecureKeys.TOKEN)
+    await removeItem(SecureKeys.USER)
     if (_navigateToLogin) _navigateToLogin()
     throw makeApiError(body?.error || 'Unauthorized', response.status, body)
   }

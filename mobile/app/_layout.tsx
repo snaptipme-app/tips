@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '../lib/AuthContext'
 import { setNavigateToLogin } from '../lib/api'
 import { LanguageProvider } from '../lib/LanguageContext'
 import * as Notifications from 'expo-notifications'
+import { setupDeepLinkAudit, warnIfHighRiskDevice } from '../lib/security'
 
 // Must be at module level — runs before any notification arrives (foreground or background wake)
 Notifications.setNotificationHandler({
@@ -44,6 +45,13 @@ function RootLayoutNav() {
       router.replace('/(tabs)/home')
     })
     return () => sub.remove()
+  }, [])
+
+  // Security: audit incoming deep links + one-time warning if device is rooted.
+  useEffect(() => {
+    warnIfHighRiskDevice()
+    const unsubscribe = setupDeepLinkAudit()
+    return unsubscribe
   }, [])
 
   return (
