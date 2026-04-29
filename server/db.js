@@ -175,6 +175,10 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code TEXT",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code_expires BIGINT",
+      // Phase 6.1 — GDPR soft-delete. NULL = active. Set to NOW() on delete-account;
+      // hard-purged after 30 days by scripts/purge-deleted-accounts.js.
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deletion_recovery_code TEXT",
     ];
     for (const ddl of employeeAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* already exists */ }

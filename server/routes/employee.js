@@ -4,6 +4,9 @@ const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { upload, getImageUrl, multerErrorHandler } = require('../middleware/upload');
 const { saveBase64Image } = require('../lib/saveBase64Image');
+const crypto = require('crypto');
+const { sendEmail } = require('../utils/sendEmail');
+const { logFromReq } = require('../lib/audit');
 
 
 // Ensure required columns exist on startup
@@ -127,6 +130,205 @@ router.patch('/profile', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[employee/profile]', err.message);
     res.status(500).json({ error: 'Server error updating profile.' });
+  }
+});
+
+// ── GET /api/employee/export-data ────────────────────────────────────────────
+// GDPR Article 20 — data portability. Returns the full record we hold for the
+// authenticated employee as JSON. Sensitive crypto material (password hash,
+// encryption keys, OTP secrets) is intentionally excluded.
+router.get('/export-data', authMiddleware, async (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+
+    const [
+      profile,
+      payments,
+      tips,
+      withdrawals,
+      teamMembership,
+    ] = await Promise.all([
+      pool.query(
+        `SELECT id, first_name, last_name, full_name, email, username, photo_url,
+                job_title, account_type, country, currency, balance, total_tips,
+                phone_number, custom_message, show_photo_on_card,
+                withdrawal_method, withdrawal_account, business_id, is_admin,
+                is_verified, is_suspended, last_login, created_at, deleted_at
+         FROM employees WHERE id = $1`,
+        [employeeId]
+      ),
+      pool.query(
+        'SELECT id, amount, fee, currency, payment_method, tourist_email, status, created_at FROM payments WHERE employee_id = $1 ORDER BY created_at DESC',
+        [employeeId]
+      ),
+      pool.query(
+        'SELECT id, amount, currency, status, created_at FROM tips WHERE employee_id = $1 ORDER BY created_at DESC',
+        [employeeId]
+      ),
+      pool.query(
+        'SELECT id, amount, fee, net_amount, currency, method, account_details, contact_phone, status, admin_note, created_at FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC',
+        [employeeId]
+      ),
+      pool.query(
+        `SELECT tm.id, tm.role, tm.joined_at, b.id AS business_id, b.business_name, b.business_type
+         FROM team_members tm LEFT JOIN businesses b ON b.id = tm.business_id
+         WHERE tm.employee_id = $1`,
+        [employeeId]
+      ),
+    ]);
+
+    if (profile.rows.length === 0) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: employeeId,
+      action: 'gdpr.export-data',
+      targetType: 'employee',
+      targetId: employeeId,
+    });
+
+    const filename = `snaptip-data-${profile.rows[0].username || employeeId}-${Date.now()}.json`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.json({
+      exported_at: new Date().toISOString(),
+      profile: profile.rows[0],
+      payments: payments.rows,
+      tips: tips.rows,
+      withdrawals: withdrawals.rows,
+      team_membership: teamMembership.rows,
+    });
+  } catch (err) {
+    console.error('[employee/export-data]', err.message);
+    res.status(500).json({ error: 'Server error exporting data.' });
+  }
+});
+
+// ── POST /api/employee/delete-account ────────────────────────────────────────
+// GDPR Article 17 — right to erasure. Soft-delete: sets deleted_at and emails a
+// recovery code. The account is locked out immediately (auth middleware + login
+// reject deleted_at IS NOT NULL). Hard purge runs after 30 days via
+// scripts/purge-deleted-accounts.js.
+router.post('/delete-account', authMiddleware, async (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+
+    const { rows } = await pool.query(
+      'SELECT email, full_name, username, deleted_at FROM employees WHERE id = $1',
+      [employeeId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Account not found.' });
+    }
+    if (rows[0].deleted_at) {
+      return res.status(400).json({ error: 'Account is already pending deletion.' });
+    }
+
+    // 6-digit recovery code, single-use, valid for 30 days (until hard purge).
+    const recoveryCode = String(Math.floor(100000 + Math.random() * 900000));
+    const recoveryHash = crypto.createHash('sha256').update(recoveryCode).digest('hex');
+
+    await pool.query(
+      'UPDATE employees SET deleted_at = NOW(), deletion_recovery_code = $1 WHERE id = $2',
+      [recoveryHash, employeeId]
+    );
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: employeeId,
+      action: 'gdpr.delete-account.requested',
+      targetType: 'employee',
+      targetId: employeeId,
+    });
+
+    // Best-effort email; failure should not roll back the soft-delete (the user
+    // explicitly asked for it). They can still contact support to recover.
+    try {
+      await sendEmail(
+        rows[0].email,
+        'SnapTip — Account deletion requested',
+        `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;max-width:560px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;">
+          <h2 style="color:#080818;">Your SnapTip account has been scheduled for deletion</h2>
+          <p>Hi ${rows[0].full_name || rows[0].username},</p>
+          <p>You requested deletion of your SnapTip account. It is now disabled and will be permanently removed in <strong>30 days</strong>.</p>
+          <p>Changed your mind? Use this recovery code on the recovery page to restore the account before it is purged:</p>
+          <div style="font-size:32px;letter-spacing:8px;font-weight:700;color:#00C896;background:#f0fdf9;padding:20px;text-align:center;border-radius:10px;margin:20px 0;">${recoveryCode}</div>
+          <p style="color:#666;font-size:13px;">If you did not request this, contact support immediately.</p>
+        </body></html>`
+      );
+    } catch (mailErr) {
+      console.error('[employee/delete-account] email failed:', mailErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Account scheduled for deletion. A recovery email has been sent.',
+      grace_period_days: 30,
+    });
+  } catch (err) {
+    console.error('[employee/delete-account]', err.message);
+    res.status(500).json({ error: 'Server error deleting account.' });
+  }
+});
+
+// ── POST /api/employee/recover-account ───────────────────────────────────────
+// Public — no auth required (the user is locked out). Restores a soft-deleted
+// account if the email + code match and we are still inside the 30-day window.
+router.post('/recover-account', async (req, res) => {
+  try {
+    const { email, code } = req.body || {};
+    if (!email || !code) {
+      return res.status(400).json({ error: 'email and code are required.' });
+    }
+
+    const identifier = String(email).trim().toLowerCase();
+    const codeHash = crypto.createHash('sha256').update(String(code).trim()).digest('hex');
+
+    const { rows } = await pool.query(
+      `SELECT id, deleted_at, deletion_recovery_code
+       FROM employees WHERE email = $1`,
+      [identifier]
+    );
+
+    // Generic error to avoid email enumeration.
+    if (
+      rows.length === 0 ||
+      !rows[0].deleted_at ||
+      !rows[0].deletion_recovery_code ||
+      rows[0].deletion_recovery_code !== codeHash
+    ) {
+      logFromReq(req, {
+        actorType: 'employee',
+        action: 'gdpr.recover-account.failure',
+        metadata: { identifier },
+      });
+      return res.status(400).json({ error: 'Invalid email or recovery code.' });
+    }
+
+    const deletedAt = new Date(rows[0].deleted_at).getTime();
+    if (Date.now() - deletedAt > 30 * 24 * 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'Recovery window has expired.' });
+    }
+
+    await pool.query(
+      'UPDATE employees SET deleted_at = NULL, deletion_recovery_code = NULL WHERE id = $1',
+      [rows[0].id]
+    );
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: rows[0].id,
+      action: 'gdpr.recover-account.success',
+      targetType: 'employee',
+      targetId: rows[0].id,
+    });
+
+    res.json({ success: true, message: 'Account restored. You can log in again.' });
+  } catch (err) {
+    console.error('[employee/recover-account]', err.message);
+    res.status(500).json({ error: 'Server error recovering account.' });
   }
 });
 

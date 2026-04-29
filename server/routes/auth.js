@@ -243,6 +243,18 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
     }
 
+    if (employee.deleted_at) {
+      logFromReq(req, {
+        actorType: 'employee',
+        actorId: employee.id,
+        action: 'employee.login.blocked.deleted',
+      });
+      return res.status(403).json({
+        error: 'This account has been deleted. Use the recovery email to restore it within 30 days.',
+        code: 'ACCOUNT_DELETED',
+      });
+    }
+
     // Update last_login
     try { await pool.query('UPDATE employees SET last_login = $1 WHERE id = $2', [new Date().toISOString(), employee.id]); } catch (_) {}
 

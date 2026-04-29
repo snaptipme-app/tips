@@ -12,6 +12,9 @@ import Tips from './pages/dashboard/Tips';
 import Profile from './pages/dashboard/Profile';
 import AdminStats from './pages/AdminStats';
 import AdminPage from './pages/AdminPage';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import CookieConsent from './components/CookieConsent';
 
 function App() {
   return (
@@ -58,9 +61,14 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
 
+          {/* ── Legal pages (must be above /:username catch-all) ── */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+
           {/* ── Tourist tip page — catch-all MUST be last ── */}
           <Route path="/:username" element={<TipPage />} />
         </Routes>
+        <CookieConsent />
       </BrowserRouter>
     </AuthProvider>
   );

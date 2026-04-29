@@ -14,14 +14,21 @@ async function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.employee = decoded;
 
-    // ── Real-time suspension check ──
+    // ── Real-time suspension + soft-delete check ──
     try {
       const { rows } = await pool.query(
-        'SELECT is_suspended, custom_message, show_photo_on_card FROM employees WHERE id = $1',
+        'SELECT is_suspended, custom_message, show_photo_on_card, deleted_at FROM employees WHERE id = $1',
         [decoded.id]
       );
       if (rows.length > 0) {
         const dbUser = rows[0];
+        if (dbUser.deleted_at) {
+          console.log(`[auth] Blocked deleted user id=${decoded.id} from accessing ${req.method} ${req.originalUrl}`);
+          return res.status(403).json({
+            error: 'This account has been deleted.',
+            code: 'ACCOUNT_DELETED'
+          });
+        }
         const user = {
           ...dbUser,
           custom_message: dbUser.custom_message || '',
