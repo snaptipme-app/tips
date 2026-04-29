@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const { pool } = require('../db');
 const adminAuth = require('../middleware/adminAuth');
 const { ADMIN_COOKIE } = require('../middleware/adminAuth');
+const { getEncryptionKey, decryptedAccountDetailsExpr } = require('../lib/cryptoFields');
+const { logFromReq } = require('../lib/audit');
 
 const ADMIN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -192,7 +194,10 @@ router.post('/login', (req, res) => {
     const { password } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) return res.status(500).json({ error: 'Admin password not configured on server.' });
-    if (!password || password !== adminPassword) return res.status(401).json({ error: 'Invalid admin password.' });
+    if (!password || password !== adminPassword) {
+      logFromReq(req, { actorType: 'admin', action: 'admin.login.failure' });
+      return res.status(401).json({ error: 'Invalid admin password.' });
+    }
 
     const token = jwt.sign(
       { role: 'admin', iat: Math.floor(Date.now() / 1000) },
@@ -201,6 +206,7 @@ router.post('/login', (req, res) => {
     );
     // httpOnly cookie — primary auth surface (immune to XSS token theft).
     res.cookie(ADMIN_COOKIE, token, adminCookieOptions());
+    logFromReq(req, { actorType: 'admin', action: 'admin.login.success' });
     // `token` still returned for transitional clients still using
     // localStorage. Once all admin browsers re-login, this can be removed.
     res.json({ token, message: 'Admin authenticated.' });
@@ -213,8 +219,9 @@ router.post('/login', (req, res) => {
 /* ══════════════════════════════════════════════════════
    POST /api/admin/logout — clears the httpOnly cookie
    ══════════════════════════════════════════════════════ */
-router.post('/logout', (_req, res) => {
+router.post('/logout', (req, res) => {
   res.clearCookie(ADMIN_COOKIE, { ...adminCookieOptions(), maxAge: undefined });
+  logFromReq(req, { actorType: 'admin', action: 'admin.logout' });
   res.json({ message: 'Logged out.' });
 });
 
@@ -320,6 +327,12 @@ router.patch('/users/:id/suspend', adminAuth, async (req, res) => {
   try {
     console.log('[admin] Suspending user:', req.params.id);
     await pool.query('UPDATE employees SET is_suspended = 1 WHERE id = $1', [req.params.id]);
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'user.suspend',
+      targetType: 'employee',
+      targetId: Number(req.params.id) || null,
+    });
     res.json({ success: true, message: 'User suspended.' });
   } catch (err) {
     console.error('[admin/users/suspend]', err.message);
@@ -333,6 +346,12 @@ router.patch('/users/:id/suspend', adminAuth, async (req, res) => {
 router.patch('/users/:id/reactivate', adminAuth, async (req, res) => {
   try {
     await pool.query('UPDATE employees SET is_suspended = 0 WHERE id = $1', [req.params.id]);
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'user.reactivate',
+      targetType: 'employee',
+      targetId: Number(req.params.id) || null,
+    });
     res.json({ success: true, message: 'User reactivated.' });
   } catch (err) {
     console.error('[admin/users/reactivate]', err.message);
@@ -358,6 +377,12 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
     await pool.query('DELETE FROM team_members WHERE business_id IN (SELECT id FROM businesses WHERE owner_id = $1)', [uid]);
     await pool.query('DELETE FROM businesses WHERE owner_id = $1', [uid]);
     await pool.query('DELETE FROM employees WHERE id = $1', [uid]);
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'user.delete',
+      targetType: 'employee',
+      targetId: Number(uid) || null,
+    });
     res.json({ success: true, message: 'User permanently deleted.' });
   } catch (err) {
     console.error('[admin/users/delete]', err.message);
@@ -379,6 +404,13 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
     for (let i = 0; i < 8; i++) tempPw += chars[Math.floor(Math.random() * chars.length)];
     const hash = await bcrypt.hash(tempPw, 10);
     await pool.query('UPDATE employees SET password = $1 WHERE id = $2', [hash, req.params.id]);
+
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'user.password.reset',
+      targetType: 'employee',
+      targetId: Number(req.params.id) || null,
+    });
 
     await sendEmail(user.email, {
       subject: 'SnapTip — Your password has been reset',
@@ -437,10 +469,18 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
    ══════════════════════════════════════════════════════ */
 router.get('/withdrawals', adminAuth, async (req, res) => {
   try {
+    const encKey = getEncryptionKey();
+    const params = [];
+    let detailsExpr = 'w.account_details';
+    if (encKey) {
+      params.push(encKey);
+      detailsExpr = decryptedAccountDetailsExpr(1);
+    }
     const { rows: withdrawals } = await pool.query(`
       SELECT
         w.id, w.amount, w.fee, w.net_amount, w.method,
-        w.account_details, w.contact_phone, w.status, w.created_at, w.admin_note,
+        ${detailsExpr} AS account_details,
+        w.contact_phone, w.status, w.created_at, w.admin_note,
         e.id as employee_id, e.full_name, e.first_name, e.username, e.email,
         e.country, e.currency, e.profile_image_url, e.photo_base64,
         e.created_at as emp_created_at
@@ -448,7 +488,7 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       INNER JOIN employees e ON e.id = w.employee_id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
-    `);
+    `, params);
     res.json({ withdrawals });
   } catch (err) {
     console.error('[admin/withdrawals GET]', err.message);
@@ -474,6 +514,13 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
     if (employee?.email) {
       sendEmail(employee.email, buildWithdrawalPaidEmail(employee, withdrawal)).catch(console.error);
     }
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'withdrawal.paid',
+      targetType: 'withdrawal',
+      targetId: Number(id) || null,
+      metadata: { employee_id: withdrawal.employee_id, amount: Number(withdrawal.amount) || 0 },
+    });
     res.json({ success: true, message: 'Withdrawal marked as paid. Email sent.' });
   } catch (err) {
     console.error('[admin/withdrawals PATCH]', err.message);
@@ -501,6 +548,13 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
     if (employee?.email) {
       sendEmail(employee.email, buildWithdrawalRejectedEmail(employee, withdrawal, reason)).catch(console.error);
     }
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'withdrawal.reject',
+      targetType: 'withdrawal',
+      targetId: Number(id) || null,
+      metadata: { employee_id: withdrawal.employee_id, amount: Number(withdrawal.amount) || 0, reason: reason || null },
+    });
     res.json({ success: true, message: 'Withdrawal rejected. Balance refunded. Email sent.' });
   } catch (err) {
     console.error('[admin/withdrawals/reject]', err.message);
@@ -518,6 +572,12 @@ router.patch('/withdrawals/:id/note', adminAuth, async (req, res) => {
     // Ensure admin_note column exists
     try { await pool.query('ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT'); } catch (_) {}
     await pool.query('UPDATE withdrawals SET admin_note = $1 WHERE id = $2', [note || '', id]);
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'withdrawal.note',
+      targetType: 'withdrawal',
+      targetId: Number(id) || null,
+    });
     res.json({ success: true });
   } catch (err) {
     console.error('[admin/withdrawals/note]', err.message);
@@ -563,6 +623,12 @@ router.delete('/businesses/:id', adminAuth, async (req, res) => {
   try {
     await pool.query('DELETE FROM team_members WHERE business_id = $1', [req.params.id]);
     await pool.query('DELETE FROM businesses WHERE id = $1', [req.params.id]);
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'business.delete',
+      targetType: 'business',
+      targetId: Number(req.params.id) || null,
+    });
     res.json({ success: true, message: 'Business deleted.' });
   } catch (err) {
     console.error('[admin/businesses/delete]', err.message);

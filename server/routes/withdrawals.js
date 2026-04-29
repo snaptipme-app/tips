@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { getEncryptionKey, decryptedAccountDetailsExpr } = require('../lib/cryptoFields');
+const { logFromReq } = require('../lib/audit');
 
 /* ── Method fee & minimum config ─────────────────────────────────────── */
 const METHOD_CONFIG = {
@@ -76,18 +78,47 @@ router.post('/request', authMiddleware, async (req, res) => {
       ? JSON.stringify(account_details)
       : String(account_details);
 
-    await pool.query(
-      `INSERT INTO withdrawals
-         (employee_id, amount, fee, net_amount, method, account_details, contact_phone, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
-      [employeeId, amt, fee, netAmount, method, accountJson, String(contact_phone).trim()]
-    );
+    const encKey = getEncryptionKey();
+    if (encKey) {
+      // Encrypted path: write only to account_details_enc, leave plaintext col NULL.
+      await pool.query(
+        `INSERT INTO withdrawals
+           (employee_id, amount, fee, net_amount, method, account_details, account_details_enc, contact_phone, status)
+         VALUES ($1, $2, $3, $4, $5, NULL, pgp_sym_encrypt($6::text, $7::text), $8, 'pending')`,
+        [employeeId, amt, fee, netAmount, method, accountJson, encKey, String(contact_phone).trim()]
+      );
+    } else {
+      // Fallback (no key configured): legacy plaintext write so deploys never break.
+      await pool.query(
+        `INSERT INTO withdrawals
+           (employee_id, amount, fee, net_amount, method, account_details, contact_phone, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
+        [employeeId, amt, fee, netAmount, method, accountJson, String(contact_phone).trim()]
+      );
+    }
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: employeeId,
+      action: 'withdrawal.requested',
+      targetType: 'withdrawal',
+      metadata: { amount: amt, currency: undefined, method, fee, net: netAmount },
+    });
 
     /* ── Return updated withdrawal history ── */
+    const historyParams = [employeeId];
+    let historyDetailsExpr = 'account_details';
+    if (encKey) {
+      historyParams.push(encKey);
+      historyDetailsExpr = decryptedAccountDetailsExpr(2);
+    }
     const { rows: historyRows } = await pool.query(
-      `SELECT id, amount, fee, net_amount, method, account_details, contact_phone, status, created_at
-       FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20`,
-      [employeeId]
+      `SELECT id, amount, fee, net_amount, method,
+              ${historyDetailsExpr} AS account_details,
+              contact_phone, status, created_at
+       FROM withdrawals AS w
+       WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20`,
+      historyParams
     );
 
     const withdrawals = historyRows.map(w => ({
@@ -117,11 +148,21 @@ router.post('/request', authMiddleware, async (req, res) => {
 router.get('/history', authMiddleware, async (req, res) => {
   try {
     const employeeId = req.employee.id;
-    
+
+    const encKey = getEncryptionKey();
+    const params = [employeeId];
+    let detailsExpr = 'account_details';
+    if (encKey) {
+      params.push(encKey);
+      detailsExpr = decryptedAccountDetailsExpr(2);
+    }
     const { rows: historyRows } = await pool.query(
-      `SELECT id, amount, fee, net_amount, method, account_details, contact_phone, status, created_at
-       FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 50`,
-      [employeeId]
+      `SELECT id, amount, fee, net_amount, method,
+              ${detailsExpr} AS account_details,
+              contact_phone, status, created_at
+       FROM withdrawals AS w
+       WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      params
     );
 
     const withdrawals = historyRows.map(w => ({

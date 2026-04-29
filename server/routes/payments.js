@@ -3,6 +3,7 @@ const router = express.Router();
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { processSuccessfulPayment } = require('../lib/processPayment');
+const { logFromReq } = require('../lib/audit');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/payments/mock
@@ -73,6 +74,20 @@ router.post('/mock', async (req, res) => {
     console.log(
       `[payments/mock] ${parsedAmount} ${employeeCurrency} → ${employee_username} (employee_id=${employee.id}), payment_id=${payment.id}`
     );
+
+    logFromReq(req, {
+      actorType: 'tourist',
+      action: 'payment.recorded',
+      targetType: 'payment',
+      targetId: Number(payment.id) || null,
+      metadata: {
+        employee_id: employee.id,
+        amount: parsedAmount,
+        currency: employeeCurrency,
+        method: 'mock',
+        tourist_email: tourist_email || null,
+      },
+    });
 
     res.status(201).json({
       success: true,

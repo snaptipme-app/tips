@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { getEncryptionKey, decryptedAccountDetailsExpr } = require('../lib/cryptoFields');
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -21,7 +22,20 @@ router.get('/', authMiddleware, async (req, res) => {
     const tipStats = tipStatsRows[0] || { total_tips: 0, tip_count: 0 };
 
     const { rows: recentTips } = await pool.query('SELECT id, amount, status, created_at FROM tips WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20', [employeeId]);
-    const { rows: recentWithdrawals } = await pool.query('SELECT id, amount, method, account_details, status, created_at FROM withdrawals WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 10', [employeeId]);
+
+    const encKey = getEncryptionKey();
+    const wParams = [employeeId];
+    let detailsExpr = 'account_details';
+    if (encKey) {
+      wParams.push(encKey);
+      detailsExpr = decryptedAccountDetailsExpr(2);
+    }
+    const { rows: recentWithdrawals } = await pool.query(
+      `SELECT id, amount, method, ${detailsExpr} AS account_details, status, created_at
+       FROM withdrawals AS w
+       WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 10`,
+      wParams
+    );
 
     const emp = {
       ...employee,

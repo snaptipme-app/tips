@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../db');
 const { sendOTPEmail } = require('../utils/sendEmail');
+const { logFromReq } = require('../lib/audit');
 
 function generateOTP() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -225,15 +226,31 @@ router.post('/login', async (req, res) => {
 
     const validPassword = await bcrypt.compare(password, employee.password);
     if (!validPassword) {
+      logFromReq(req, {
+        actorType: 'employee',
+        action: 'employee.login.failure',
+        metadata: { identifier },
+      });
       return res.status(400).json({ error: 'Invalid credentials.' });
     }
 
     if (employee.is_suspended) {
+      logFromReq(req, {
+        actorType: 'employee',
+        actorId: employee.id,
+        action: 'employee.login.blocked.suspended',
+      });
       return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
     }
 
     // Update last_login
     try { await pool.query('UPDATE employees SET last_login = $1 WHERE id = $2', [new Date().toISOString(), employee.id]); } catch (_) {}
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: employee.id,
+      action: 'employee.login.success',
+    });
 
     const token = jwt.sign(
       { id: employee.id, username: employee.username, email: employee.email, is_admin: employee.is_admin || 0 },
@@ -291,6 +308,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 
     const newHash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE employees SET password = $1 WHERE id = $2', [newHash, req.employee.id]);
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: req.employee.id,
+      action: 'employee.password.change',
+    });
 
     res.json({ success: true, message: 'Password changed successfully.' });
   } catch (err) {
@@ -366,6 +389,13 @@ router.post('/forgot-password', async (req, res) => {
     await sendEmail(normalizedEmail, 'SnapTip — Reset Your Password', htmlBody);
     console.log(`[forgot-password] Reset code sent to ${normalizedEmail}`);
 
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: rows[0].id,
+      action: 'employee.password.forgot.requested',
+      metadata: { email: normalizedEmail },
+    });
+
     res.json({ success: true, message: 'Reset code sent to your email.' });
   } catch (err) {
     console.error('[forgot-password]', err.message);
@@ -411,6 +441,13 @@ router.post('/reset-password', async (req, res) => {
     );
 
     console.log(`[reset-password] Password reset for ${normalizedEmail}`);
+
+    logFromReq(req, {
+      actorType: 'employee',
+      actorId: employee.id,
+      action: 'employee.password.reset.completed',
+    });
+
     res.json({ success: true, message: 'Password reset successfully.' });
   } catch (err) {
     console.error('[reset-password]', err.message);

@@ -6,6 +6,13 @@ const pool = new Pool({
 
 async function initDB() {
   try {
+    // pgcrypto is required for field-level encryption (see lib/cryptoFields.js).
+    // CREATE EXTENSION needs superuser; if the application role isn't allowed
+    // to run it the call errors out and we silently skip — the DBA must run
+    // `CREATE EXTENSION pgcrypto;` once as superuser. See docs/db-hardening.md.
+    try { await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto'); }
+    catch (e) { console.warn('[db] pgcrypto extension not created (may need superuser):', e.message); }
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS employees (
         id SERIAL PRIMARY KEY,
@@ -129,6 +136,28 @@ async function initDB() {
       )
     `);
 
+    // Append-only log of security-relevant actions. See lib/audit.js for the
+    // call sites and docs/db-hardening.md for retention guidance.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id SERIAL PRIMARY KEY,
+        actor_type TEXT,
+        actor_id INTEGER,
+        action TEXT,
+        target_type TEXT,
+        target_id INTEGER,
+        ip_address TEXT,
+        user_agent TEXT,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    // Hot indexes — recent activity queries scan by created_at; investigation
+    // queries filter by actor or action.
+    try { await pool.query('CREATE INDEX IF NOT EXISTS audit_log_created_at_idx ON audit_log (created_at DESC)'); } catch (_) {}
+    try { await pool.query('CREATE INDEX IF NOT EXISTS audit_log_action_idx ON audit_log (action)'); } catch (_) {}
+    try { await pool.query('CREATE INDEX IF NOT EXISTS audit_log_actor_idx ON audit_log (actor_type, actor_id)'); } catch (_) {}
+
     // ── Employee column migrations (idempotent) ──
     const employeeAlterTables = [
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS profile_image_url TEXT DEFAULT ''",
@@ -167,6 +196,8 @@ async function initDB() {
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS contact_phone TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS net_amount REAL",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details TEXT",
+      // Phase 4.2: encrypted IBAN/RIB/wallet identifiers (see lib/cryptoFields.js).
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details_enc BYTEA",
       "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT",
     ];
