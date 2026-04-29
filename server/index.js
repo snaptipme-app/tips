@@ -9,6 +9,7 @@ const {
   authLimiter,
   paymentLimiter,
 } = require('./middleware/rateLimit');
+const { checkOriginCsrf } = require('./middleware/csrf');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -72,7 +73,9 @@ app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/payments', paymentsRoutes);
-app.use('/api/admin', adminRoutes);
+// Admin panel uses cookie auth → CSRF defense via Origin/Referer check on
+// state-changing requests (SameSite=Strict cookie is the primary defence).
+app.use('/api/admin', checkOriginCsrf, adminRoutes);
 app.use('/api/support', supportRoutes);
 
 // Health check

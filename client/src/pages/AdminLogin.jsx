@@ -1,17 +1,30 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const ADMIN_TOKEN_KEY = 'snaptip_admin_token';
+// Admin auth lives in an httpOnly cookie (set by POST /api/admin/login).
+// Browser JS cannot read it, so the helpers below only manage the local
+// "is the operator logged in?" hint flag in sessionStorage. Trust the server
+// — if a request returns 401, treat that as the source of truth.
+const ADMIN_HINT_KEY = 'snaptip_admin_session';
 
-export function saveAdminToken(token) {
-  localStorage.setItem(ADMIN_TOKEN_KEY, token);
+export function markAdminLoggedIn() {
+  try { sessionStorage.setItem(ADMIN_HINT_KEY, '1'); } catch { /* private mode */ }
 }
-export function getAdminToken() {
-  return localStorage.getItem(ADMIN_TOKEN_KEY);
+export function isAdminHintSet() {
+  try { return sessionStorage.getItem(ADMIN_HINT_KEY) === '1'; } catch { return false; }
 }
 export function clearAdminToken() {
-  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  try { sessionStorage.removeItem(ADMIN_HINT_KEY); } catch { /* ignore */ }
+  // One-time cleanup of the legacy localStorage value.
+  try { localStorage.removeItem('snaptip_admin_token'); } catch { /* ignore */ }
+  // Best-effort server-side cookie clear.
+  axios.post('/api/admin/logout', null, { withCredentials: true }).catch(() => {});
 }
+// Compat shims kept so existing call sites (AdminDashboard) don't break.
+// Returns null because the JWT is no longer accessible to JS — callers should
+// rely on `withCredentials: true` instead of injecting a Bearer header.
+export function getAdminToken() { return null; }
+export function saveAdminToken() { /* server sets the cookie; nothing to do */ }
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -39,7 +52,6 @@ export default function AdminLogin({ onSuccess }) {
 
   const isLocked = lockout.until && now < lockout.until;
   const remaining = isLocked ? Math.ceil((lockout.until - now) / 1000) : 0;
-  const attemptsLeft = MAX_ATTEMPTS - (lockout.count || 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,9 +59,10 @@ export default function AdminLogin({ onSuccess }) {
     setError('');
     setLoading(true);
     try {
-      const { data } = await axios.post('/api/admin/login', { password });
+      // withCredentials so the Set-Cookie response is honored
+      await axios.post('/api/admin/login', { password }, { withCredentials: true });
       localStorage.removeItem('admin_lockout');
-      saveAdminToken(data.token);
+      markAdminLoggedIn();
       onSuccess();
     } catch (err) {
       const newCount = (lockout.count || 0) + 1;

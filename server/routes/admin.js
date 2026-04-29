@@ -5,6 +5,21 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../db');
 const adminAuth = require('../middleware/adminAuth');
+const { ADMIN_COOKIE } = require('../middleware/adminAuth');
+
+const ADMIN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+// Shared cookie options. SameSite=Strict + httpOnly + secure (in prod) makes
+// the token unreachable from JS and immune to cross-site CSRF.
+function adminCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/admin',
+    maxAge: ADMIN_TOKEN_TTL_MS,
+  };
+}
 
 /* ── Nodemailer transporter (Brevo SMTP) ── */
 function getTransporter() {
@@ -184,11 +199,23 @@ router.post('/login', (req, res) => {
       process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET + '_admin',
       { expiresIn: '24h' }
     );
+    // httpOnly cookie — primary auth surface (immune to XSS token theft).
+    res.cookie(ADMIN_COOKIE, token, adminCookieOptions());
+    // `token` still returned for transitional clients still using
+    // localStorage. Once all admin browsers re-login, this can be removed.
     res.json({ token, message: 'Admin authenticated.' });
   } catch (err) {
     console.error('[admin/login]', err.message);
     res.status(500).json({ error: 'Server error.' });
   }
+});
+
+/* ══════════════════════════════════════════════════════
+   POST /api/admin/logout — clears the httpOnly cookie
+   ══════════════════════════════════════════════════════ */
+router.post('/logout', (_req, res) => {
+  res.clearCookie(ADMIN_COOKIE, { ...adminCookieOptions(), maxAge: undefined });
+  res.json({ message: 'Logged out.' });
 });
 
 /* ══════════════════════════════════════════════════════

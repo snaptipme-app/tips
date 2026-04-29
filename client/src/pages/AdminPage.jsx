@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import AdminLogin, { getAdminToken, clearAdminToken } from './AdminLogin';
+import AdminLogin, { isAdminHintSet, clearAdminToken } from './AdminLogin';
 import AdminDashboard from './AdminDashboard';
 
 export default function AdminPage() {
-  // Check for existing valid token in localStorage
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getAdminToken());
+  // Token lives in an httpOnly cookie unreachable from JS. We use a session-
+  // scoped hint flag to remember "operator just logged in" between renders.
+  // The server is the source of truth — any 401 will trigger clearAdminToken
+  // and bounce back here.
+  const [isAuthenticated, setIsAuthenticated] = useState(() => isAdminHintSet());
 
   if (!isAuthenticated) {
     return (

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { getAdminToken, clearAdminToken } from './AdminLogin';
+import { clearAdminToken } from './AdminLogin';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BG='#080818',CARD='#0d1117',BORDER='rgba(255,255,255,0.06)',ACCENT='#6c6cff',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#a855f7';
 const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
 const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#6c6cff',USD:'#00C896',AED:'#a855f7',GBP:'#06b6d4'};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
-function api(){return axios.create({baseURL:'/api/admin',headers:{Authorization:`Bearer ${getAdminToken()}`}})}
+// Auth is sent automatically via httpOnly admin cookie. No Authorization header.
+function api(){return axios.create({baseURL:'/api/admin',withCredentials:true})}
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
 const fmtMoney=(n,c='USD')=>`${Number(n||0).toFixed(2)} ${c}`;
 const fmtAmount=(n,c)=>{if(!c)return Number(n||0).toFixed(2);const sym={USD:'$',EUR:'€',GBP:'£'};return sym[c]?`${sym[c]}${Number(n||0).toFixed(2)}`:`${Number(n||0).toFixed(2)} ${c}`;};
@@ -357,8 +358,7 @@ function UsersSection({showToast,onLogout}){
   const fetchUsers=useCallback(async()=>{
     setLoading(true);
     try{
-      const token=localStorage.getItem('snaptip_admin_token');
-      const res=await fetch('/api/admin/users',{headers:{'Authorization':'Bearer '+token}});
+      const res=await fetch('/api/admin/users',{credentials:'include'});
       if(res.status===401){clearAdminToken();onLogout();return}
       const data=await res.json();
       console.log('[admin] fetchUsers got',data.users?.length||0,'users');
@@ -373,8 +373,6 @@ function UsersSection({showToast,onLogout}){
 
   const doAction=async(action,userId,userName)=>{
     console.log('[admin] doAction:',action,'userId:',userId);
-    const token=localStorage.getItem('snaptip_admin_token');
-    if(!token){showToast('Not authenticated','error');return}
     setActionLoading(userId);
     try{
       let url,method;
@@ -383,7 +381,7 @@ function UsersSection({showToast,onLogout}){
       else if(action==='delete'){url='/api/admin/users/'+userId;method='DELETE'}
       else if(action==='reset'){url='/api/admin/users/'+userId+'/reset-password';method='POST'}
       console.log('[admin] calling:',method,url);
-      const res=await fetch(url,{method,headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}});
+      const res=await fetch(url,{method,credentials:'include',headers:{'Content-Type':'application/json'}});
       const data=await res.json();
       console.log('[admin] response:',res.status,data);
       if(res.ok&&(data.success||data.message)){
