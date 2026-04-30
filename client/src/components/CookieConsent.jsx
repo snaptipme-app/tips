@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const STORAGE_KEY = 'snaptip.cookieConsent.v1';
 
+// Routes where the banner is allowed to render. Anything else (notably the
+// `/:username` tourist tip page) is suppressed so the banner does not pop up
+// in front of someone who never opted into the SnapTip product.
+const ALLOWED_PREFIXES = ['/login', '/register', '/dashboard', '/admin'];
+
+function isAllowedRoute(pathname) {
+  return ALLOWED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  );
+}
+
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     try {
@@ -22,6 +34,7 @@ export default function CookieConsent() {
   };
 
   if (!visible) return null;
+  if (!isAllowedRoute(pathname)) return null;
 
   return (
     <div

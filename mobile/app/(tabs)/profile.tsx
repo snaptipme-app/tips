@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -99,7 +99,7 @@ export default function Profile() {
   useEffect(() => {
     const loadPhoto = async () => {
       try {
-        const stored = await AsyncStorage.getItem('snaptip_user');
+        const stored = await getItem(SecureKeys.USER);
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed.photo_url) {
@@ -154,7 +154,7 @@ export default function Profile() {
   const uploadPhoto = async (uri: string) => {
     setUploading(true);
     try {
-      const token = await AsyncStorage.getItem('snaptip_token');
+      const token = await getItem(SecureKeys.TOKEN);
       console.log('[profile] Uploading photo...');
 
       const uploadResult = await FileSystem.uploadAsync(

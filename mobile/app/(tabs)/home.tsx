@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, App
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { useAuth } from '../../lib/AuthContext';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
@@ -44,7 +44,7 @@ export default function Home() {
   const fetchDashboard = useCallback(async () => {
     try {
       console.log('[polling] Fetching dashboard...');
-      const token = await AsyncStorage.getItem('snaptip_token');
+      const token = await getItem(SecureKeys.TOKEN);
       if (!token) {
         console.log('[polling] No token found, skipping');
         return;

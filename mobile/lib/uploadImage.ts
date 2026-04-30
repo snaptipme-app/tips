@@ -11,13 +11,13 @@
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getItem, SecureKeys } from './secureStorage';
 
 const API_BASE = 'https://snaptip.me/api';
 
 // ─── Token helper ─────────────────────────────────────────────────────────────
 async function getToken(): Promise<string | null> {
-  return AsyncStorage.getItem('snaptip_token'); // key matches AuthContext.tsx
+  return getItem(SecureKeys.TOKEN);
 }
 
 // ─── Profile photo ────────────────────────────────────────────────────────────

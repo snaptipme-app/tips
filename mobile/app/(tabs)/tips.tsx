@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, FlatList, RefreshControl, AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { Toast, useToast } from '../../components/Toast';
@@ -34,7 +34,7 @@ export default function Tips() {
   const fetchTips = useCallback(async () => {
     try {
       console.log('[tips-polling] Fetching tips...');
-      const token = await AsyncStorage.getItem('snaptip_token');
+      const token = await getItem(SecureKeys.TOKEN);
       if (!token) {
         console.log('[tips-polling] No token found, skipping');
         return;
