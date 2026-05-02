@@ -138,7 +138,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO invitations (business_id, email, token, expires_at, required_country) VALUES ($1, $2, $3, extract(epoch from (now() + interval '48 hours')) * 1000, $4)",
+      "INSERT INTO invitations (business_id, email, token, expires_at, required_country) VALUES ($1, $2, $3, extract(epoch from (now() + interval '7 days')) * 1000, $4)",
       [business.id, normalizedEmail, token, ownerCountry]
     );
 
@@ -181,7 +181,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
       </div>
 
       <p style="color:#aaa;font-size:13px;text-align:center;margin:0;">
-        This invitation expires in <strong style="color:#666;">48 hours</strong>
+        This invitation expires in <strong style="color:#666;">7 days</strong>
       </p>
     </div>
 
@@ -233,10 +233,10 @@ router.get('/invite-link', authMiddleware, async (req, res) => {
     if (!linkInvite) {
       const token = crypto.randomBytes(32).toString('hex');
       await pool.query(
-        "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '48 hours')) * 1000)",
+        "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '7 days')) * 1000)",
         [business.id, token]
       );
-      
+
       const { rows: newRows } = await pool.query("SELECT * FROM invitations WHERE token = $1", [token]);
       linkInvite = newRows[0];
     }
@@ -263,7 +263,7 @@ router.post('/refresh-invite-link', authMiddleware, async (req, res) => {
 
     const token = crypto.randomBytes(32).toString('hex');
     await pool.query(
-      "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '48 hours')) * 1000)",
+      "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '7 days')) * 1000)",
       [business.id, token]
     );
 

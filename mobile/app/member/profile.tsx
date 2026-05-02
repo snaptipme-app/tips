@@ -142,7 +142,7 @@ export default function MemberProfile() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: BG }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -156,7 +156,12 @@ export default function MemberProfile() {
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      >
 
         {/* ── Avatar ── */}
         <View style={{ alignItems: 'center', marginBottom: 28 }}>
@@ -292,7 +297,7 @@ export default function MemberProfile() {
       </ScrollView>
 
       {/* ── Change Password Sheet ── */}
-      <Modal visible={showPasswordSheet} animationType="slide" transparent>
+      <Modal visible={showPasswordSheet} animationType="slide" transparent statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <TouchableOpacity activeOpacity={1} onPress={() => !changingPw && setShowPasswordSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.65)' }}>
             <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>

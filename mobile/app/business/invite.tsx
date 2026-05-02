@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Share, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -114,8 +114,16 @@ export default function InviteMember() {
   const displayUrl = inviteUrl.length > 42 ? inviteUrl.slice(0, 30) + '...' + inviteUrl.slice(-10) : inviteUrl;
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 60 }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, backgroundColor: BG }}
+    >
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingTop: 60 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      >
         {/* Header */}
         <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 }}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
@@ -161,7 +169,7 @@ export default function InviteMember() {
 
               {/* Expiry info + Refresh */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flex: 1 }}>Link expires in 48h - Tap refresh to generate new link</Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flex: 1 }}>Link expires in 7 days - Tap refresh to generate new link</Text>
                 <TouchableOpacity onPress={refreshLink} disabled={refreshing} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 10 }}>
                   {refreshing
                     ? <ActivityIndicator size="small" color={ACCENT} />
@@ -219,6 +227,6 @@ export default function InviteMember() {
         )}
       </ScrollView>
       <Toast {...toast} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }

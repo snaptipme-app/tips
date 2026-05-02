@@ -491,7 +491,7 @@ export default function MemberWithdraw() {
       </Modal>
 
       {/* ═══ Withdrawal Form Sheet ═══ */}
-      <Modal visible={showForm} animationType="slide" transparent>
+      <Modal visible={showForm} animationType="slide" transparent statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <TouchableOpacity activeOpacity={1} onPress={() => {
               // Only close if form is empty (no data entered)
@@ -500,7 +500,12 @@ export default function MemberWithdraw() {
             }} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
             <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 44, maxHeight: '92%' }}>
               <View style={{ alignItems: 'center', paddingVertical: 12 }}><View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} /></View>
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
+              <ScrollView
+                contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+              >
                 {activeMethod && (<>
                   {/* Header */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>

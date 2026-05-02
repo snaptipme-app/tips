@@ -120,7 +120,7 @@ export default function BusinessProfileSettings() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: BG }}
     >
       {/* Header */}
@@ -142,6 +142,8 @@ export default function BusinessProfileSettings() {
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
         {/* ── Logo Upload ── */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>

@@ -164,10 +164,11 @@ export default function JoinBusiness() {
         // Token already in SecureStore from handleRegisterAndJoin → api wrapper picks it up.
         await api.patch('/employee/withdrawal-method', { method: wMethod, account: wAccount });
       }
-      // Complete login — token is already in SecureStore; just sync the user state.
+      // Sync AuthContext so the protected /member/dashboard route accepts us.
+      // login() persists the token + user AND updates in-memory state, so the
+      // next route guard sees a valid auth and doesn't bounce back to /login.
       if (joinedEmployee && joinToken) {
-        await secureSet(SecureKeys.TOKEN, joinToken);
-        updateUser({ ...joinedEmployee, photo_base64: photoB64 });
+        await login(joinToken, { ...joinedEmployee, photo_base64: photoB64 });
       }
       animateStep(() => setStep('success'));
     } catch {
