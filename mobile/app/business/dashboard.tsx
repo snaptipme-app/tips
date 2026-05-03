@@ -13,18 +13,19 @@ import { Toast, useToast } from '../../components/Toast';
 import { getImageSource } from '../../lib/imageUtils';
 import SnapTipLogo from '../../components/SnapTipLogo';
 
-const BG = '#080818';
-const CARD = 'rgba(255,255,255,0.05)';
-const BORDER = 'rgba(255,255,255,0.08)';
-const ACCENT = '#6c6cff';
-const GREEN = '#00C896';
-const YELLOW = '#f59e0b';
-const PURPLE = '#a855f7';
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const BG      = '#080818';
+const CARD    = 'rgba(255,255,255,0.05)';
+const BORDER  = 'rgba(255,255,255,0.08)';
+const ACCENT  = '#6c6cff';
+const GREEN   = '#00C896';
+const YELLOW  = '#f59e0b';
+const PURPLE  = '#a855f7';
 
 const COMMISSION_RATE = 0.10;
-const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
-const RANK_ICONS = ['trophy', 'medal', 'ribbon'] as const;
+const RANK_COLORS     = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 interface Stats {
   total_tips: number;
   total_transactions: number;
@@ -58,20 +59,21 @@ interface BusinessInfo {
   logo_url?: string;
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function BusinessDashboard() {
   const { user } = useAuth();
-  const router = useRouter();
+  const router   = useRouter();
   const { toast, showToast } = useToast();
 
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats,        setStats]        = useState<Stats | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [business, setBusiness] = useState<BusinessInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [business,     setBusiness]     = useState<BusinessInfo | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
 
-  const currency = user?.currency || 'MAD';
-  const initials = (user?.full_name || 'B').charAt(0).toUpperCase();
-  const photoSrc = getImageSource(user?.photo_base64 || user?.profile_image_url);
+  const currency        = user?.currency || 'MAD';
+  const initials        = (user?.full_name || 'B').charAt(0).toUpperCase();
+  const photoSrc        = getImageSource(user?.photo_base64 || user?.profile_image_url);
   const businessLogoSrc = getImageSource(business?.logo_base64 || business?.logo_url);
 
   const fetchAll = useCallback(async () => {
@@ -97,20 +99,19 @@ export default function BusinessDashboard() {
 
   const onRefresh = () => { setRefreshing(true); fetchAll(); };
 
-  const totalTips = stats?.total_tips || 0;
-  const totalTx = stats?.total_transactions || 0;
-  const teamSize = stats?.active_members || 0;
-  const avgTip = totalTx > 0 ? totalTips / totalTx : 0;
-  const commission = totalTips * COMMISSION_RATE;
+  // ── Derived values (all logic preserved) ────────────────────────────────────
+  const totalTips    = stats?.total_tips || 0;
+  const totalTx      = stats?.total_transactions || 0;
+  const teamSize     = stats?.active_members || 0;
+  const commission   = totalTips * COMMISSION_RATE;
   const businessName = business?.business_name || stats?.business_name || 'My Business';
 
-  // ── 7-day chart data (daily totals) ──
   const chartData = useMemo(() => {
     const days: { label: string; iso: string; amount: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso   = d.toISOString().slice(0, 10);
       const label = d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
       days.push({ label, iso, amount: 0 });
     }
@@ -126,19 +127,20 @@ export default function BusinessDashboard() {
   const recentTx = transactions.slice(0, 5);
 
   const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
+    const d       = new Date(iso);
+    const now     = new Date();
+    const diffMs  = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    const diffHr = Math.floor(diffMin / 60);
+    const diffHr  = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
-    if (diffMin < 1) return 'just now';
+    if (diffMin < 1)  return 'just now';
     if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay < 7) return `${diffDay}d ago`;
+    if (diffHr  < 24) return `${diffHr}h ago`;
+    if (diffDay < 7)  return `${diffDay}d ago`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  // ── Loading screen ───────────────────────────────────────────────────────────
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
@@ -147,191 +149,194 @@ export default function BusinessDashboard() {
     );
   }
 
+  // ── Leaderboard bar scale ────────────────────────────────────────────────────
+  const maxPerformerTips = stats?.top_performers?.[0]
+    ? Math.max(Number(stats.top_performers[0].total_tips), 1)
+    : 1;
+
+  // ── JSX ─────────────────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 48 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />
+        }
       >
-        {/* ═══════════ HEADER ═══════════ */}
+
+        {/* ════════════ HEADER ════════════ */}
         <LinearGradient
-          colors={['#0d0d30', '#080818']}
-          style={{ paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 }}
+          colors={['#0c0c26', BG]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.3, y: 1 }}
+          style={{ paddingTop: 54, paddingBottom: 28, paddingHorizontal: 20 }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center' }}>
-                {businessLogoSrc ? (
-                  <Image source={businessLogoSrc} style={{ width: 44, height: 44 }} resizeMode="cover" />
-                ) : (
-                  <SnapTipLogo size={28} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' }}>SnapTip Business</Text>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', marginTop: 2 }} numberOfLines={1}>
-                  {businessName}
-                </Text>
-              </View>
+          {/* Top row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 26 }}>
+            {/* Business logo */}
+            <View style={{
+              width: 46, height: 46, borderRadius: 14,
+              backgroundColor: CARD, borderWidth: 1, borderColor: BORDER,
+              overflow: 'hidden', justifyContent: 'center', alignItems: 'center',
+              marginRight: 12,
+            }}>
+              {businessLogoSrc
+                ? <Image source={businessLogoSrc} style={{ width: 46, height: 46 }} resizeMode="cover" />
+                : <SnapTipLogo size={26} />
+              }
             </View>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
-              <View style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
-                {photoSrc ? (
-                  <Image source={photoSrc} style={{ width: 42, height: 42 }} />
-                ) : (
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: ACCENT }}>{initials}</Text>
-                )}
+
+            {/* Business name */}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.38)', letterSpacing: 0.9, textTransform: 'uppercase' }}>
+                SnapTip Business
+              </Text>
+              <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff', marginTop: 2 }} numberOfLines={1}>
+                {businessName}
+              </Text>
+            </View>
+
+            {/* Manager avatar */}
+            <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.75}>
+              <View style={{
+                width: 44, height: 44, borderRadius: 22,
+                backgroundColor: 'rgba(108,108,255,0.15)',
+                borderWidth: 2, borderColor: ACCENT,
+                overflow: 'hidden', justifyContent: 'center', alignItems: 'center',
+              }}>
+                {photoSrc
+                  ? <Image source={photoSrc} style={{ width: 44, height: 44 }} />
+                  : <Text style={{ fontSize: 17, fontWeight: '800', color: ACCENT }}>{initials}</Text>
+                }
               </View>
             </TouchableOpacity>
           </View>
 
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff' }}>
-            Welcome back{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}
+          {/* Greeting */}
+          <Text style={{ fontSize: 25, fontWeight: '800', color: '#fff', letterSpacing: -0.4 }}>
+            {user?.full_name ? `Hey, ${user.full_name.split(' ')[0]}` : 'Dashboard'}
           </Text>
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
+          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 5 }}>
             Here's how your team is performing
           </Text>
         </LinearGradient>
 
-        <View style={{ paddingHorizontal: 20, marginTop: 4 }}>
-          {/* ═══════════ HERO METRIC ═══════════ */}
-          <LinearGradient
-            colors={['#0d2a22', '#102e26', '#0a1f1a']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              borderRadius: 20,
-              padding: 22,
-              borderWidth: 1,
-              borderColor: 'rgba(0,200,150,0.18)',
-              marginBottom: 14,
-              overflow: 'hidden',
-            }}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: GREEN, letterSpacing: 0.6, textTransform: 'uppercase' }}>Total Tips Earned</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                  <Text style={{ fontSize: 38, fontWeight: '800', color: '#fff', letterSpacing: -1 }}>
-                    {totalTips.toFixed(2)}
-                  </Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.55)' }}>{currency}</Text>
-                </View>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
-                  Across {totalTx} {totalTx === 1 ? 'transaction' : 'transactions'}
-                </Text>
-              </View>
-              <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(0,200,150,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,200,150,0.3)' }}>
-                <Ionicons name="cash-outline" size={26} color={GREEN} />
-              </View>
-            </View>
-          </LinearGradient>
+        <View style={{ paddingHorizontal: 20 }}>
 
-          {/* ═══════════ KPI GRID (3 cards) ═══════════ */}
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-            <KpiCard
-              icon="receipt-outline"
-              color={ACCENT}
-              label="Transactions"
-              value={String(totalTx)}
-            />
-            <KpiCard
-              icon="people-outline"
-              color={YELLOW}
-              label="Team"
-              value={String(teamSize)}
-            />
-            <KpiCard
-              icon="trending-up-outline"
-              color={PURPLE}
-              label="Avg Tip"
-              value={`${avgTip.toFixed(0)}`}
-              suffix={currency}
-            />
-          </View>
-
-          {/* ═══════════ COMMISSION CARD ═══════════ */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: BORDER, marginBottom: 22, gap: 12 }}>
-            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={ACCENT} />
+          {/* ════════════ QUICK STATS 2 × 2 ════════════ */}
+          <Label>Quick Stats</Label>
+          <View style={{ gap: 10, marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <StatCard
+                icon="cash-outline"
+                color={GREEN}
+                label="Total Tips"
+                value={totalTips.toFixed(2)}
+                suffix={currency}
+                highlight
+              />
+              <StatCard
+                icon="receipt-outline"
+                color={ACCENT}
+                label="Transactions"
+                value={String(totalTx)}
+              />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '500' }}>Platform commission (10%)</Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff', marginTop: 2 }}>{commission.toFixed(2)} {currency}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.1)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.25)' }}>
-              <Ionicons name="checkmark-circle" size={12} color={GREEN} />
-              <Text style={{ fontSize: 11, fontWeight: '700', color: GREEN }}>Free for you</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <StatCard
+                icon="people-outline"
+                color={YELLOW}
+                label="Team Members"
+                value={String(teamSize)}
+              />
+              <StatCard
+                icon="trending-up-outline"
+                color={PURPLE}
+                label="Commission"
+                value={commission.toFixed(2)}
+                suffix={currency}
+              />
             </View>
           </View>
 
-          {/* ═══════════ 7-DAY CHART ═══════════ */}
+          {/* ════════════ 7-DAY TREND ════════════ */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Last 7 Days
-            </Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-              Total: {chartData.reduce((a, d) => a + d.amount, 0).toFixed(2)} {currency}
+            <Label inline>7-Day Trend</Label>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: '500' }}>
+              {chartData.reduce((a, d) => a + d.amount, 0).toFixed(2)} {currency} total
             </Text>
           </View>
-          <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>
+          <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 28 }}>
             <SparkChart data={chartData} max={chartMax} />
           </View>
 
-          {/* ═══════════ TOP PERFORMERS ═══════════ */}
+          {/* ════════════ TOP PERFORMERS ════════════ */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Top Performers
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.6}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>View all</Text>
+            <Label inline>Top Performers</Label>
+            <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.7}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>View all</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
+
+          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 28 }}>
             {(stats?.top_performers || []).length === 0 ? (
-              <View style={{ alignItems: 'center', padding: 28 }}>
-                <Ionicons name="podium-outline" size={36} color="rgba(255,255,255,0.15)" />
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.35)', marginTop: 10 }}>No tips received yet</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>Invite employees to get started</Text>
-              </View>
+              <EmptyState icon="podium-outline" text="No tips received yet" sub="Invite employees to get started" />
             ) : (
               stats!.top_performers.map((perf, idx) => {
-                const rankColor = RANK_COLORS[idx] || 'rgba(255,255,255,0.3)';
-                const initials2 = (perf.full_name || 'U').charAt(0).toUpperCase();
-                const photo = perf.photo_base64 || perf.profile_image_url || '';
+                const rankColor   = RANK_COLORS[idx] || 'rgba(255,255,255,0.3)';
+                const perfInitial = (perf.full_name || 'U').charAt(0).toUpperCase();
+                const photo       = perf.photo_base64 || perf.profile_image_url || '';
+                const barPct      = Math.max((Number(perf.total_tips) / maxPerformerTips) * 100, 3);
+                const isLast      = idx === stats!.top_performers.length - 1;
+
                 return (
                   <View
                     key={perf.id}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 14,
-                      borderBottomWidth: idx < (stats!.top_performers.length - 1) ? 1 : 0,
+                      flexDirection: 'row', alignItems: 'center',
+                      paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+                      borderBottomWidth: isLast ? 0 : 1,
                       borderBottomColor: BORDER,
                     }}
                   >
-                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${rankColor}1a`, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                      <Ionicons name={RANK_ICONS[idx]} size={16} color={rankColor} />
+                    {/* Rank number */}
+                    <View style={{ width: 26, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: rankColor, letterSpacing: -0.2 }}>
+                        #{idx + 1}
+                      </Text>
                     </View>
-                    <View style={{ width: 38, height: 38, borderRadius: 19, overflow: 'hidden', borderWidth: 2, borderColor: `${rankColor}40`, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.12)', marginRight: 12 }}>
-                      {photo ? (
-                        <Image source={{ uri: photo }} style={{ width: 38, height: 38 }} />
-                      ) : (
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: rankColor }}>{initials2}</Text>
-                      )}
+
+                    {/* Avatar */}
+                    <View style={{
+                      width: 40, height: 40, borderRadius: 20,
+                      overflow: 'hidden',
+                      backgroundColor: `${rankColor}18`,
+                      borderWidth: 2, borderColor: `${rankColor}55`,
+                      justifyContent: 'center', alignItems: 'center',
+                    }}>
+                      {photo
+                        ? <Image source={{ uri: photo }} style={{ width: 40, height: 40 }} />
+                        : <Text style={{ fontSize: 15, fontWeight: '800', color: rankColor }}>{perfInitial}</Text>
+                      }
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }} numberOfLines={1}>{perf.full_name}</Text>
-                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 1 }} numberOfLines={1}>@{perf.username}</Text>
+
+                    {/* Name + progress bar */}
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }} numberOfLines={1}>
+                        {perf.full_name}
+                      </Text>
+                      <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 2 }}>
+                        <View style={{ width: `${barPct}%`, height: 4, borderRadius: 2, backgroundColor: rankColor, opacity: 0.85 }} />
+                      </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: rankColor }}>
+
+                    {/* Amount */}
+                    <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: rankColor }}>
                         {Number(perf.total_tips).toFixed(2)}
                       </Text>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{currency}</Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', marginTop: 1 }}>{currency}</Text>
                     </View>
                   </View>
                 );
@@ -339,43 +344,48 @@ export default function BusinessDashboard() {
             )}
           </View>
 
-          {/* ═══════════ RECENT TRANSACTIONS ═══════════ */}
+          {/* ════════════ RECENT ACTIVITY ════════════ */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Recent Transactions
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/business/transactions')} activeOpacity={0.6}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>View all</Text>
+            <Label inline>Recent Activity</Label>
+            <TouchableOpacity onPress={() => router.push('/business/transactions')} activeOpacity={0.7}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>View all</Text>
             </TouchableOpacity>
           </View>
-          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
+
+          <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 28 }}>
             {recentTx.length === 0 ? (
-              <View style={{ alignItems: 'center', padding: 28 }}>
-                <Ionicons name="receipt-outline" size={32} color="rgba(255,255,255,0.15)" />
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', marginTop: 10 }}>No transactions yet</Text>
-              </View>
+              <EmptyState icon="receipt-outline" text="No transactions yet" />
             ) : (
               recentTx.map((tx, idx) => {
-                const txInitials = (tx.employee_name || 'U').charAt(0).toUpperCase();
-                const txPhoto = tx.photo_base64 || tx.profile_image_url || '';
+                const txInitial = (tx.employee_name || 'U').charAt(0).toUpperCase();
+                const txPhoto   = tx.photo_base64 || tx.profile_image_url || '';
+                const isLast    = idx === recentTx.length - 1;
+
                 return (
                   <View
                     key={tx.id}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 14,
-                      borderBottomWidth: idx < recentTx.length - 1 ? 1 : 0,
+                      flexDirection: 'row', alignItems: 'center',
+                      paddingHorizontal: 16, paddingVertical: 13, gap: 12,
+                      borderBottomWidth: isLast ? 0 : 1,
                       borderBottomColor: BORDER,
                     }}
                   >
-                    <View style={{ width: 38, height: 38, borderRadius: 19, overflow: 'hidden', borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.1)', marginRight: 12 }}>
-                      {txPhoto ? (
-                        <Image source={{ uri: txPhoto }} style={{ width: 38, height: 38 }} />
-                      ) : (
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{txInitials}</Text>
-                      )}
+                    {/* Employee avatar */}
+                    <View style={{
+                      width: 42, height: 42, borderRadius: 21,
+                      overflow: 'hidden',
+                      backgroundColor: 'rgba(0,200,150,0.1)',
+                      borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)',
+                      justifyContent: 'center', alignItems: 'center',
+                    }}>
+                      {txPhoto
+                        ? <Image source={{ uri: txPhoto }} style={{ width: 42, height: 42 }} />
+                        : <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{txInitial}</Text>
+                      }
                     </View>
+
+                    {/* Name + time */}
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }} numberOfLines={1}>
                         {tx.employee_name}
@@ -384,11 +394,20 @@ export default function BusinessDashboard() {
                         {formatTime(tx.created_at)}
                       </Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: GREEN }}>
-                        +{Number(tx.amount).toFixed(2)}
+
+                    {/* Amount badge */}
+                    <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                      <View style={{
+                        backgroundColor: 'rgba(0,200,150,0.12)',
+                        borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
+                      }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: GREEN }}>
+                          +{Number(tx.amount).toFixed(2)}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', textAlign: 'right' }}>
+                        {currency}
                       </Text>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{currency}</Text>
                     </View>
                   </View>
                 );
@@ -396,43 +415,61 @@ export default function BusinessDashboard() {
             )}
           </View>
 
-          {/* ═══════════ QUICK ACTIONS ═══════════ */}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 }}>
-            Quick Actions
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-            <QuickAction
-              icon="person-add-outline"
-              color={GREEN}
-              label="Invite"
-              onPress={() => router.push('/business/invite')}
-            />
-            <QuickAction
-              icon="people-outline"
-              color={ACCENT}
-              label="Team"
-              onPress={() => router.push('/business/team')}
-            />
-            <QuickAction
-              icon="receipt-outline"
-              color={YELLOW}
-              label="Transactions"
-              onPress={() => router.push('/business/transactions')}
-            />
-          </View>
+          {/* ════════════ ACTION BUTTONS ════════════ */}
+          <Label>Actions</Label>
 
-          {/* ═══════════ SETTINGS ROW ═══════════ */}
+          {/* Invite Employee — filled green */}
+          <TouchableOpacity
+            onPress={() => router.push('/business/invite')}
+            activeOpacity={0.82}
+            style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: GREEN, borderRadius: 16,
+              paddingHorizontal: 16, paddingVertical: 15,
+              gap: 14, marginBottom: 10,
+            }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="person-add-outline" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Invite Employee</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)', marginTop: 1 }}>Send a link or email invite</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+          </TouchableOpacity>
+
+          {/* View Team — outlined blue */}
+          <TouchableOpacity
+            onPress={() => router.push('/business/team')}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: CARD,
+              borderWidth: 1, borderColor: 'rgba(108,108,255,0.35)',
+              borderRadius: 16, paddingHorizontal: 16, paddingVertical: 15,
+              gap: 14, marginBottom: 10,
+            }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={20} color={ACCENT} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>View Team</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginTop: 1 }}>Manage your staff members</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(108,108,255,0.45)" />
+          </TouchableOpacity>
+
+          {/* Business Settings — ghost */}
           <TouchableOpacity
             onPress={() => router.push('/business/profile-settings')}
             activeOpacity={0.8}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: 'row', alignItems: 'center',
               backgroundColor: CARD,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: BORDER,
+              borderWidth: 1, borderColor: BORDER,
+              borderRadius: 16, paddingHorizontal: 16, paddingVertical: 15,
               gap: 14,
             }}
           >
@@ -441,10 +478,11 @@ export default function BusinessDashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Business Settings</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Logo, name, thank-you message</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Logo, name, thank-you message</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.25)" />
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.2)" />
           </TouchableOpacity>
+
         </View>
       </ScrollView>
       <Toast {...toast} />
@@ -452,128 +490,135 @@ export default function BusinessDashboard() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 // Sub-components
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 
-function KpiCard({ icon, color, label, value, suffix }: {
+/** Uppercase section label. Pass `inline` when paired with a sibling element in a row. */
+function Label({ children, inline = false }: { children: React.ReactNode; inline?: boolean }) {
+  return (
+    <Text style={{
+      fontSize: 11,
+      fontWeight: '700',
+      color: 'rgba(255,255,255,0.38)',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      marginBottom: inline ? 0 : 12,
+    }}>
+      {children}
+    </Text>
+  );
+}
+
+/** 2 × 2 grid stat card. */
+function StatCard({ icon, color, label, value, suffix, highlight = false }: {
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   label: string;
   value: string;
   suffix?: string;
+  highlight?: boolean;
 }) {
   return (
     <View style={{
       flex: 1,
       backgroundColor: CARD,
       borderRadius: 16,
-      padding: 14,
+      padding: 16,
       borderWidth: 1,
-      borderColor: BORDER,
+      borderColor: highlight ? `${color}4d` : BORDER,
+      gap: 10,
     }}>
-      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${color}1a`, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-        <Ionicons name={icon} size={16} color={color} />
+      {/* Icon pill */}
+      <View style={{
+        width: 38, height: 38, borderRadius: 12,
+        backgroundColor: `${color}20`,
+        justifyContent: 'center', alignItems: 'center',
+        alignSelf: 'flex-start',
+      }}>
+        <Ionicons name={icon} size={19} color={color} />
       </View>
-      <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.3 }} numberOfLines={1}>
-        {value}{suffix && <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}> {suffix}</Text>}
-      </Text>
-      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{label}</Text>
+
+      {/* Value */}
+      <View>
+        <Text
+          style={{ fontSize: 21, fontWeight: '800', color: '#fff', letterSpacing: -0.5 }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          {value}
+        </Text>
+        {suffix ? (
+          <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.38)', marginTop: 1 }}>
+            {suffix}
+          </Text>
+        ) : null}
+        <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.38)', marginTop: 4 }}>
+          {label}
+        </Text>
+      </View>
     </View>
   );
 }
 
-function QuickAction({ icon, color, label, onPress }: {
+/** Shared empty state for leaderboard and transactions. */
+function EmptyState({ icon, text, sub }: {
   icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  label: string;
-  onPress: () => void;
+  text: string;
+  sub?: string;
 }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={{
-        flex: 1,
-        backgroundColor: CARD,
-        borderRadius: 16,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: BORDER,
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${color}1a`, justifyContent: 'center', alignItems: 'center' }}>
-        <Ionicons name={icon} size={20} color={color} />
+    <View style={{ alignItems: 'center', paddingVertical: 32, gap: 8 }}>
+      <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center' }}>
+        <Ionicons name={icon} size={28} color="rgba(255,255,255,0.14)" />
       </View>
-      <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{label}</Text>
-    </TouchableOpacity>
+      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', fontWeight: '600' }}>{text}</Text>
+      {sub ? <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>{sub}</Text> : null}
+    </View>
   );
 }
 
+/** 7-day area sparkline (SVG). Data computation lives in the parent. */
 function SparkChart({ data, max }: { data: { label: string; iso: string; amount: number }[]; max: number }) {
-  const width = 280;
-  const height = 110;
-  const padX = 8;
-  const padY = 12;
-  const innerW = width - padX * 2;
-  const innerH = height - padY * 2;
+  const W = 280, H = 108, pX = 8, pY = 10;
+  const iW = W - pX * 2;
+  const iH = H - pY * 2;
 
-  const points = data.map((d, i) => {
-    const x = padX + (i / (data.length - 1)) * innerW;
-    const y = padY + innerH - (d.amount / max) * innerH;
-    return { x, y, amount: d.amount };
-  });
+  const pts = data.map((d, i) => ({
+    x: pX + (i / (data.length - 1)) * iW,
+    y: pY + iH - (d.amount / max) * iH,
+    v: d.amount,
+  }));
 
-  const polylinePts = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const areaPath =
-    `M ${points[0].x.toFixed(1)},${(padY + innerH).toFixed(1)} ` +
-    points.map((p) => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
-    ` L ${points[points.length - 1].x.toFixed(1)},${(padY + innerH).toFixed(1)} Z`;
+  const polyPts = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const area =
+    `M ${pts[0].x.toFixed(1)},${(pY + iH).toFixed(1)} ` +
+    pts.map(p => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
+    ` L ${pts[pts.length - 1].x.toFixed(1)},${(pY + iH).toFixed(1)} Z`;
 
   return (
     <View>
-      <View style={{ alignItems: 'center' }}>
-        <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-          <Defs>
-            <SvgLinearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={GREEN} stopOpacity="0.35" />
-              <Stop offset="1" stopColor={GREEN} stopOpacity="0" />
-            </SvgLinearGradient>
-          </Defs>
-          {/* Baseline grid */}
-          <SvgLine
-            x1={padX}
-            y1={padY + innerH}
-            x2={padX + innerW}
-            y2={padY + innerH}
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="1"
-          />
-          {/* Filled area under line */}
-          <Path d={areaPath} fill="url(#sparkFill)" />
-          {/* Line */}
-          <Polyline
-            points={polylinePts}
-            fill="none"
-            stroke={GREEN}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Dots on points with data */}
-          {points.map((p, i) =>
-            p.amount > 0 ? (
-              <Circle key={i} cx={p.x} cy={p.y} r={3} fill={GREEN} stroke="#0a1f1a" strokeWidth="1.5" />
-            ) : null
-          )}
-        </Svg>
-      </View>
+      <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+        <Defs>
+          <SvgLinearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0"   stopColor={GREEN} stopOpacity="0.32" />
+            <Stop offset="1"   stopColor={GREEN} stopOpacity="0"    />
+          </SvgLinearGradient>
+        </Defs>
+        <SvgLine x1={pX} y1={pY + iH} x2={pX + iW} y2={pY + iH} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+        <Path d={area} fill="url(#fill)" />
+        <Polyline points={polyPts} fill="none" stroke={GREEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) =>
+          p.v > 0
+            ? <Circle key={i} cx={p.x} cy={p.y} r={3} fill={GREEN} stroke="#0a1f1a" strokeWidth="1.5" />
+            : null
+        )}
+      </Svg>
       {/* Day labels */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 4 }}>
         {data.map((d, i) => (
-          <Text key={i} style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: '600' }}>
+          <Text key={i} style={{ fontSize: 10, color: 'rgba(255,255,255,0.32)', fontWeight: '600' }}>
             {d.label}
           </Text>
         ))}
