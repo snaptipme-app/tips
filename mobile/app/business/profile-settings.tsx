@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, Image,
+  Image,
 } from 'react-native';
 import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -113,8 +115,8 @@ export default function BusinessProfileSettings() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={ACCENT} size="large" />
+      <View style={{ flex: 1, backgroundColor: BG, paddingHorizontal: 20, paddingTop: 100 }}>
+        <SkeletonLoader.BusinessDashboard />
       </View>
     );
   }
@@ -249,10 +251,9 @@ export default function BusinessProfileSettings() {
         </View>
 
         {/* Save Button */}
-        <TouchableOpacity
+        <HapticButton
           onPress={handleSave}
           disabled={saving}
-          activeOpacity={0.8}
           style={{
             marginTop: 24,
             height: 54,
@@ -270,15 +271,11 @@ export default function BusinessProfileSettings() {
             elevation: 8,
           }}
         >
-          {saving ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          )}
+          <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Text>
-        </TouchableOpacity>
+        </HapticButton>
 
         {/* Navigation */}
         <View style={{ marginTop: 32 }}>

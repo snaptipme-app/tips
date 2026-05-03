@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image } from 'react-native';
 import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +12,7 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
+import HapticButton from '../../components/HapticButton';
 
 const API_URL = 'https://snaptip.me';
 
@@ -146,7 +147,7 @@ export default function Profile() {
       setLocalPhotoUri(uri);
       await uploadPhoto(uri);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not process image.');
+      showToast(err.message || 'Could not process image.', 'error');
       console.error('[profile] pickImage error:', err);
     }
   };
@@ -176,7 +177,7 @@ export default function Profile() {
 
       if (uploadResult.status !== 200) {
         setLocalPhotoUri('');
-        Alert.alert('Upload Failed', data.error || `Server error (${uploadResult.status})`);
+        showToast(data.error || `Server error (${uploadResult.status})`, 'error');
         return;
       }
 
@@ -189,16 +190,16 @@ export default function Profile() {
         setDisplayPhoto(freshUrl);
         // Spread full employee so balance, job_title, etc. stay in sync too
         updateUser({ ...(data.employee || {}), photo_url: photoUrl });
-        Alert.alert('Success', 'Photo updated!');
+        showToast('Photo updated!', 'success');
       } else {
         setLocalPhotoUri('');
         console.error('[profile] No photo_url in response:', uploadResult.body);
-        Alert.alert('Upload Failed', data.error || 'No photo URL in server response');
+        showToast(data.error || 'No photo URL in server response', 'error');
       }
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
       console.error('[profile] Upload error:', msg, err);
-      Alert.alert('Upload Failed', `Could not save your photo.\n\nReason: ${msg}`);
+      showToast(`Could not save your photo. ${msg}`, 'error');
       setLocalPhotoUri('');
     } finally {
       setUploading(false);
@@ -255,7 +256,7 @@ export default function Profile() {
             </View>
             {uploading && (
               <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="small" color="#fff" />
+                <Ionicons name="hourglass-outline" size={18} color="#fff" />
               </View>
             )}
             <TouchableOpacity
@@ -284,9 +285,8 @@ export default function Profile() {
         {/* ── Withdraw Funds (non-business only) ── */}
         {user?.account_type !== 'business' && (
           <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
-            <TouchableOpacity
+            <HapticButton
               onPress={() => router.push('/member/withdraw')}
-              activeOpacity={0.8}
               style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}
             >
               <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
@@ -298,7 +298,7 @@ export default function Profile() {
               </View>
               <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{Math.floor(balance)} {user?.currency || 'MAD'}</Text>
               <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         )}
 

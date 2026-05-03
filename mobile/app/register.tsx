@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Image, Modal } from 'react-native';
 import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,7 +105,7 @@ const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastNam
     <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={onLastName} error={errors.lastName} />
     <InputField icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={onEmail} error={errors.email} keyboardType="email-address" />
     <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-      {loading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
+      <Ionicons name={loading ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
     </TouchableOpacity>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 }}>
@@ -237,7 +237,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
       {errors.country ? <Text style={{ fontSize: 12, color: '#ef4444', marginBottom: 16, marginLeft: 4 }}>{errors.country}</Text> : null}
 
       <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-        {loading && <ActivityIndicator color="#fff" size="small" />}
+        {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
       </TouchableOpacity>
 
@@ -270,7 +270,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
     <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide)" value={jobTitle} onChangeText={onJobTitle} />
 
     <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-      {loading && <ActivityIndicator color="#fff" size="small" />}
+      {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup'}</Text>
     </TouchableOpacity>
 
@@ -534,7 +534,7 @@ export default function Register() {
       imageBase64Ref.current = uri;
       console.log('[register] Image selected with crop, uri:', uri);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not process image.');
+      showToast(err.message || 'Could not process image.', 'error');
       console.error('[register] pickImage error:', err);
     }
   };
@@ -554,7 +554,7 @@ export default function Register() {
         const uploadResult = await uploadProfileImage(photoUri);
 
         if (!uploadResult.success || !uploadResult.employee) {
-          Alert.alert('Upload Failed', JSON.stringify(uploadResult.error || 'Photo upload failed'));
+          showToast(JSON.stringify(uploadResult.error || 'Photo upload failed'), 'error');
           setLoading(false);
           return;
         }
@@ -568,7 +568,7 @@ export default function Register() {
           photo_url: freshPhotoUrl,
         });
 
-        Alert.alert('Success', 'Profile photo uploaded!');
+        showToast('Profile photo uploaded!', 'success');
       }
 
       showToast('Setup complete!', 'success');
@@ -579,11 +579,7 @@ export default function Register() {
     } catch (err: any) {
       const msg = err?.message || 'Unknown error';
       console.error('[register] handleComplete failed:', msg);
-      Alert.alert(
-        'Setup Failed',
-        `❌ Could not save your profile.\n\nReason: ${msg}`,
-        [{ text: 'OK' }]
-      );
+      showToast(`Could not save your profile. ${msg}`, 'error');
     } finally { setLoading(false); }
   }, [imageUri, jobTitle, accountType, router, showToast, updateUser]);
 

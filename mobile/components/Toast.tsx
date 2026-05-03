@@ -1,5 +1,16 @@
+/**
+ * Toast — Premium dark-themed notification that slides from the top.
+ *
+ * Features:
+ *  - Smooth translateY slide-in from above the safe area
+ *  - Ionicons SVG icons (no emojis)
+ *  - Glassmorphic dark card with colored accent stripe
+ *  - Auto-dismiss after 3.2 seconds
+ *
+ * API is unchanged — drop-in compatible with existing useToast() callers.
+ */
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, Text, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -10,10 +21,16 @@ type ToastProps = {
   visible: boolean;
 };
 
-const COLORS: Record<ToastType, string> = {
+const ACCENT: Record<ToastType, string> = {
   success: '#00C896',
   error: '#ef4444',
   info: '#6c6cff',
+};
+
+const BG: Record<ToastType, string> = {
+  success: 'rgba(0,200,150,0.12)',
+  error: 'rgba(239,68,68,0.12)',
+  info: 'rgba(108,108,255,0.12)',
 };
 
 const ICON_NAMES: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
@@ -23,16 +40,31 @@ const ICON_NAMES: Record<ToastType, keyof typeof Ionicons.glyphMap> = {
 };
 
 export function Toast({ message, type, visible }: ToastProps) {
+  const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.delay(2500),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: Platform.OS === 'ios' ? 54 : 36,
+          useNativeDriver: true,
+          speed: 14,
+          bounciness: 8,
+        }),
+        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
+
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(translateY, { toValue: -120, duration: 300, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        ]).start();
+      }, 2800);
+
+      return () => clearTimeout(timer);
     } else {
+      translateY.setValue(-120);
       opacity.setValue(0);
     }
   }, [visible, message]);
@@ -44,26 +76,59 @@ export function Toast({ message, type, visible }: ToastProps) {
       pointerEvents="none"
       style={{
         position: 'absolute',
-        bottom: 100,
-        left: 20,
-        right: 20,
-        backgroundColor: COLORS[type],
-        borderRadius: 14,
-        padding: 16,
+        top: 0,
+        left: 16,
+        right: 16,
+        zIndex: 9999,
+        transform: [{ translateY }],
         opacity,
-        zIndex: 999,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        shadowColor: COLORS[type],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 8,
       }}
     >
-      <Ionicons name={ICON_NAMES[type]} size={20} color="#fff" />
-      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, flex: 1 }}>{message}</Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          backgroundColor: 'rgba(15,15,46,0.92)',
+          borderRadius: 16,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          borderWidth: 1,
+          borderColor: `${ACCENT[type]}33`,
+          // Shadow
+          shadowColor: ACCENT[type],
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.25,
+          shadowRadius: 16,
+          elevation: 12,
+        }}
+      >
+        {/* Colored icon container */}
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            backgroundColor: BG[type],
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Ionicons name={ICON_NAMES[type]} size={18} color={ACCENT[type]} />
+        </View>
+        <Text
+          style={{
+            color: '#fff',
+            fontWeight: '600',
+            fontSize: 14,
+            flex: 1,
+            lineHeight: 19,
+          }}
+          numberOfLines={2}
+        >
+          {message}
+        </Text>
+      </View>
     </Animated.View>
   );
 }

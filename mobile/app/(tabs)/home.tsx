@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, AppState, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,8 @@ import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
 import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -194,22 +196,20 @@ export default function Home() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity
+            <HapticButton
               onPress={() => router.push('/member/withdraw')}
-              activeOpacity={0.85}
               style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
               <Ionicons name="arrow-up-circle" size={20} color="#080818" />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#080818' }}>Cash Out</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </HapticButton>
+            <HapticButton
               onPress={() => router.push('/member/qr')}
-              activeOpacity={0.85}
               style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
             >
               <Ionicons name="qr-code-outline" size={20} color="#00C896" />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#00C896' }}>My QR</Text>
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         </LinearGradient>
 
@@ -223,7 +223,7 @@ export default function Home() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={ACCENT} style={{ marginTop: 20 }} />
+            <SkeletonLoader.Dashboard />
           ) : recentTips.length === 0 ? (
             <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 32, borderWidth: 1, borderColor: BORDER, alignItems: 'center' }}>
               <Ionicons name="wallet-outline" size={36} color="rgba(255,255,255,0.12)" />

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView, Image,
-  Modal, ActivityIndicator, KeyboardAvoidingView, Platform, RefreshControl, Linking,
+  Modal, KeyboardAvoidingView, Platform, RefreshControl, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import { Toast, useToast } from '../../components/Toast';
 import { useScreenCaptureProtection } from '../../lib/security';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 /* ── Design tokens ── */
 const BG = '#080818';
@@ -416,7 +418,7 @@ export default function MemberWithdraw() {
 
           {/* ═══ Withdrawal History ═══ */}
           <Text style={sectionTitle}>{t('withdrawal_history') || 'Withdrawal History'}</Text>
-          {loading ? <ActivityIndicator color={ACCENT} style={{ marginTop: 20 }} />
+          {loading ? <View style={{ marginTop: 20 }}><SkeletonLoader.TeamList /></View>
           : withdrawals.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 48, backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="receipt-outline" size={44} color="rgba(255,255,255,0.1)" />
@@ -572,13 +574,13 @@ export default function MemberWithdraw() {
                   ))}
 
                   {/* Submit */}
-                  <TouchableOpacity onPress={handleSubmit} disabled={submitting} activeOpacity={0.85} style={{ marginTop: 8 }}>
+                  <HapticButton onPress={handleSubmit} disabled={submitting} style={{ marginTop: 8 }}>
                     <LinearGradient colors={['#4facfe', '#a855f7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={{ height: 56, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting ? 0.6 : 1 }}>
-                      {submitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                      <Ionicons name={submitting ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
                       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? 'Submitting...' : 'Request Withdrawal'}</Text>
                     </LinearGradient>
-                  </TouchableOpacity>
+                  </HapticButton>
                 </>)}
               </ScrollView>
             </View>

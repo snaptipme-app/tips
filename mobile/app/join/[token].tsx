@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput, ActivityIndicator,
+  View, Text, TouchableOpacity, TextInput,
   ScrollView, Image, KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -196,7 +196,7 @@ export default function JoinBusiness() {
   // ── Loading ──
   if (step === 'loading') return (
     <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" color={ACCENT} />
+      <Ionicons name="hourglass-outline" size={36} color={ACCENT} />
       <Text style={{ color: 'rgba(255,255,255,0.4)', marginTop: 16, fontSize: 14 }}>Loading invitation...</Text>
     </View>
   );
@@ -296,7 +296,7 @@ export default function JoinBusiness() {
                     activeOpacity={0.8}
                     style={{ height: 54, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: regLoading ? 0.6 : 1, marginBottom: 12 }}
                   >
-                    {regLoading ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                    {regLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{regLoading ? 'Joining...' : `Join ${businessName}`}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => router.back()} style={{ alignItems: 'center', padding: 12 }}>
@@ -386,7 +386,7 @@ export default function JoinBusiness() {
                 activeOpacity={0.8}
                 style={{ height: 54, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 8, opacity: regLoading ? 0.6 : 1 }}
               >
-                {regLoading ? <ActivityIndicator color="#fff" /> : <Ionicons name="arrow-forward-circle" size={20} color="#fff" />}
+                {regLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="arrow-forward-circle" size={20} color="#fff" />}
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{regLoading ? 'Creating account...' : 'Continue'}</Text>
               </TouchableOpacity>
             </View>
@@ -436,7 +436,7 @@ export default function JoinBusiness() {
                 activeOpacity={0.8}
                 style={{ height: 54, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: wLoading ? 0.6 : 1 }}
               >
-                {wLoading ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                {wLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{wLoading ? 'Saving...' : 'Save & Continue'}</Text>
               </TouchableOpacity>
 

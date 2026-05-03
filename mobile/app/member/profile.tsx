@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, Image, Modal, KeyboardAvoidingView, Platform, Alert,
+  Image, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import api from '../../lib/api';
 import { uploadProfileImage } from '../../lib/uploadImage';
 import { Toast, useToast } from '../../components/Toast';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -92,12 +93,12 @@ export default function MemberProfile() {
         const uploadResult = await uploadProfileImage(asset.uri);
         if (uploadResult.success && uploadResult.employee?.photo_url) {
           updateUser({ photo_url: uploadResult.employee.photo_url + '?t=' + Date.now() });
-          Alert.alert('Success', 'Profile photo uploaded!');
+          showToast('Profile photo uploaded!', 'success');
         } else {
-          Alert.alert('Upload Failed', JSON.stringify(uploadResult.error || 'Unknown error'));
+          showToast(JSON.stringify(uploadResult.error || 'Unknown error'), 'error');
         }
       } catch (e: any) {
-        Alert.alert('Upload Failed', e?.message || 'Unknown error');
+        showToast(e?.message || 'Unknown upload error', 'error');
       }
     }
   };
@@ -192,15 +193,14 @@ export default function MemberProfile() {
             </View>
           </View>
 
-          <TouchableOpacity
+          <HapticButton
             onPress={handleSaveProfile}
             disabled={saving}
-            activeOpacity={0.8}
             style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: saving ? 0.6 : 1 }}
           >
-            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+            <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
             <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{saving ? t('saving') : t('save_profile')}</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
 
         {/* ── Business Info (Read-Only) ── */}
@@ -313,10 +313,10 @@ export default function MemberProfile() {
                   </View>
                 </View>
               ))}
-              <TouchableOpacity onPress={handleChangePassword} disabled={changingPw} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: changingPw ? 0.6 : 1, marginTop: 6 }}>
-                {changingPw ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+              <HapticButton onPress={handleChangePassword} disabled={changingPw} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: changingPw ? 0.6 : 1, marginTop: 6 }}>
+                <Ionicons name={changingPw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
                 <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{changingPw ? t('saving') : t('save_password')}</Text>
-              </TouchableOpacity>
+              </HapticButton>
             </View>
           </TouchableOpacity>
         </KeyboardAvoidingView>
@@ -341,10 +341,10 @@ export default function MemberProfile() {
             <View style={{ backgroundColor: INPUT_BG, borderRadius: 12, height: 50, paddingHorizontal: 14, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', marginBottom: 20 }}>
               <TextInput style={{ color: '#fff', fontSize: 15 }} placeholder="Enter account number" placeholderTextColor="rgba(255,255,255,0.2)" value={wAccount} onChangeText={setWAccount} keyboardType="numeric" />
             </View>
-            <TouchableOpacity onPress={handleSaveWithdrawal} disabled={savingWithdraw} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: savingWithdraw ? 0.6 : 1 }}>
-              {savingWithdraw ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+            <HapticButton onPress={handleSaveWithdrawal} disabled={savingWithdraw} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: savingWithdraw ? 0.6 : 1 }}>
+              <Ionicons name={savingWithdraw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('save_method')}</Text>
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         </TouchableOpacity>
       </Modal>

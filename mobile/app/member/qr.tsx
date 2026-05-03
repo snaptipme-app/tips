@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Linking,
+  View, Text, TouchableOpacity, ScrollView, Linking,
   TextInput, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import { Toast, useToast } from '../../components/Toast';
 import PrintableQRCard, { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
 import SnapTipLogo from '../../components/SnapTipLogo';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD_DARK = '#0f0f2e';
@@ -199,10 +200,9 @@ export default function MemberQR() {
         </View>
 
         {/* ── Download & Share (Primary) ── */}
-        <TouchableOpacity
+        <HapticButton
           onPress={handleDownload}
           disabled={capturing}
-          activeOpacity={0.85}
           style={{ marginBottom: 12 }}
         >
           <LinearGradient
@@ -219,16 +219,12 @@ export default function MemberQR() {
               elevation: 8,
             }}
           >
-            {capturing ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Ionicons name="download-outline" size={20} color="#fff" />
-            )}
+            <Ionicons name={capturing ? 'hourglass-outline' : 'download-outline'} size={20} color="#fff" />
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
               {capturing ? t('preparing') : t('download_share_card')}
             </Text>
           </LinearGradient>
-        </TouchableOpacity>
+        </HapticButton>
 
         {/* ── Preview Payment Page (Secondary) ── */}
         <TouchableOpacity

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Image,
-  RefreshControl, ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import { getImageSource } from '../../lib/imageUtils';
 import SnapTipLogo from '../../components/SnapTipLogo';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG      = '#080818';
@@ -141,8 +143,8 @@ export default function BusinessDashboard() {
   // ── Loading screen ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={ACCENT} size="large" />
+      <View style={{ flex: 1, backgroundColor: BG, paddingHorizontal: 20, paddingTop: 100 }}>
+        <SkeletonLoader.BusinessDashboard />
       </View>
     );
   }
@@ -408,9 +410,8 @@ export default function BusinessDashboard() {
           <Label>Actions</Label>
 
           {/* Invite Employee — filled green */}
-          <TouchableOpacity
+          <HapticButton
             onPress={() => router.push('/business/invite')}
-            activeOpacity={0.82}
             style={{
               flexDirection: 'row', alignItems: 'center',
               backgroundColor: GREEN, borderRadius: 16,
@@ -426,7 +427,7 @@ export default function BusinessDashboard() {
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)', marginTop: 1 }}>Send a link or email invite</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
-          </TouchableOpacity>
+          </HapticButton>
 
           {/* View Team — outlined blue */}
           <TouchableOpacity

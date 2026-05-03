@@ -1,5 +1,5 @@
 import { useState, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/AuthContext';
@@ -111,7 +111,7 @@ export default function Login() {
             activeOpacity={0.8}
             style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.6 : 1, flexDirection: 'row', gap: 8, marginTop: 6 }}
           >
-            {loading && <ActivityIndicator color="#fff" size="small" />}
+            {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Logging in...' : 'Log In'}</Text>
           </TouchableOpacity>
         </View>

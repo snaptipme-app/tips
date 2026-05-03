@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Alert,
-  RefreshControl, Modal, ActivityIndicator, Image, Linking,
+  RefreshControl, Modal, Image, Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import { useAuth } from '../../lib/AuthContext';
 import { Toast, useToast } from '../../components/Toast';
 import { PrintableQRCardBusiness } from '../../components/PrintableQRCard';
 import { downloadAndShareQRCard } from '../../lib/captureQRCard';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -234,7 +236,7 @@ export default function TeamManagement() {
             backgroundColor: CARD, borderRadius: 20, padding: 28,
             alignItems: 'center', gap: 14, borderWidth: 1, borderColor: BORDER,
           }}>
-            <ActivityIndicator color={ACCENT} size="large" />
+            <Ionicons name="hourglass-outline" size={28} color={ACCENT} />
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Preparing QR card...</Text>
           </View>
         </View>
@@ -255,19 +257,18 @@ export default function TeamManagement() {
               {members.length} member{members.length !== 1 ? 's' : ''} · tap a member for actions
             </Text>
           </View>
-          <TouchableOpacity
+          <HapticButton
             onPress={() => router.push('/business/invite')}
-            activeOpacity={0.8}
             style={{ backgroundColor: ACCENT, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
             <Ionicons name="add" size={16} color="#fff" />
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Invite</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </LinearGradient>
 
       {loading ? (
-        <ActivityIndicator color={ACCENT} style={{ marginTop: 60 }} />
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}><SkeletonLoader.TeamList /></View>
       ) : (
         <FlatList
           data={members}

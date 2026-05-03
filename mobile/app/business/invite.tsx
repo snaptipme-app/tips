@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Share } from 'react-native';
 import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -134,7 +136,7 @@ export default function InviteMember() {
           </Text>
 
           {linkLoading ? (
-            <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
+            <View style={{ marginVertical: 20 }}><SkeletonLoader.Line width="100%" height={52} /><View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}><SkeletonLoader.ShimmerBlock style={{ flex: 1, height: 44, borderRadius: 50 }} /><SkeletonLoader.ShimmerBlock style={{ flex: 1, height: 44, borderRadius: 50 }} /></View></View>
           ) : (
             <>
               {/* Link Pill */}
@@ -144,20 +146,20 @@ export default function InviteMember() {
 
               {/* Copy + Share Buttons */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                <TouchableOpacity onPress={copyLink} activeOpacity={0.8} style={{
+                <HapticButton onPress={copyLink} style={{
                   flex: 1, height: 44, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
                   justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6,
                 }}>
                   <Ionicons name="copy-outline" size={16} color="#fff" />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Copy Link</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={shareLink} activeOpacity={0.8} style={{
+                </HapticButton>
+                <HapticButton onPress={shareLink} style={{
                   flex: 1, height: 44, borderRadius: 50, backgroundColor: ACCENT,
                   justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6,
                 }}>
                   <Ionicons name="share-social-outline" size={16} color="#fff" />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Share</Text>
-                </TouchableOpacity>
+                </HapticButton>
               </View>
 
               {/* Expiry info + Refresh */}
@@ -165,7 +167,7 @@ export default function InviteMember() {
                 <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flex: 1 }}>Link expires in 7 days - Tap refresh to generate new link</Text>
                 <TouchableOpacity onPress={refreshLink} disabled={refreshing} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 10 }}>
                   {refreshing
-                    ? <ActivityIndicator size="small" color={ACCENT} />
+                    ? <Ionicons name="hourglass-outline" size={14} color={ACCENT} />
                     : <Ionicons name="refresh" size={14} color={ACCENT} />
                   }
                   <Text style={{ fontSize: 12, color: ACCENT, fontWeight: '600' }}>Refresh</Text>
@@ -194,10 +196,10 @@ export default function InviteMember() {
             />
           </View>
 
-          <TouchableOpacity onPress={handleEmailInvite} disabled={sendingEmail} activeOpacity={0.8} style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: sendingEmail ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-            {sendingEmail ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send-outline" size={16} color="#fff" />}
+          <HapticButton onPress={handleEmailInvite} disabled={sendingEmail} style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: sendingEmail ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+            <Ionicons name={sendingEmail ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
             <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{sendingEmail ? 'Sending...' : 'Send Invitation'}</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
 
         {/* ═══════════ PENDING INVITATIONS ═══════════ */}

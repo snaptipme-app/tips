@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList, RefreshControl, ActivityIndicator, Image,
+  View, Text, TouchableOpacity, FlatList, RefreshControl, Image,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { Toast, useToast } from '../../components/Toast';
+import SkeletonLoader from '../../components/SkeletonLoader';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -203,7 +204,7 @@ export default function Transactions() {
 
       {/* List */}
       {loading ? (
-        <ActivityIndicator color={ACCENT} style={{ marginTop: 60 }} />
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}><SkeletonLoader.TeamList /></View>
       ) : (
         <FlatList
           data={transactions}

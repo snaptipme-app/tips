@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Image,
-  RefreshControl, ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import { Toast, useToast } from '../../components/Toast';
 import { getImageSource } from '../../lib/imageUtils';
 import Logo from '../../components/Logo';
 import { playTipSound } from '../../lib/tipSound';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -145,7 +147,7 @@ export default function MemberDashboard() {
 
           {/* ── Balance Card ── */}
           {loading ? (
-            <ActivityIndicator color={GREEN} />
+            <View style={{ padding: 20 }}><SkeletonLoader.Dashboard /></View>
           ) : (
             <LinearGradient
               colors={['#0a2a20', '#0d3328']}
@@ -169,22 +171,20 @@ export default function MemberDashboard() {
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity
+                <HapticButton
                   onPress={() => router.push('/member/withdraw')}
-                  activeOpacity={0.8}
                   style={{ flex: 1, height: 46, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
                 >
                   <Ionicons name="arrow-up-circle" size={20} color="#fff" />
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('cash_out')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                </HapticButton>
+                <HapticButton
                   onPress={() => router.push('/member/qr')}
-                  activeOpacity={0.8}
                   style={{ height: 46, paddingHorizontal: 18, borderRadius: 50, borderWidth: 1.5, borderColor: 'rgba(0,200,150,0.4)', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
                 >
                   <Ionicons name="qr-code-outline" size={18} color={GREEN} />
                   <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN }}>{t('my_qr')}</Text>
-                </TouchableOpacity>
+                </HapticButton>
               </View>
             </LinearGradient>
           )}
@@ -204,7 +204,7 @@ export default function MemberDashboard() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={ACCENT} />
+            <SkeletonLoader.Dashboard />
           ) : data?.recent_tips.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 48, backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="wallet-outline" size={44} color="rgba(255,255,255,0.1)" />

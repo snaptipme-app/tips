@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
+import HapticButton from '../../components/HapticButton';
 
 const BG = '#080818';
 const CARD = '#0f0f2e';
@@ -126,10 +127,10 @@ export default function BusinessSetup() {
             <TextInput style={{ flex: 1, color: '#fff', fontSize: 15, marginLeft: 10 }} placeholder="123 Main St, City" placeholderTextColor="rgba(255,255,255,0.2)" value={address} onChangeText={setAddress} />
           </View>
 
-          <TouchableOpacity onPress={handleCreate} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-            {loading && <ActivityIndicator color="#fff" size="small" />}
+          <HapticButton onPress={handleCreate} disabled={loading} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+            <Ionicons name={loading ? 'hourglass-outline' : 'checkmark-circle'} size={16} color="#fff" />
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Business'}</Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </ScrollView>
       <Toast {...toast} />
