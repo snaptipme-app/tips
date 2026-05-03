@@ -5,10 +5,22 @@
  *
  * Drop-in replacement for TouchableOpacity on primary actions.
  * Falls back gracefully if haptics unavailable (e.g. web/simulator).
+ *
+ * Uses Animated.createAnimatedComponent(TouchableOpacity) so the scale
+ * transform and all layout/visual styles live on a single element —
+ * no wrapper/inner-view mismatch that would squish content.
  */
 import { useRef, useCallback } from 'react';
-import { Animated, TouchableOpacity, TouchableOpacityProps, GestureResponderEvent } from 'react-native';
+import {
+  Animated,
+  TouchableOpacity,
+  TouchableOpacityProps,
+  GestureResponderEvent,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
+
+// Single component that is both Animated AND TouchableOpacity
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface HapticButtonProps extends TouchableOpacityProps {
   /** Scale value when pressed (default 0.97 — barely visible, premium feel) */
@@ -64,16 +76,15 @@ export default function HapticButton({
   );
 
   return (
-    <TouchableOpacity
+    <AnimatedTouchable
       activeOpacity={0.85}
       {...rest}
+      style={[style, { transform: [{ scale }] }]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
-      <Animated.View style={[style as any, { transform: [{ scale }] }]}>
-        {children}
-      </Animated.View>
-    </TouchableOpacity>
+      {children}
+    </AnimatedTouchable>
   );
 }
