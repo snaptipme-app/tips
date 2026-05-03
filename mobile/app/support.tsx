@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   Modal, KeyboardAvoidingView, Platform,
@@ -16,7 +16,7 @@ const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const GREEN = '#00C896';
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 
 const SUBJECTS = [
   'Account Issue',
@@ -162,7 +162,7 @@ export default function SupportScreen() {
                 activeOpacity={0.8}
                 style={{
                   height: 52, borderRadius: 12, backgroundColor: INPUT_BG,
-                  borderWidth: 1, borderColor: subject ? 'rgba(108,108,255,0.4)' : BORDER,
+                  borderWidth: 1, borderColor: subject ? 'rgba(255,255,255,0.4)' : BORDER,
                   paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 }}
               >

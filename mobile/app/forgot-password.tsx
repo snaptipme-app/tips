@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, memo } from 'react';
+﻿import { useState, useRef, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
@@ -12,7 +12,7 @@ const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 const GREEN = '#00C896';
 
 const FPInput = memo(({ icon, placeholder, value, onChangeText, secureTextEntry, right, ...props }: any) => (

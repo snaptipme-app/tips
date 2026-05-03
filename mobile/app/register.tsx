@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react';
+﻿import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, Image, Modal } from 'react-native';
 import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter, Link } from 'expo-router';
@@ -16,7 +16,7 @@ const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 const GREEN = '#00C896';
 const SHEET_BG = '#0d0d24';
 
@@ -192,10 +192,10 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
           const sel = accountType === opt.key;
           return (
             <TouchableOpacity key={opt.key} onPress={() => onAccountType(opt.key)} activeOpacity={0.8} style={{
-              flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(108,108,255,0.12)' : INPUT_BG,
+              flex: 1, padding: 14, borderRadius: 14, backgroundColor: sel ? 'rgba(255,255,255,0.12)' : INPUT_BG,
               borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
             }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sel ? 'rgba(108,108,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: sel ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 6 }}>
                 <Ionicons name={opt.icon} size={22} color={sel ? ACCENT : 'rgba(255,255,255,0.4)'} />
               </View>
               <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? ACCENT : '#fff' }}>{opt.title}</Text>
@@ -222,7 +222,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{country.name}</Text>
             </View>
-            <View style={{ backgroundColor: 'rgba(108,108,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>{country.currency}</Text>
             </View>
           </>
@@ -716,7 +716,7 @@ export default function Register() {
               >
                 <Image source={c.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
                 <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCountry === c.id ? '#fff' : 'rgba(255,255,255,0.5)', flex: 1 }}>{c.name}</Text>
-                <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(108,108,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: selectedCountry === c.id ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
                 </View>
                 {selectedCountry === c.id && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
@@ -738,7 +738,7 @@ export default function Register() {
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Profile Photo</Text>
             <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="camera-outline" size={22} color={ACCENT} />
               </View>
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Take Photo</Text>

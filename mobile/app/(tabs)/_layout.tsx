@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+﻿import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 const INACTIVE = 'rgba(255,255,255,0.3)';
 
 export default function TabLayout() {
@@ -32,7 +32,7 @@ export default function TabLayout() {
   const tabBarBackground = () => (
     <View style={{ flex: 1 }}>
       <LinearGradient
-        colors={['rgba(108,108,255,0.15)', 'rgba(108,108,255,0.03)', 'transparent']}
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.03)', 'transparent']}
         style={{ height: 1 }}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Toast — Premium dark-themed notification that slides from the top.
  *
  * Features:
@@ -27,13 +27,13 @@ type ToastProps = {
 const ACCENT: Record<ToastType, string> = {
   success: '#00C896',
   error:   '#ef4444',
-  info:    '#6c6cff',
+  info:    '#1a1a1a',
 };
 
 const BG: Record<ToastType, string> = {
   success: 'rgba(0,200,150,0.12)',
   error:   'rgba(239,68,68,0.12)',
-  info:    'rgba(108,108,255,0.12)',
+  info:    'rgba(255,255,255,0.12)',
 };
 
 const ICON_NAMES: Record<ToastType, keyof typeof Ionicons.glyphMap> = {

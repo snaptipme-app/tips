@@ -1,4 +1,4 @@
-import * as Print from 'expo-print';
+﻿import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 type EmployeeData = {
@@ -45,8 +45,8 @@ export const downloadAndShareQRCard = async (
 
     // ── Avatar section ──
     const avatarSection = photoSrc
-      ? `<img src="${photoSrc}" style="width:52px;height:52px;border-radius:50%;border:2.5px solid #6c6cff;object-fit:cover;display:block;margin:0 auto;" />`
-      : `<div style="width:52px;height:52px;border-radius:50%;background:#6c6cff;border:2.5px solid #a78bfa;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;line-height:52px;text-align:center;">${initials}</div>`;
+      ? `<img src="${photoSrc}" style="width:52px;height:52px;border-radius:50%;border:2.5px solid #1a1a1a;object-fit:cover;display:block;margin:0 auto;" />`
+      : `<div style="width:52px;height:52px;border-radius:50%;background:#1a1a1a;border:2.5px solid #a78bfa;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;line-height:52px;text-align:center;">${initials}</div>`;
 
     const html = `
       <!DOCTYPE html>
@@ -173,7 +173,7 @@ export const downloadAndShareQRCard = async (
           .footer-url {
             font-size: 11px;
             font-weight: 600;
-            color: #6c6cff;
+            color: #1a1a1a;
             margin-top: 2px;
           }
           .footer-bolt {

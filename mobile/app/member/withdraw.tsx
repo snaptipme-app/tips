@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView, Image,
   Modal, KeyboardAvoidingView, Platform, RefreshControl, Linking,
@@ -21,7 +21,7 @@ const BG = '#080818';
 const CARD = '#0f0f2e';
 const SHEET_BG = '#0d0d24';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 const GREEN = '#00C896';
 const YELLOW = '#f59e0b';
 const RED = '#ef4444';
@@ -391,7 +391,7 @@ export default function MemberWithdraw() {
           ) : (
             /* ── International ── */
             <View style={{ marginBottom: 28 }}>
-              <View style={{ backgroundColor: 'rgba(108,108,255,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)', marginBottom: 14 }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Ionicons name="bulb-outline" size={16} color={ACCENT} />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>International Transfers</Text>
@@ -402,7 +402,7 @@ export default function MemberWithdraw() {
               </View>
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
                   <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
                     <SvgPath d="M3 21h18v-2H3v2zm0-4h2v-4H3v4zm4 0h2v-4H7v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zM1 11l11-7 11 7H1z" fill={ACCENT} />
                   </Svg>
@@ -511,7 +511,7 @@ export default function MemberWithdraw() {
                 {activeMethod && (<>
                   {/* Header */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name={isMorocco ? 'card-outline' : 'globe-outline'} size={20} color={ACCENT} />
                     </View>
                     <View style={{ flex: 1 }}>

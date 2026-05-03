@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Image,
   RefreshControl,
@@ -19,7 +19,7 @@ import HapticButton from '../../components/HapticButton';
 const BG = '#080818';
 const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#1a1a1a';
 const GREEN = '#00C896';
 
 interface Tip {
