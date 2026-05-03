@@ -39,6 +39,7 @@
     },
     "android": {
       "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan",
       "navigationBar": {
         "barStyle": "light-content",
         "backgroundColor": "#00000000"
