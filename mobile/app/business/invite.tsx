@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Share, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -114,16 +115,8 @@ export default function InviteMember() {
   const displayUrl = inviteUrl.length > 42 ? inviteUrl.slice(0, 30) + '...' + inviteUrl.slice(-10) : inviteUrl;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: BG }}
-    >
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingTop: 60 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-      >
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <KeyboardAwareWrapper contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
         {/* Header */}
         <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 }}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
@@ -225,8 +218,8 @@ export default function InviteMember() {
             ))}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareWrapper>
       <Toast {...toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

@@ -1,11 +1,12 @@
 import { useState, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/AuthContext';
 import api from '../lib/api';
 import SnapTipLogo from '../components/SnapTipLogo';
 import { Toast, useToast } from '../components/Toast';
+import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -67,17 +68,8 @@ export default function Login() {
   }, [identifier, password, login, router, showToast]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: BG }}
-      keyboardVerticalOffset={0}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
-      >
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <KeyboardAwareWrapper contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 40 }}>
           <View style={{ marginBottom: 12 }}>
@@ -134,8 +126,8 @@ export default function Login() {
             <Link href="/register" style={{ color: '#fff', fontWeight: '700' }}>Sign up</Link>
           </Text>
         </View>
-      </ScrollView>
+      </KeyboardAwareWrapper>
       <Toast {...toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

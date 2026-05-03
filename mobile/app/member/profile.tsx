@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, TouchableOpacity,
   ActivityIndicator, Image, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -142,7 +143,7 @@ export default function MemberProfile() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -156,12 +157,7 @@ export default function MemberProfile() {
         </View>
       </LinearGradient>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-      >
+      <KeyboardAwareWrapper contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
 
         {/* ── Avatar ── */}
         <View style={{ alignItems: 'center', marginBottom: 28 }}>
@@ -294,7 +290,7 @@ export default function MemberProfile() {
           <Ionicons name="log-out-outline" size={20} color={RED} />
           <Text style={{ fontSize: 16, fontWeight: '700', color: RED }}>{t('logout')}</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareWrapper>
 
       {/* ── Change Password Sheet ── */}
       <Modal visible={showPasswordSheet} animationType="slide" transparent statusBarTranslucent>
@@ -354,6 +350,6 @@ export default function MemberProfile() {
       </Modal>
 
       <Toast {...toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

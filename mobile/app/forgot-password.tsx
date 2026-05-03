@@ -1,8 +1,6 @@
 import { useState, useRef, useCallback, memo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
@@ -122,17 +120,8 @@ export default function ForgotPassword() {
   }, [otp, newPassword, confirmPw, email, showToast]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: BG }}
-      keyboardVerticalOffset={0}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
-      >
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <KeyboardAwareWrapper contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <View style={{ marginBottom: 12 }}>
@@ -273,8 +262,8 @@ export default function ForgotPassword() {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareWrapper>
       <Toast {...toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

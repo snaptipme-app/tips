@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Image, ActivityIndicator, Modal } from 'react-native';
+import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -592,17 +593,8 @@ export default function Register() {
   }, [accountType, router]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: BG }}
-      keyboardVerticalOffset={0}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }}
-      >
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <KeyboardAwareWrapper contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 56 }}>
         {/* ── Logo ── */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
           <SnapTipLogo size={44} />
@@ -681,7 +673,7 @@ export default function Register() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareWrapper>
       <Toast {...toast} />
 
       {/* ═══ Language Bottom Sheet ═══ */}
@@ -767,6 +759,6 @@ export default function Register() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }

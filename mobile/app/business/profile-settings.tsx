@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Image, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity,
+  ActivityIndicator, Image,
 } from 'react-native';
+import KeyboardAwareWrapper from '../../components/KeyboardAwareWrapper';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,10 +120,7 @@ export default function BusinessProfileSettings() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: BG }}
-    >
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
       <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -139,12 +137,7 @@ export default function BusinessProfileSettings() {
         </View>
       </LinearGradient>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-      >
+      <KeyboardAwareWrapper contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
         {/* ── Logo Upload ── */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <TouchableOpacity onPress={pickLogo} activeOpacity={0.85}>
@@ -302,8 +295,8 @@ export default function BusinessProfileSettings() {
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </KeyboardAwareWrapper>
       <Toast {...toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
