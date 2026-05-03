@@ -223,9 +223,10 @@ router.get('/invite-link', authMiddleware, async (req, res) => {
     );
     let linkInvite = linkInviteRows[0];
 
-    // If exists but expired, invalidate it
-    // expires_at is stored in postgres as BIGINT or INTEGER (epoch milliseconds)
-    if (linkInvite && linkInvite.expires_at && linkInvite.expires_at < Date.now()) {
+    // If exists but expired, invalidate it.
+    // expires_at is stored as BIGINT in Postgres — pg returns it as a string,
+    // so we must cast with Number() before comparing to avoid string-vs-number bugs.
+    if (linkInvite && linkInvite.expires_at && Number(linkInvite.expires_at) < Date.now()) {
       await pool.query("UPDATE invitations SET status = 'expired' WHERE id = $1", [linkInvite.id]);
       linkInvite = null;
     }
@@ -330,11 +331,15 @@ router.get('/invite-info/:token', async (req, res) => {
       return res.status(404).json({ error: 'Invitation not found.' });
     }
 
+    console.log(`[invite-info] token=${token.slice(0,8)}… status=${invitation.status} expires_at=${invitation.expires_at} now=${Date.now()}`);
+
     if (invitation.status !== 'pending' && invitation.status !== 'active') {
       return res.status(400).json({ error: 'This invitation has already been used.' });
     }
 
-    if (invitation.expires_at && invitation.expires_at < Date.now()) {
+    // Cast to Number: Postgres returns BIGINT expires_at as a string — comparing
+    // a string to Date.now() (number) produces wrong results without this cast.
+    if (invitation.expires_at && Number(invitation.expires_at) < Date.now()) {
       return res.status(400).json({ error: 'This invitation has expired.' });
     }
 
@@ -368,8 +373,11 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Invitation not found or already used.' });
     }
 
-    // Check expiry
-    if (invitation.expires_at && invitation.expires_at < Date.now()) {
+    // Check expiry.
+    // Cast to Number: Postgres returns BIGINT expires_at as a string — string-vs-number
+    // comparison is unreliable and was causing valid tokens to be rejected.
+    console.log(`[join] token=${token.slice(0,8)}… status=${invitation.status} expires_at=${invitation.expires_at} now=${Date.now()}`);
+    if (invitation.expires_at && Number(invitation.expires_at) < Date.now()) {
       return res.status(400).json({ error: 'This invitation has expired.' });
     }
 

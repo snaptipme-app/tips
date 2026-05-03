@@ -35,7 +35,10 @@
             }
           }
         }
-      }
+      },
+      "associatedDomains": [
+        "applinks:snaptip.me"
+      ]
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -60,6 +63,30 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK",
         "android.permission.VIBRATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "snaptip.me",
+              "pathPrefix": "/join"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "snaptip",
+              "host": "join"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
