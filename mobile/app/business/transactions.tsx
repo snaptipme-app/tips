@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, RefreshControl, Image,
 } from 'react-native';
@@ -13,7 +13,7 @@ import SkeletonLoader from '../../components/SkeletonLoader';
 const BG = '#080818';
 const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#1a1a1a';
+const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
 type Filter = 'today' | 'week' | 'month' | 'all';
@@ -118,7 +118,7 @@ export default function Transactions() {
         }}
       >
         {/* Avatar */}
-        <View style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' }}>
+        <View style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1.5, borderColor: 'rgba(108,108,255,0.25)' }}>
           {photoSrc ? (
             <Image source={{ uri: photoSrc }} style={{ width: 42, height: 42 }} />
           ) : (
@@ -213,7 +213,7 @@ export default function Transactions() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 }}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 80 }}>
-              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: BORDER }}>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(108,108,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: BORDER }}>
                 <Ionicons name="receipt-outline" size={36} color="rgba(255,255,255,0.12)" />
               </View>
               <Text style={{ fontSize: 17, fontWeight: '700', color: 'rgba(255,255,255,0.3)' }}>No transactions yet</Text>

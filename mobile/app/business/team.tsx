@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, Alert,
   RefreshControl, Modal, Image, Linking,
@@ -19,7 +19,7 @@ const BG = '#080818';
 const CARD = '#0f0f2e';
 const SHEET_BG = '#0d0d24';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#1a1a1a';
+const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
@@ -188,9 +188,9 @@ export default function TeamManagement() {
         {/* Avatar */}
         <View style={{
           width: 48, height: 48, borderRadius: 24, overflow: 'hidden',
-          borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+          borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)',
           justifyContent: 'center', alignItems: 'center',
-          backgroundColor: 'rgba(255,255,255,0.12)', marginRight: 14,
+          backgroundColor: 'rgba(108,108,255,0.12)', marginRight: 14,
         }}>
           {photo ? (
             <Image source={{ uri: photo }} style={{ width: 48, height: 48 }} />
@@ -279,9 +279,9 @@ export default function TeamManagement() {
             <View style={{ alignItems: 'center', paddingTop: 80 }}>
               <View style={{
                 width: 80, height: 80, borderRadius: 40,
-                backgroundColor: 'rgba(255,255,255,0.08)',
+                backgroundColor: 'rgba(108,108,255,0.08)',
                 justifyContent: 'center', alignItems: 'center',
-                marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+                marginBottom: 16, borderWidth: 1, borderColor: 'rgba(108,108,255,0.1)',
               }}>
                 <Ionicons name="people-outline" size={36} color="rgba(255,255,255,0.15)" />
               </View>
@@ -342,9 +342,9 @@ export default function TeamManagement() {
                 }}>
                   <View style={{
                     width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    backgroundColor: 'rgba(108,108,255,0.12)',
                     justifyContent: 'center', alignItems: 'center',
-                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+                    borderWidth: 2, borderColor: 'rgba(108,108,255,0.3)',
                     overflow: 'hidden',
                   }}>
                     {memberPhoto ? (
@@ -373,7 +373,7 @@ export default function TeamManagement() {
                     activeOpacity={0.8}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 16 }}
                   >
-                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name="qr-code-outline" size={22} color={ACCENT} />
                     </View>
                     <View>
@@ -390,7 +390,7 @@ export default function TeamManagement() {
                     activeOpacity={0.8}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingVertical: 16 }}
                   >
-                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name="copy-outline" size={22} color={ACCENT} />
                     </View>
                     <View>

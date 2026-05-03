@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, AppState, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import HapticButton from '../../components/HapticButton';
 const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
-const ACCENT = '#1a1a1a';
+const ACCENT = '#6c6cff';
 const GREEN = '#00C896';
 
 interface Tip {
@@ -144,7 +144,7 @@ export default function Home() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <SnapTipLogo size={36} />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
+              <View style={{ backgroundColor: 'rgba(108,108,255,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>
               </View>
             </View>
@@ -153,7 +153,7 @@ export default function Home() {
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)' }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(108,108,255,0.15)' }}>
               {photoSrc ? (
                 <Image source={photoSrc} style={{ width: 44, height: 44 }} />
               ) : (
@@ -260,7 +260,7 @@ export default function Home() {
                 activeOpacity={0.8}
                 style={{ flex: 1, backgroundColor: CARD, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
               >
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="qr-code-outline" size={22} color={ACCENT} />
                 </View>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>My QR Code</Text>

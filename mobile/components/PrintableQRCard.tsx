@@ -1,4 +1,4 @@
-﻿import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { Path } from 'react-native-svg';
 
@@ -23,7 +23,7 @@ export type PrintableQRCardProps = {
 };
 
 const GREEN = '#00C896';
-const ACCENT = '#1a1a1a';
+const ACCENT = '#6c6cff';
 const NAVY = '#080818';
 const GRAY = '#666666';
 const CORNER_COLOR = '#c8c8d8';

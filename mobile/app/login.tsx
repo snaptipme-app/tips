@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ const BG = '#080818';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#1a1a1a';
+const ACCENT = '#6c6cff';
 
 const LoginInput = memo(({ icon, placeholder, value, onChangeText, secureTextEntry, right, ...props }: any) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1, borderColor: BORDER }}>
@@ -119,7 +119,7 @@ export default function Login() {
         {/* Footer */}
         <View style={{ alignItems: 'center', marginTop: 24 }}>
           <TouchableOpacity onPress={() => router.push('/forgot-password')} activeOpacity={0.8}>
-            <Text style={{ color: '#1a1a1a', fontSize: 14, fontWeight: '600', marginBottom: 16 }}>Forgot your password?</Text>
+            <Text style={{ color: '#6c6cff', fontSize: 14, fontWeight: '600', marginBottom: 16 }}>Forgot your password?</Text>
           </TouchableOpacity>
           <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
             Don't have an account?{' '}
