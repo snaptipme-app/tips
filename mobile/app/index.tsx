@@ -14,11 +14,7 @@ export default function Index() {
       return
     }
 
-    if (user.account_type === 'business') {
-      router.replace('/business/dashboard')
-    } else {
-      router.replace('/(tabs)/home')
-    }
+    router.replace('/(tabs)/home')
   }, [user, isLoading])
 
   return (

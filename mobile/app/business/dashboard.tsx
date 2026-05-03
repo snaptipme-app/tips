@@ -22,8 +22,7 @@ const GREEN   = '#00C896';
 const YELLOW  = '#f59e0b';
 const PURPLE  = '#a855f7';
 
-const COMMISSION_RATE = 0.10;
-const RANK_COLORS     = ['#FFD700', '#C0C0C0', '#CD7F32'];
+const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 interface Stats {
@@ -103,7 +102,6 @@ export default function BusinessDashboard() {
   const totalTips    = stats?.total_tips || 0;
   const totalTx      = stats?.total_transactions || 0;
   const teamSize     = stats?.active_members || 0;
-  const commission   = totalTips * COMMISSION_RATE;
   const businessName = business?.business_name || stats?.business_name || 'My Business';
 
   const chartData = useMemo(() => {
@@ -224,38 +222,29 @@ export default function BusinessDashboard() {
 
         <View style={{ paddingHorizontal: 20 }}>
 
-          {/* ════════════ QUICK STATS 2 × 2 ════════════ */}
+          {/* ════════════ QUICK STATS ════════════ */}
           <Label>Quick Stats</Label>
           <View style={{ gap: 10, marginBottom: 28 }}>
+            <StatCard
+              icon="cash-outline"
+              color={GREEN}
+              label="Total Tips"
+              value={totalTips.toFixed(2)}
+              suffix={currency}
+              highlight
+            />
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <StatCard
-                icon="cash-outline"
-                color={GREEN}
-                label="Total Tips"
-                value={totalTips.toFixed(2)}
-                suffix={currency}
-                highlight
-              />
               <StatCard
                 icon="receipt-outline"
                 color={ACCENT}
                 label="Transactions"
                 value={String(totalTx)}
               />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
               <StatCard
                 icon="people-outline"
                 color={YELLOW}
                 label="Team Members"
                 value={String(teamSize)}
-              />
-              <StatCard
-                icon="trending-up-outline"
-                color={PURPLE}
-                label="Commission"
-                value={commission.toFixed(2)}
-                suffix={currency}
               />
             </View>
           </View>
