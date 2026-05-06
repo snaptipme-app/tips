@@ -4,18 +4,47 @@ import { clearAdminToken } from './AdminLogin';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BG='#1a1a1a',CARD='#222222',BORDER='rgba(255,255,255,0.06)',ACCENT='#00ffcc',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#00ffcc';
-const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
-const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#00ffcc',GBP:'#06b6d4'};
+// Country name → ISO 3166-1 alpha-2 code (all 10 supported countries)
+const COUNTRY_CODES={
+  Morocco:'MA','United States':'US',France:'FR',Spain:'ES',Germany:'DE',Italy:'IT',
+  'UAE':'AE','United Arab Emirates':'AE',
+  Philippines:'PH',Indonesia:'ID',Thailand:'TH',
+};
+// ISO code → country name (reverse lookup for flag rendering)
+const ISO_TO_COUNTRY=Object.fromEntries(Object.entries(COUNTRY_CODES).map(([k,v])=>[v,k]));
+const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#a78bfa',GBP:'#06b6d4',PHP:'#f97316',THB:'#ec4899',IDR:'#fb7185'};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
 // Auth is sent automatically via httpOnly admin cookie. No Authorization header.
 function api(){return axios.create({baseURL:'/api/admin',withCredentials:true})}
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Never';
 const fmtMoney=(n,c='USD')=>`${Number(n||0).toFixed(2)} ${c}`;
 const fmtAmount=(n,c)=>{if(!c)return Number(n||0).toFixed(2);const sym={USD:'$',EUR:'€',GBP:'£'};return sym[c]?`${sym[c]}${Number(n||0).toFixed(2)}`:`${Number(n||0).toFixed(2)} ${c}`;};
-const CURRENCIES=[{code:'USD',flag:'🇺🇸',sym:'$',pre:true},{code:'EUR',flag:'🇪🇺',sym:'€',pre:true},{code:'MAD',flag:'🇲🇦',sym:'MAD',pre:false},{code:'AED',flag:'🇦🇪',sym:'AED',pre:false}];
+// All 10 supported currencies — no emojis, labels only (flags shown via CountryBadge)
+const CURRENCIES=[
+  {code:'USD',label:'USD — US Dollar',     sym:'$',  pre:true },
+  {code:'EUR',label:'EUR — Euro',           sym:'€',  pre:true },
+  {code:'MAD',label:'MAD — Moroccan Dirham',sym:'MAD',pre:false},
+  {code:'AED',label:'AED — UAE Dirham',     sym:'AED',pre:false},
+  {code:'PHP',label:'PHP — Philippine Peso',sym:'PHP',pre:false},
+  {code:'THB',label:'THB — Thai Baht',      sym:'THB',pre:false},
+  {code:'IDR',label:'IDR — Indonesian Rupiah',sym:'IDR',pre:false},
+];
 const fmtCur=(n,code)=>{const c=CURRENCIES.find(x=>x.code===code)||CURRENCIES[0];const v=Number(n||0).toFixed(2);return c.pre?`${c.sym}${v}`:`${v} ${c.sym}`;};
-const CountryBadge=({country})=>{const code=COUNTRY_CODES[country]||'??';return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'2px 7px',fontSize:11,fontWeight:700,color:'rgba(255,255,255,.5)',letterSpacing:.3}}>{code}</span>;}
-const CurrencyPill=({currency,amount})=>{const color=getCurrencyColor(currency);return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:`${color}18`,border:`1px solid ${color}40`,borderRadius:50,padding:'3px 10px',fontSize:12,fontWeight:700,color,whiteSpace:'nowrap'}}>{fmtAmount(amount,currency)}</span>}
+// SVG flag via flag-icons (CSS loaded in <style> block) — no emoji, no external React package
+const CountryFlag=({isoCode,size=18})=>{
+  if(!isoCode||isoCode==='??')return<span style={{width:size,height:Math.round(size*.75),borderRadius:2,background:'rgba(255,255,255,.1)',display:'inline-block'}}/>;
+  return<span className={`fi fi-${isoCode.toLowerCase()}`} style={{width:size,height:Math.round(size*.75),borderRadius:2,display:'inline-block',flexShrink:0,backgroundSize:'cover'}}/> ;
+};
+const CountryBadge=({country})=>{
+  const code=COUNTRY_CODES[country]||country||'??';
+  return(
+    <span style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,.06)',borderRadius:6,padding:'3px 8px'}}>
+      <CountryFlag isoCode={code} size={16}/>
+      <span style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.6)',letterSpacing:.3}}>{code}</span>
+    </span>
+  );
+};
+const CurrencyPill=({currency,amount})=>{const color=getCurrencyColor(currency);return<span style={{display:'inline-flex',alignItems:'center',gap:4,background:`${color}18`,border:`1px solid ${color}40`,borderRadius:50,padding:'3px 10px',fontSize:12,fontWeight:700,color,whiteSpace:'nowrap'}}>{fmtAmount(amount,currency)}</span>};
 
 const I={
   overview:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
@@ -61,6 +90,7 @@ export default function AdminDashboard({onLogout}){
   return(<>
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      @import url('https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css');
       *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:${BG}}
       @keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
       ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
@@ -76,6 +106,7 @@ export default function AdminDashboard({onLogout}){
       td{padding:10px 12px;color:rgba(255,255,255,.7);font-size:13px;border-bottom:1px solid ${BORDER}}
       tr:hover td{background:rgba(255,255,255,.02)}
       .admin-sidebar button:hover{background:rgba(0,255,204,0.08)!important}
+      .fi{background-size:cover;background-position:center}
     `}</style>
     <Toast toast={toast}/>
 
@@ -240,7 +271,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
         <span style={{fontSize:12,color:'rgba(255,255,255,.35)',fontWeight:600}}>Currency</span>
         <div style={{position:'relative'}}>
           <select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(255,255,255,.07)',border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 36px 9px 14px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>
-            {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#222222'}}>{c.flag} {c.code}</option>)}
+            {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#222222'}}>{c.label}</option>)}
           </select>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2.5" style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -535,6 +566,40 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     return list;
   },[withdrawals,filter,methodFilter,search]);
 
+  // ── Wise Batch Payment CSV export ──────────────────────────────────────
+  const exportWiseCSV=()=>{
+    const pending=withdrawals.filter(w=>w.status==='pending');
+    if(!pending.length){showToast('No pending withdrawals to export','error');return;}
+    const parseD=d=>{if(!d)return{};try{return JSON.parse(d);}catch{return{raw:d}};};
+    const rows=pending.map(w=>{
+      const d=parseD(w.account_details);
+      const m=(w.method||'').toLowerCase();
+      const name=d.full_name||d.fullName||d.accountHolder||d.account_holder||w.full_name||'';
+      const cur=w.currency||'USD';
+      const net=Number(w.net_amount||w.amount||0).toFixed(2);
+      let paymentType='',detail1Label='',detail1Val='',detail2Label='',detail2Val='';
+      if(m.includes('ach')||m.includes('us_ach')){
+        paymentType='aba';detail1Label='routingNumber';detail1Val=d.routing_number||d.routingNumber||'';
+        detail2Label='accountNumber';detail2Val=d.account_number||d.accountNumber||'';
+      }else if(m.includes('iban')||m.includes('international')){
+        paymentType='iban';detail1Label='iban';detail1Val=d.iban||d.IBAN||'';
+        detail2Label='bic';detail2Val=d.swift||d.bic||d.SWIFT||'';
+      }else if(m.includes('ewallet')||m.includes('wallet')){
+        paymentType='email';detail1Label='email';detail1Val=d.phone||d.email||w.contact_phone||'';
+      }else{
+        paymentType='iban';detail1Label='iban';detail1Val=d.rib||d.RIB||d.iban||'';
+      }
+      return [name,cur,net,paymentType,detail1Label,detail1Val,detail2Label,detail2Val,w.contact_phone||'',w.username||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+    });
+    const header='recipientName,targetCurrency,amount,paymentType,detail1Field,detail1Value,detail2Field,detail2Value,contactPhone,reference';
+    const csv=[header,...rows].join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`wise_batch_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${pending.length} pending withdrawal${pending.length!==1?'s':''} for Wise`);
+  };
+
   return(<>
     {detail&&<div onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:560,width:'100%',marginTop:20,marginBottom:20}}>
@@ -567,7 +632,15 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
       </div>
     </div>}
     {standaloneRejectId&&<div style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}><div style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:20,padding:32,maxWidth:420,width:'100%'}}><p style={{color:'#fff',fontSize:16,fontWeight:600,marginBottom:12}}>Reject Withdrawal</p><textarea value={standaloneReason} onChange={e=>setStandaloneReason(e.target.value)} placeholder="Rejection reason (sent to employee)..." rows={3} style={{width:'100%',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:12,color:'#fff',fontSize:14,outline:'none',resize:'vertical',marginBottom:16}}/><div style={{display:'flex',gap:12,justifyContent:'flex-end'}}><Btn onClick={()=>{setStandaloneRejectId(null);setStandaloneReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn><Btn onClick={()=>handleRejectConfirm(standaloneRejectId,standaloneReason)} bg={RED} disabled={!!actionId}>Reject</Btn></div></div></div>}
-    <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Withdrawals</h1>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}>
+      <h1 style={{fontSize:26,fontWeight:800,color:'#fff'}}>Withdrawals</h1>
+      <button onClick={exportWiseCSV} style={{display:'inline-flex',alignItems:'center',gap:8,background:'linear-gradient(135deg,rgba(0,200,150,.15),rgba(0,255,204,.1))',border:'1px solid rgba(0,255,204,.3)',borderRadius:50,padding:'10px 20px',color:ACCENT,fontSize:13,fontWeight:700,cursor:'pointer',transition:'all .2s',whiteSpace:'nowrap'}}
+        onMouseEnter={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(0,200,150,.25),rgba(0,255,204,.18))'}
+        onMouseLeave={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(0,200,150,.15),rgba(0,255,204,.1))'}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export for Wise (CSV)
+      </button>
+    </div>
     <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search by name or @username..." style={{maxWidth:260}}/>
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(0,255,204,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
