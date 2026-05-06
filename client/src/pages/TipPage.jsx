@@ -238,6 +238,7 @@ export default function TipPage() {
   const [employee, setEmployee] = useState(null);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState('');
 
   const [selectedAmount, setSelectedAmount] = useState(null);
@@ -261,26 +262,35 @@ export default function TipPage() {
   }, [rtl]);
 
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
       try {
         const [empRes, bizRes] = await Promise.allSettled([
-          api.get(`/employee/${username}?t=${Date.now()}`),
-          api.get(`/business/public/${username}`),
+          api.get(`/employee/${username}`, { signal: controller.signal }),
+          api.get(`/business/public/${username}`, { signal: controller.signal }),
         ]);
         if (empRes.status === 'fulfilled') {
           setEmployee(empRes.value.data);
         } else {
-          setError(empRes.reason?.response?.data?.error || 'Employee not found.');
+          const status = empRes.reason?.response?.status;
+          if (status === 404) {
+            // Terminal state — never retry
+            setNotFound(true);
+          } else {
+            setError(empRes.reason?.response?.data?.error || 'Something went wrong.');
+          }
         }
         if (bizRes.status === 'fulfilled') {
           setBusiness(bizRes.value.data?.business || null);
         }
-      } catch {
+      } catch (err) {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
         setError('Something went wrong.');
       } finally {
         setLoading(false);
       }
     })();
+    return () => controller.abort();
   }, [username]);
 
   const currency = employee?.currency || null;
@@ -356,6 +366,29 @@ export default function TipPage() {
         <style>{inlineStyles}</style>
         <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '40px', height: '40px', border: '3px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        </div>
+      </>
+    );
+  }
+
+  /* ─── Not Found (terminal — no retry) ─── */
+  if (notFound) {
+    return (
+      <>
+        <style>{inlineStyles}</style>
+        <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', maxWidth: '360px', width: '100%' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{t.notFoundTitle || 'User Not Found'}</h2>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>This profile does not exist or may have been removed.</p>
+            <Link to="/login" style={{ fontSize: '13px', color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>
+              {t.employeeLogin}
+            </Link>
+          </div>
         </div>
       </>
     );

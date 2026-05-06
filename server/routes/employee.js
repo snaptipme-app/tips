@@ -349,8 +349,17 @@ router.get('/:username', async (req, res) => {
     const emp = rows[0];
     // Ensure currency is always set — derive from country if missing
     if (!emp.currency) {
-      const COUNTRY_CURRENCY = { 'Morocco': 'MAD', 'United States': 'USD', 'France': 'EUR', 'Spain': 'EUR', 'UAE': 'AED', 'UK': 'GBP' };
-      emp.currency = COUNTRY_CURRENCY[emp.country] || 'MAD';
+      const COUNTRY_CURRENCY = {
+        'Morocco': 'MAD',
+        'United Arab Emirates': 'AED', 'UAE': 'AED',
+        'United States': 'USD',
+        'France': 'EUR', 'Spain': 'EUR', 'Germany': 'EUR', 'Italy': 'EUR',
+        'Philippines': 'PHP',
+        'Indonesia': 'IDR',
+        'Thailand': 'THB',
+        'UK': 'GBP',
+      };
+      emp.currency = COUNTRY_CURRENCY[emp.country] || 'USD';
     }
 
     console.log(`[DEBUG employee/:username] ${emp.username} → currency=${emp.currency}, country=${emp.country}`);
