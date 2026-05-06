@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
 import api from '../lib/api';
+import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
 import SnapTipLogo from '../components/SnapTipLogo';
 
@@ -36,6 +37,7 @@ const FPInput = memo(({ icon, placeholder, value, onChangeText, secureTextEntry,
 
 export default function ForgotPassword() {
   const router = useRouter();
+  const { t } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState('');
@@ -128,22 +130,22 @@ export default function ForgotPassword() {
             <SnapTipLogo size={56} />
           </View>
           <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5 }}>
-            {step === 3 ? 'All Done!' : 'Reset Password'}
+            {step === 3 ? t('fp_all_done') : t('fp_reset_pw')}
           </Text>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4, textAlign: 'center' }}>
-            {step === 1 && 'Enter your email to receive a reset code'}
-            {step === 2 && `We sent a 6-digit code to ${email.trim().toLowerCase()}`}
-            {step === 3 && 'Your password has been reset'}
+            {step === 1 && t('fp_enter_email_hint')}
+            {step === 2 && `${t('fp_code_sent_to')} ${email.trim().toLowerCase()}`}
+            {step === 3 && t('fp_pw_reset_done')}
           </Text>
         </View>
 
         {/* Step 1: Email */}
         {step === 1 && (
           <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Email Address</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('fp_email_label')}</Text>
             <FPInput
               icon="mail-outline"
-              placeholder="you@example.com"
+              placeholder={t('fp_email_ph')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -156,7 +158,7 @@ export default function ForgotPassword() {
             >
               {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-                {loading ? 'Sending...' : 'Send Reset Code'}
+                {loading ? t('reg_sending') : t('fp_send_reset')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -165,7 +167,7 @@ export default function ForgotPassword() {
         {/* Step 2: Code + New Password */}
         {step === 2 && (
           <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 12 }}>Verification Code</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 12 }}>{t('fp_code_label')}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
               {otp.map((digit, i) => (
                 <TextInput
@@ -182,16 +184,16 @@ export default function ForgotPassword() {
                   maxLength={1}
                   keyboardType="number-pad"
                   value={digit}
-                  onChangeText={(t) => handleOtpChange(t, i)}
+                  onChangeText={(v) => handleOtpChange(v, i)}
                   onKeyPress={(e) => handleOtpKey(e, i)}
                 />
               ))}
             </View>
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>New Password</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('fp_new_pw_label')}</Text>
             <FPInput
               icon="lock-closed-outline"
-              placeholder="Min 6 characters"
+              placeholder={t('fp_pw_min_ph')}
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry={!showPw}
@@ -202,10 +204,10 @@ export default function ForgotPassword() {
               }
             />
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Confirm Password</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('fp_confirm_pw_label')}</Text>
             <FPInput
               icon="lock-closed-outline"
-              placeholder="Confirm password"
+              placeholder={t('fp_confirm_ph')}
               value={confirmPw}
               onChangeText={setConfirmPw}
               secureTextEntry={!showPw}
@@ -219,12 +221,12 @@ export default function ForgotPassword() {
             >
               {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {loading ? t('fp_resetting') : t('fp_reset_btn')}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => { setStep(1); setOtp(['', '', '', '', '', '']); }} activeOpacity={0.8} style={{ marginTop: 14, alignItems: 'center' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Back to email</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('fp_back_to_email')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -238,16 +240,16 @@ export default function ForgotPassword() {
                 <SvgPath d="M22 40 L34 52 L58 28" stroke="#00C896" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: GREEN, marginBottom: 8 }}>Password Reset Successfully!</Text>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: GREEN, marginBottom: 8 }}>{t('fp_success_title')}</Text>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 32, textAlign: 'center' }}>
-              You can now log in with your new password.
+              {t('fp_success_desc')}
             </Text>
             <TouchableOpacity
               onPress={() => router.replace('/login')}
               activeOpacity={0.8}
               style={{ width: '100%', height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Login with New Password</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('fp_login_new_pw')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -257,7 +259,7 @@ export default function ForgotPassword() {
           <View style={{ alignItems: 'center', marginTop: 24 }}>
             <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
               <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-                <Ionicons name="arrow-back" size={14} color="rgba(255,255,255,0.4)" /> Back to Login
+                <Ionicons name="arrow-back" size={14} color="rgba(255,255,255,0.4)" /> {t('fp_back_to_login')}
               </Text>
             </TouchableOpacity>
           </View>

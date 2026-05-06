@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/AuthContext';
+import { useLanguage } from '../lib/LanguageContext';
 import api from '../lib/api';
 import SnapTipLogo from '../components/SnapTipLogo';
 import { Toast, useToast } from '../components/Toast';
@@ -36,14 +37,15 @@ const LoginInput = memo(({ icon, placeholder, value, onChangeText, secureTextEnt
 export default function Login() {
   const router = useRouter();
   const { login } = useAuth();
+  const { t } = useLanguage();
   const { toast, showToast } = useToast();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleIdentifierChange = useCallback((t: string) => setIdentifier(t), []);
-  const handlePasswordChange = useCallback((t: string) => setPassword(t), []);
+  const handleIdentifierChange = useCallback((v: string) => setIdentifier(v), []);
+  const handlePasswordChange = useCallback((v: string) => setPassword(v), []);
   const handleTogglePw = useCallback(() => setShowPw((p) => !p), []);
 
   const handleLogin = useCallback(async () => {
@@ -53,7 +55,6 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      // Call the login API, then hand the real JWT + user object to AuthContext
       const { data } = await api.post('/auth/login', {
         email: identifier.trim().toLowerCase(),
         password,
@@ -76,24 +77,24 @@ export default function Login() {
             <SnapTipLogo size={56} />
           </View>
           <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.5 }}>SnapTip</Text>
-          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>Welcome back</Text>
+          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{t('login_welcome')}</Text>
         </View>
 
         {/* Card */}
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Email or Username</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('login_email_user')}</Text>
           <LoginInput
             icon="mail-outline"
-            placeholder="you@example.com"
+            placeholder={t('fp_email_ph')}
             value={identifier}
             onChangeText={handleIdentifierChange}
             keyboardType="email-address"
           />
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Password</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('login_password_label')}</Text>
           <LoginInput
             icon="lock-closed-outline"
-            placeholder="Password"
+            placeholder={t('login_password_label')}
             value={password}
             onChangeText={handlePasswordChange}
             secureTextEntry={!showPw}
@@ -112,18 +113,18 @@ export default function Login() {
             style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.6 : 1, flexDirection: 'row', gap: 8, marginTop: 6 }}
           >
             {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Logging in...' : 'Log In'}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('login_logging_in') : t('login_log_in')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={{ alignItems: 'center', marginTop: 24 }}>
           <TouchableOpacity onPress={() => router.push('/forgot-password')} activeOpacity={0.8}>
-            <Text style={{ color: '#6c6cff', fontSize: 14, fontWeight: '600', marginBottom: 16 }}>Forgot your password?</Text>
+            <Text style={{ color: ACCENT, fontSize: 14, fontWeight: '600', marginBottom: 16 }}>{t('login_forgot_pw')}</Text>
           </TouchableOpacity>
           <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-            Don't have an account?{' '}
-            <Link href="/register" style={{ color: '#fff', fontWeight: '700' }}>Sign up</Link>
+            {t('login_no_account')}{' '}
+            <Link href="/register" style={{ color: '#fff', fontWeight: '700' }}>{t('login_sign_up')}</Link>
           </Text>
         </View>
       </KeyboardAwareWrapper>

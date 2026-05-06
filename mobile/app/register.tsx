@@ -4,7 +4,6 @@ import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
 import { uploadProfileImage } from '../lib/uploadImage';
 import { useAuth } from '../lib/AuthContext';
@@ -81,114 +80,122 @@ const COUNTRY_OPTIONS = [
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 1 — Personal Info
    ═══════════════════════════════════════════════════════════════════════════ */
-const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading, currentLang, onOpenLangSheet }: any) => (
-  <>
-    {/* Language Selector — single compact pill, right-aligned */}
-    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
-      <TouchableOpacity
-        onPress={onOpenLangSheet}
-        activeOpacity={0.8}
-        style={{
-          flexDirection: 'row', alignItems: 'center', gap: 6,
-          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 50,
-          backgroundColor: INPUT_BG, borderWidth: 1.5, borderColor: ACCENT,
-        }}
-      >
-        <Image source={LANG_IMAGES[currentLang]} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />
-        <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>{currentLang.toUpperCase()}</Text>
-        <Ionicons name="chevron-down" size={12} color={ACCENT} />
-      </TouchableOpacity>
-    </View>
+const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastName, onEmail, onNext, loading, currentLang, onOpenLangSheet }: any) => {
+  const { t } = useLanguage();
+  return (
+    <>
+      {/* Language Selector — single compact pill, right-aligned */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
+        <TouchableOpacity
+          onPress={onOpenLangSheet}
+          activeOpacity={0.8}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            paddingHorizontal: 14, paddingVertical: 8, borderRadius: 50,
+            backgroundColor: INPUT_BG, borderWidth: 1.5, borderColor: ACCENT,
+          }}
+        >
+          <Image source={LANG_IMAGES[currentLang]} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>{currentLang.toUpperCase()}</Text>
+          <Ionicons name="chevron-down" size={12} color={ACCENT} />
+        </TouchableOpacity>
+      </View>
 
-    <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create your account</Text>
-    <InputField icon="person-outline" placeholder="First name" value={firstName} onChangeText={onFirstName} error={errors.firstName} />
-    <InputField icon="person-outline" placeholder="Last name" value={lastName} onChangeText={onLastName} error={errors.lastName} />
-    <InputField icon="mail-outline" placeholder="you@example.com" value={email} onChangeText={onEmail} error={errors.email} keyboardType="email-address" />
-    <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-      <Ionicons name={loading ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Sending...' : 'Send Verification Code'}</Text>
-    </TouchableOpacity>
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 }}>
-      <Ionicons name="lock-closed" size={12} color="rgba(255,255,255,0.25)" />
-      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Secure & encrypted</Text>
-    </View>
-  </>
-));
+      <Text style={{ fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('reg_create_account')}</Text>
+      <InputField icon="person-outline" placeholder={t('reg_first_name')} value={firstName} onChangeText={onFirstName} error={errors.firstName} />
+      <InputField icon="person-outline" placeholder={t('reg_last_name')} value={lastName} onChangeText={onLastName} error={errors.lastName} />
+      <InputField icon="mail-outline" placeholder={t('reg_email_ph')} value={email} onChangeText={onEmail} error={errors.email} keyboardType="email-address" />
+      <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+        <Ionicons name={loading ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_sending') : t('reg_send_code')}</Text>
+      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 }}>
+        <Ionicons name="lock-closed" size={12} color="rgba(255,255,255,0.25)" />
+        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>{t('reg_secure')}</Text>
+      </View>
+    </>
+  );
+});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 2 — OTP Verification
    ═══════════════════════════════════════════════════════════════════════════ */
-const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onResend, onBack, loading }: any) => (
-  <>
-    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 }}>Check your email</Text>
-    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>We sent a 6-digit code to</Text>
-    <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email}</Text>
+const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onResend, onBack, loading }: any) => {
+  const { t } = useLanguage();
+  return (
+    <>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 8 }}>{t('reg_check_email')}</Text>
+      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 4 }}>{t('reg_code_sent_to')}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: GREEN, textAlign: 'center', marginBottom: 20 }}>{email}</Text>
 
-    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-      {otp.map((d: string, i: number) => (
-        <TextInput
-          key={i}
-          ref={(el: TextInput | null) => { if (otpRefs?.current) otpRefs.current[i] = el; }}
-          style={{
-            width: 48, height: 56, borderRadius: 12, backgroundColor: INPUT_BG, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center',
-            borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.08)',
-          }}
-          maxLength={1}
-          keyboardType="number-pad"
-          value={d}
-          onChangeText={(t: string) => onOtpChange(t, i)}
-          onKeyPress={(e: any) => onOtpKey(e, i)}
-          blurOnSubmit={false}
-        />
-      ))}
-    </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+        {otp.map((d: string, i: number) => (
+          <TextInput
+            key={i}
+            ref={(el: TextInput | null) => { if (otpRefs?.current) otpRefs.current[i] = el; }}
+            style={{
+              width: 48, height: 56, borderRadius: 12, backgroundColor: INPUT_BG, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center',
+              borderWidth: 2, borderColor: d ? GREEN : 'rgba(255,255,255,0.08)',
+            }}
+            maxLength={1}
+            keyboardType="number-pad"
+            value={d}
+            onChangeText={(text: string) => onOtpChange(text, i)}
+            onKeyPress={(e: any) => onOtpKey(e, i)}
+            blurOnSubmit={false}
+          />
+        ))}
+      </View>
 
-    <TouchableOpacity onPress={onVerify} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Verifying...' : 'Verify Code'}</Text>
-    </TouchableOpacity>
-
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-      <TouchableOpacity onPress={onBack}>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Change email</Text>
+      <TouchableOpacity onPress={onVerify} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_verifying') : t('reg_verify_code')}</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={onResend} disabled={loading}>
-        <Text style={{ fontSize: 13, color: GREEN }}>Resend code</Text>
-      </TouchableOpacity>
-    </View>
-  </>
-));
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+        <TouchableOpacity onPress={onBack}>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{t('reg_change_email')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onResend} disabled={loading}>
+          <Text style={{ fontSize: 13, color: GREEN }}>{t('reg_resend_code')}</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 3 — Credentials
    ═══════════════════════════════════════════════════════════════════════════ */
 const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
   onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onOpenCountrySheet, onNext, onBack, loading }: any) => {
+  const { t } = useLanguage();
   const country = selectedCountry ? COUNTRY_OPTIONS.find(c => c.id === selectedCountry) : null;
+  const accountOptions = [
+    { key: 'individual', icon: 'person-outline' as const, title: t('reg_individual'), desc: t('reg_i_work_alone') },
+    { key: 'business', icon: 'business-outline' as const, title: t('reg_business_label'), desc: t('reg_i_manage_team') },
+  ];
   return (
     <>
-      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Create credentials</Text>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('reg_create_creds')}</Text>
 
       <InputField
-        icon="at-outline" placeholder="username" value={username} onChangeText={onUsername}
+        icon="at-outline" placeholder={t('reg_username')} value={username} onChangeText={onUsername}
         error={errors.username}
         right={usernameValid !== null ? <Ionicons name={usernameValid ? 'checkmark-circle' : 'close-circle'} size={18} color={usernameValid ? GREEN : '#ef4444'} /> : null}
       />
       <InputField
-        icon="lock-closed-outline" placeholder="Password (min 6 characters)" value={password} onChangeText={onPassword}
+        icon="lock-closed-outline" placeholder={t('reg_pw_min')} value={password} onChangeText={onPassword}
         error={errors.password} secureTextEntry={!showPw}
         right={<TouchableOpacity onPress={onTogglePw}><Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.4)" /></TouchableOpacity>}
       />
       <InputField
-        icon="lock-closed-outline" placeholder="Confirm password" value={confirmPw} onChangeText={onConfirmPw}
+        icon="lock-closed-outline" placeholder={t('reg_confirm_pw')} value={confirmPw} onChangeText={onConfirmPw}
         error={errors.confirmPw} secureTextEntry={!showPw}
       />
 
-      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Account Type</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>{t('reg_account_type')}</Text>
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-        {[
-          { key: 'individual', icon: 'person-outline' as const, title: 'Individual', desc: 'I work alone' },
-          { key: 'business', icon: 'business-outline' as const, title: 'Business', desc: 'I manage a team' },
-        ].map((opt) => {
+        {accountOptions.map((opt) => {
           const sel = accountType === opt.key;
           return (
             <TouchableOpacity key={opt.key} onPress={() => onAccountType(opt.key)} activeOpacity={0.8} style={{
@@ -205,8 +212,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
         })}
       </View>
 
-      {/* Country Selector — single dropdown button */}
-      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>Select Your Country</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 10 }}>{t('reg_select_country')}</Text>
       <TouchableOpacity
         onPress={onOpenCountrySheet}
         activeOpacity={0.8}
@@ -229,7 +235,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
         ) : (
           <>
             <Ionicons name="globe-outline" size={24} color="rgba(255,255,255,0.3)" />
-            <Text style={{ flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.3)' }}>Select your country</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: 'rgba(255,255,255,0.3)' }}>{t('reg_select_country_ph')}</Text>
           </>
         )}
         <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.4)" />
@@ -238,11 +244,11 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
 
       <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
         {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Account'}</Text>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_creating') : t('reg_create_btn')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onBack} style={{ marginTop: 12, alignItems: 'center' }}>
-        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>← Back</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{t('reg_back')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -251,34 +257,37 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 4 — Profile Photo
    ═══════════════════════════════════════════════════════════════════════════ */
-const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, onSkip, loading }: any) => (
-  <>
-    <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>Add your photo</Text>
-    <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>Add a photo so customers can recognize you.</Text>
+const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, onSkip, loading }: any) => {
+  const { t } = useLanguage();
+  return (
+    <>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 6 }}>{t('reg_add_photo')}</Text>
+      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 }}>{t('reg_add_photo_desc')}</Text>
 
-    <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
-      <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: imageUri ? GREEN : 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.06)' }}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={{ width: 100, height: 100 }} />
-        ) : (
-          <Ionicons name="camera-outline" size={36} color={GREEN} />
-        )}
-      </View>
-      <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>{imageUri ? 'Change photo' : 'Add photo'}</Text>
-    </TouchableOpacity>
+      <TouchableOpacity onPress={onPickPhoto} activeOpacity={0.8} style={{ alignSelf: 'center', marginBottom: 20 }}>
+        <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: imageUri ? GREEN : 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,200,150,0.06)' }}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={{ width: 100, height: 100 }} />
+          ) : (
+            <Ionicons name="camera-outline" size={36} color={GREEN} />
+          )}
+        </View>
+        <Text style={{ fontSize: 13, color: GREEN, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>{imageUri ? t('reg_change_photo') : t('reg_add_photo_btn')}</Text>
+      </TouchableOpacity>
 
-    <InputField icon="briefcase-outline" placeholder="Job title (e.g. Waiter, Tour Guide)" value={jobTitle} onChangeText={onJobTitle} />
+      <InputField icon="briefcase-outline" placeholder={t('reg_job_title_ph')} value={jobTitle} onChangeText={onJobTitle} />
 
-    <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-      {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Saving...' : 'Complete Setup'}</Text>
-    </TouchableOpacity>
+      <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
+        {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('saving') : t('reg_complete_setup')}</Text>
+      </TouchableOpacity>
 
-    <TouchableOpacity onPress={onSkip} style={{ marginTop: 12, alignItems: 'center' }}>
-      <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Skip for now</Text>
-    </TouchableOpacity>
-  </>
-));
+      <TouchableOpacity onPress={onSkip} style={{ marginTop: 12, alignItems: 'center' }}>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{t('reg_skip')}</Text>
+      </TouchableOpacity>
+    </>
+  );
+});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN REGISTER COMPONENT
@@ -286,7 +295,7 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
 export default function Register() {
   const router = useRouter();
   const { login, updateUser } = useAuth();
-  const { language, changeLanguage } = useLanguage();
+  const { language, changeLanguage, t } = useLanguage();
   const { toast, showToast } = useToast();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -312,8 +321,7 @@ export default function Register() {
 
   // Step 4
   const [imageUri, setImageUri] = useState('');
-  const [imageBase64, setImageBase64] = useState('');
-  const imageBase64Ref = useRef(''); // ref to avoid stale closure in handleComplete
+  const imageBase64Ref = useRef('');
   const [jobTitle, setJobTitle] = useState('');
   const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
@@ -330,15 +338,15 @@ export default function Register() {
   }, [username]);
 
   // ── Memoized handlers ──
-  const handleFirstNameChange = useCallback((t: string) => setFirstName(t), []);
-  const handleLastNameChange = useCallback((t: string) => setLastName(t), []);
-  const handleEmailChange = useCallback((t: string) => setEmail(t), []);
-  const handleUsernameChange = useCallback((t: string) => setUsername(t.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)), []);
-  const handlePasswordChange = useCallback((t: string) => setPassword(t), []);
-  const handleConfirmPwChange = useCallback((t: string) => setConfirmPw(t), []);
-  const handleJobTitleChange = useCallback((t: string) => setJobTitle(t), []);
+  const handleFirstNameChange = useCallback((text: string) => setFirstName(text), []);
+  const handleLastNameChange = useCallback((text: string) => setLastName(text), []);
+  const handleEmailChange = useCallback((text: string) => setEmail(text), []);
+  const handleUsernameChange = useCallback((text: string) => setUsername(text.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)), []);
+  const handlePasswordChange = useCallback((text: string) => setPassword(text), []);
+  const handleConfirmPwChange = useCallback((text: string) => setConfirmPw(text), []);
+  const handleJobTitleChange = useCallback((text: string) => setJobTitle(text), []);
   const handleTogglePw = useCallback(() => setShowPw((p) => !p), []);
-  const handleAccountType = useCallback((t: 'individual' | 'business') => setAccountType(t), []);
+  const handleAccountType = useCallback((type: 'individual' | 'business') => setAccountType(type), []);
   const handleCountryChange = useCallback((c: string) => { setSelectedCountry(c); setShowCountrySheet(false); }, []);
   const handleOpenLangSheet = useCallback(() => setShowLangSheet(true), []);
   const handleOpenCountrySheet = useCallback(() => setShowCountrySheet(true), []);
@@ -361,7 +369,6 @@ export default function Register() {
     } finally { setLoading(false); }
   }, [firstName, lastName, email, showToast]);
 
-  // Keep a ref to the current email to avoid stale closures
   const emailRef = useRef(email);
   useEffect(() => { emailRef.current = email; }, [email]);
 
@@ -374,15 +381,9 @@ export default function Register() {
       if (digit && idx === 5) {
         const code = arr.join('');
         if (code.length === 6) {
-          // Use emailRef.current to get the LATEST email value
           setTimeout(() => {
             const currentEmail = emailRef.current.trim().toLowerCase();
-            console.log('=== AUTO-VERIFY OTP ===');
-            console.log('Email from ref:', currentEmail, '| code:', code);
-            if (!currentEmail) {
-              console.error('Email is empty — cannot verify!');
-              return;
-            }
+            if (!currentEmail) return;
             api.post('/auth/verify-otp', { email: currentEmail, otp: code })
               .then(() => { showToast('Email verified!', 'success'); setStep(3); })
               .catch((e: any) => { showToast(e.response?.data?.error || 'Verification failed.', 'error'); });
@@ -412,33 +413,25 @@ export default function Register() {
     setLoading(true);
     try {
       const trimmedEmail = emailRef.current.trim().toLowerCase();
-      console.log('=== VERIFY OTP DEBUG ===');
-      console.log('Email:', trimmedEmail, '| length:', trimmedEmail.length);
-      console.log('OTP code:', code, '| length:', code.length);
       await api.post('/auth/verify-otp', { email: trimmedEmail, otp: code });
       showToast('Email verified!', 'success');
       setStep(3);
     } catch (e: any) {
-      console.log('Verify error response:', e.response?.data);
       showToast(e.response?.data?.error || 'Verification failed.', 'error');
     } finally { setLoading(false); }
   }, [showToast]);
 
   const handleVerifyOtp = useCallback(async () => {
     const code = otp.join('');
-    console.log('=== HANDLE VERIFY OTP ===');
-    console.log('Email state:', email, '| OTP joined:', code);
     if (code.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
     await verifyOtpDirect(code);
-  }, [otp, verifyOtpDirect, showToast, email]);
+  }, [otp, verifyOtpDirect, showToast]);
 
   const handleResend = useCallback(async () => {
     setOtp(['', '', '', '', '', '']);
     setLoading(true);
     try {
-      const currentEmail = emailRef.current.trim().toLowerCase();
-      console.log('[resend] Sending new OTP to:', currentEmail);
-      await api.post('/auth/send-otp', { email: currentEmail });
+      await api.post('/auth/send-otp', { email: emailRef.current.trim().toLowerCase() });
       showToast('New code sent!', 'success');
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed.', 'error');
@@ -459,9 +452,6 @@ export default function Register() {
     setLoading(true);
     try {
       const countryInfo = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
-      console.log('Registering with account_type:', accountType, 'country:', selectedCountry);
-
-      // api returns the body directly (not axios-wrapped), so no { data } destructuring
       const result = await api.post('/auth/register', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -473,8 +463,6 @@ export default function Register() {
         currency: countryInfo.currency,
       });
 
-      console.log('[register] result.data keys:', Object.keys(result?.data || {}));
-
       const userData = {
         ...result.data.employee,
         account_type: accountType,
@@ -482,13 +470,10 @@ export default function Register() {
         currency: countryInfo.currency,
       };
 
-      // login() sets token + user in AuthContext state AND persists to AsyncStorage
       await login(result.data.token, userData as any);
-
       showToast('Account created!', 'success');
       setStep(4);
     } catch (e: any) {
-      console.error('[register] handleStep3 error:', e?.message, e);
       showToast(e.response?.data?.error || e?.message || 'Registration failed.', 'error');
     } finally { setLoading(false); }
   }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, login, showToast]);
@@ -496,11 +481,8 @@ export default function Register() {
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 
   // ── Step 4 handlers ──
-  const showPhotoOptions = useCallback(() => {
-    setShowPhotoSheet(true);
-  }, []);
+  const showPhotoOptions = useCallback(() => setShowPhotoSheet(true), []);
 
-  // ── Photo Picker — shows native crop UI before returning ──
   const pickImage = async (source: 'camera' | 'gallery') => {
     setShowPhotoSheet(false);
     try {
@@ -532,42 +514,31 @@ export default function Register() {
       const uri = result.assets[0].uri;
       setImageUri(uri);
       imageBase64Ref.current = uri;
-      console.log('[register] Image selected with crop, uri:', uri);
     } catch (err: any) {
       showToast(err.message || 'Could not process image.', 'error');
-      console.error('[register] pickImage error:', err);
     }
   };
 
   const handleComplete = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Upload text fields (job_title) if any
       if (jobTitle.trim()) {
         await api.patch('/employee/profile', { job_title: jobTitle.trim() });
       }
 
-      // 2. Upload photo via expo-file-system if an image was selected
       const photoUri = imageBase64Ref.current || imageUri;
       if (photoUri) {
-        console.log('[register] Calling uploadProfileImage, uri:', photoUri);
         const uploadResult = await uploadProfileImage(photoUri);
-
         if (!uploadResult.success || !uploadResult.employee) {
           showToast(JSON.stringify(uploadResult.error || 'Photo upload failed'), 'error');
           setLoading(false);
           return;
         }
-
         const serverEmployee = uploadResult.employee;
         const freshPhotoUrl = serverEmployee.photo_url
           ? serverEmployee.photo_url + '?t=' + Date.now()
           : undefined;
-        updateUser({
-          ...serverEmployee,
-          photo_url: freshPhotoUrl,
-        });
-
+        updateUser({ ...serverEmployee, photo_url: freshPhotoUrl });
         showToast('Profile photo uploaded!', 'success');
       }
 
@@ -577,9 +548,7 @@ export default function Register() {
         else router.replace('/(tabs)/home');
       }, 500);
     } catch (err: any) {
-      const msg = err?.message || 'Unknown error';
-      console.error('[register] handleComplete failed:', msg);
-      showToast(`Could not save your profile. ${msg}`, 'error');
+      showToast(`Could not save your profile. ${err?.message || 'Unknown error'}`, 'error');
     } finally { setLoading(false); }
   }, [imageUri, jobTitle, accountType, router, showToast, updateUser]);
 
@@ -664,8 +633,8 @@ export default function Register() {
         {step <= 2 && (
           <View style={{ alignItems: 'center', marginTop: 20, paddingBottom: 40 }}>
             <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
-              Already have an account?{' '}
-              <Link href="/login" style={{ color: '#fff', fontWeight: '700' }}>Log in</Link>
+              {t('reg_already')}{' '}
+              <Link href="/login" style={{ color: '#fff', fontWeight: '700' }}>{t('reg_login_link')}</Link>
             </Text>
           </View>
         )}
@@ -679,7 +648,7 @@ export default function Register() {
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>Select Language</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>{t('select_language')}</Text>
             {Object.keys(LANG_IMAGES).map((l) => (
               <TouchableOpacity
                 key={l}
@@ -693,7 +662,7 @@ export default function Register() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowLangSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -706,7 +675,7 @@ export default function Register() {
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>Select Country</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>{t('reg_select_country')}</Text>
             {COUNTRY_OPTIONS.map((c) => (
               <TouchableOpacity
                 key={c.id}
@@ -723,7 +692,7 @@ export default function Register() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity onPress={() => setShowCountrySheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -736,21 +705,21 @@ export default function Register() {
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>Profile Photo</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('reg_profile_photo')}</Text>
             <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="camera-outline" size={22} color={ACCENT} />
               </View>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Take Photo</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>{t('take_photo')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => pickImage('gallery')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="images-outline" size={22} color={GREEN} />
               </View>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>Choose from Gallery</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>{t('choose_gallery')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowPhotoSheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
