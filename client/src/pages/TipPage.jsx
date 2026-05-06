@@ -3,17 +3,23 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
-/* ─── Currency helpers ────────────────────────────────────────────────── */
-const CURRENCY_PRESETS = {
-  MAD: [10, 20, 50, 100],
-  AED: [10, 20, 50, 100],
-  EUR: [2, 5, 10, 20],
-  USD: [2, 5, 10, 20],
-  GBP: [1, 2, 5, 10],
+/* ─── Suggested tip amounts per currency ─────────────────────────────── */
+const SUGGESTED_TIPS = {
+  // Hard currencies
+  USD: [2,  5,   10,   20 ],
+  EUR: [2,  5,   10,   20 ],
+  GBP: [1,  2,    5,   10 ],
+  // Dirham / Franc
+  MAD: [20, 50,  100,  200],
+  AED: [10, 20,   50,  100],
+  // South-East Asia
+  PHP: [50, 100, 200,  500],
+  THB: [50, 100, 200,  500],
+  IDR: [20000, 50000, 100000, 200000],
 };
 
 function getTipPresets(currency) {
-  return CURRENCY_PRESETS[currency] || CURRENCY_PRESETS.USD;
+  return SUGGESTED_TIPS[currency] ?? SUGGESTED_TIPS.USD;
 }
 
 function formatCurrency(amount, currency) {
@@ -420,7 +426,7 @@ export default function TipPage() {
   const finalAmount = getFinalAmount();
   const photoSrc = getPhotoSrc(employee);
   const payDisabled = sending || finalAmount <= 0;
-  const avgTip = tipPresets[Math.floor(tipPresets.length / 2)];
+  const avgTip = tipPresets[1]; // second value — approachable mid-range suggestion
 
   return (
     <>
@@ -570,7 +576,7 @@ export default function TipPage() {
             )}
 
             <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '10px' }}>
-              Average tip: {formatCurrency(avgTip, currency)}
+              Suggested tip: {formatCurrency(avgTip, currency)}
             </p>
           </div>
 
