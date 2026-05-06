@@ -10,6 +10,14 @@ const COUNTRY_CODES={
   'UAE':'AE','United Arab Emirates':'AE',
   Philippines:'PH',Indonesia:'ID',Thailand:'TH',
 };
+
+// Country name → local currency (for display without currency conversion)
+const COUNTRY_CURRENCY_MAP={
+  Morocco:'MAD','United States':'USD',France:'EUR',Spain:'EUR',Germany:'EUR',Italy:'EUR',
+  'UAE':'AED','United Arab Emirates':'AED',
+  Philippines:'PHP',Indonesia:'IDR',Thailand:'THB',
+};
+function getCountryCurrency(country){return COUNTRY_CURRENCY_MAP[country]||'USD';}
 // ISO code → country name (reverse lookup for flag rendering)
 const ISO_TO_COUNTRY=Object.fromEntries(Object.entries(COUNTRY_CODES).map(([k,v])=>[v,k]));
 const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#a78bfa',GBP:'#06b6d4',PHP:'#f97316',THB:'#ec4899',IDR:'#fb7185'};
@@ -683,7 +691,7 @@ function BusinessesSection({showToast,onLogout}){
         <td><Badge text={b.business_type} bg='rgba(0,255,204,.12)' color={ACCENT}/></td>
         <td><CountryBadge country={b.country}/> {b.country}</td>
         <td style={{fontWeight:700,color:'#fff'}}>{b.team_count}</td>
-        <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(b.total_tips)}</td>
+        <td style={{fontWeight:700,color:GREEN}}>{fmtCur(b.total_tips, getCountryCurrency(b.country))}</td>
         <td style={{fontSize:12}}>{fmtDate(b.created_at)}</td>
         <td><Btn small bg='rgba(239,68,68,.1)' color={RED} onClick={()=>setConfirm({msg:`Delete "${b.business_name}"? Team links removed, employee accounts kept.`,fn:()=>handleDelete(b.id)})}>{I.trash} Delete</Btn></td>
       </tr>)}
@@ -701,7 +709,7 @@ function TransactionsSection({showToast,onLogout,selectedCurrency}){
   const filtered=useMemo(()=>(data.transactions||[]).filter(t=>t.currency===selectedCurrency),[data.transactions,selectedCurrency]);
   const exportCSV=()=>{const h='Date,Employee,Username,Amount,Currency,Commission,Method\n';const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${(Number(t.amount)*.1).toFixed(2)},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')};
   return(<>
-    <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Transactions</h1>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}><h1 style={{fontSize:26,fontWeight:800,color:'#fff'}}>Transactions</h1><span style={{background:'rgba(0,255,204,.1)',border:'1px solid rgba(0,255,204,.3)',borderRadius:50,padding:'5px 14px',fontSize:13,fontWeight:700,color:ACCENT}}>{selectedCurrency} Market</span></div>
     <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>VOLUME ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0),selectedCurrency)}</p></div>
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>COMMISSION ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:PURPLE}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0)*0.1,selectedCurrency)}</p></div>
@@ -737,10 +745,10 @@ function AnalyticsSection({showToast,selectedCurrency}){
   const avgTip=filteredEmp.length>0?filteredEmp.reduce((a,e)=>a+Number(e.total_tips),0)/filteredEmp.length:0;
   const maxTip=Math.max(...filteredEmp.map(e=>e.total_tips),1),maxHour=Math.max(...(data.peakHours||[]).map(h=>h.count),1);
   return(<>
-    <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:24}}>Analytics</h1>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}><h1 style={{fontSize:26,fontWeight:800,color:'#fff'}}>Analytics</h1><span style={{background:'rgba(0,255,204,.1)',border:'1px solid rgba(0,255,204,.3)',borderRadius:50,padding:'5px 14px',fontSize:13,fontWeight:700,color:ACCENT}}>{selectedCurrency} Market Only</span></div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,marginBottom:28}}>
       <div style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>AVG TIP (${selectedCurrency})</p><p style={{fontSize:22,fontWeight:800,color:GREEN}}>{fmtCur(avgTip,selectedCurrency)}</p></div>
-      {(data.methodBreakdown||[]).map((m,i)=><div key={i} style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>{(m.payment_method||'mock').toUpperCase()}</p><p style={{fontSize:22,fontWeight:800,color:ACCENT}}>{m.count}</p><p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{fmtMoney(m.total)}</p></div>)}
+      {(data.methodBreakdown||[]).map((m,i)=><div key={i} style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>{(m.payment_method||'mock').toUpperCase()}</p><p style={{fontSize:22,fontWeight:800,color:ACCENT}}>{m.count}</p><p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{fmtCur(m.total,selectedCurrency)}</p></div>)}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:14,marginBottom:28}}>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
@@ -766,7 +774,7 @@ function AnalyticsSection({showToast,selectedCurrency}){
       </div>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:14}}>Top Countries by Tips</p>
-        {(data.topCountriesByTips||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14,display:'flex',alignItems:'center',gap:6}}><CountryBadge country={c.country}/>{c.country}</span><span style={{color:GREEN,fontWeight:700,fontSize:14}}>{fmtMoney(c.total)}</span></div>)}
+        {(data.topCountriesByTips||[]).map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${BORDER}`}}><span style={{color:'#fff',fontWeight:600,fontSize:14,display:'flex',alignItems:'center',gap:6}}><CountryBadge country={c.country}/>{c.country}</span><span style={{color:GREEN,fontWeight:700,fontSize:14}}>{fmtCur(c.total,getCountryCurrency(c.country))}</span></div>)}
       </div>
     </div>
   </>);
