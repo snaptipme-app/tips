@@ -1,31 +1,34 @@
 import { memo } from 'react';
-import { SvgXml } from 'react-native-svg';
-import { StyleProp, ViewStyle } from 'react-native';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const FLAG_STRINGS: Record<string, string> = {
-  MA: require('country-flag-icons/string/3x2/MA'),
-  AE: require('country-flag-icons/string/3x2/AE'),
-  US: require('country-flag-icons/string/3x2/US'),
-  FR: require('country-flag-icons/string/3x2/FR'),
-  ES: require('country-flag-icons/string/3x2/ES'),
-  DE: require('country-flag-icons/string/3x2/DE'),
-  IT: require('country-flag-icons/string/3x2/IT'),
-  PH: require('country-flag-icons/string/3x2/PH'),
-  ID: require('country-flag-icons/string/3x2/ID'),
-  TH: require('country-flag-icons/string/3x2/TH'),
-};
-/* eslint-enable @typescript-eslint/no-require-imports */
+import RNCountryFlag from 'react-native-country-flag';
+import { StyleProp, View, ViewStyle } from 'react-native';
 
 interface CountryFlagProps {
+  /** ISO 3166-1 alpha-2 country code, e.g. "MA" */
   code: string;
   width?: number;
   height?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export const CountryFlag = memo(function CountryFlag({ code, width = 32, height = 22, style }: CountryFlagProps) {
-  const xml = FLAG_STRINGS[code];
-  if (!xml) return null;
-  return <SvgXml xml={xml} width={width} height={height} style={style} />;
+/**
+ * Thin wrapper around react-native-country-flag.
+ * Accepts the same `code`, `width`, `height`, `style` props used throughout
+ * the app so call-sites don't need to change.
+ *
+ * `react-native-country-flag` renders high-quality emoji-based flags
+ * via a Text element — zero native dependencies, works with Metro out of the box.
+ */
+export const CountryFlag = memo(function CountryFlag({
+  code,
+  height = 22,
+  style,
+}: CountryFlagProps) {
+  // Convert height to an approximate font size (the lib uses `size` as fontSize)
+  const size = Math.round(height * 1.4);
+
+  return (
+    <View style={[{ overflow: 'hidden', borderRadius: 4 }, style]}>
+      <RNCountryFlag isoCode={code} size={size} />
+    </View>
+  );
 });
