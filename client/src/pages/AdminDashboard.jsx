@@ -85,6 +85,7 @@ export default function AdminDashboard({onLogout}){
   const handleLogout=()=>{clearAdminToken();onLogout()};
   const switchSection=s=>{setSection(s);setSideOpen(false)};
   const[pendingCount,setPendingCount]=useState(0);
+  const[selectedCurrency,setSelectedCurrency]=useState('MAD');
   useEffect(()=>{api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0)).catch(()=>{});},[section]);
 
   return(<>
@@ -118,7 +119,7 @@ export default function AdminDashboard({onLogout}){
         <span style={{color:'#fff',fontSize:13,fontWeight:600,textTransform:'capitalize'}}>{section}</span>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
-        <span style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Logged in as Admin</span>
+        <span style={{fontSize:11,color:'rgba(255,255,255,.35)',fontWeight:600}}>Market</span><select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(0,255,204,.08)',border:'1px solid rgba(0,255,204,.3)',borderRadius:10,padding:'6px 12px',color:ACCENT,fontSize:13,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>{CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#222'}}>{c.code}</option>)}</select><span style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Admin</span>
         <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,255,204,.2)',border:`2px solid ${ACCENT}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:ACCENT,flexShrink:0}}>AD</div>
       </div>
     </div>
@@ -165,25 +166,23 @@ export default function AdminDashboard({onLogout}){
 
     {/* Main content */}
     <div className="admin-main" style={{marginLeft:240,minHeight:'100dvh',padding:'88px 28px 24px'}}>
-      {section==='overview'&&<OverviewSection showToast={showToast} onLogout={onLogout} onNavigate={switchSection}/>}
+      {section==='overview'&&<OverviewSection showToast={showToast} onLogout={onLogout} onNavigate={switchSection} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency}/>}
       {section==='users'&&<UsersSection showToast={showToast} onLogout={onLogout}/>}
       {section==='withdrawals'&&<WithdrawalsSection showToast={showToast} onLogout={onLogout} onUpdate={()=>api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0))}/>}
       {section==='businesses'&&<BusinessesSection showToast={showToast} onLogout={onLogout}/>}
-      {section==='transactions'&&<TransactionsSection showToast={showToast} onLogout={onLogout}/>}
-      {section==='analytics'&&<AnalyticsSection showToast={showToast}/>}
+      {section==='transactions'&&<TransactionsSection showToast={showToast} onLogout={onLogout} selectedCurrency={selectedCurrency}/>}
+      {section==='analytics'&&<AnalyticsSection showToast={showToast} selectedCurrency={selectedCurrency}/>}
     </div>
   </>);
 }
 
 /* ═══ OVERVIEW ═══ */
-function OverviewSection({showToast,onLogout,onNavigate}){
+function OverviewSection({showToast,onLogout,onNavigate,selectedCurrency,onCurrencyChange}){
   const[stats,setStats]=useState(null);
   const[weekData,setWeekData]=useState(null);
   const[monthData,setMonthData]=useState(null);
   const[withdrawalsData,setWithdrawalsData]=useState(null);
   const[loading,setLoading]=useState(true);
-  const[selectedCurrency,setSelectedCurrency]=useState('USD');
-
   useEffect(()=>{
     Promise.all([
       api().get('/stats'),
@@ -194,7 +193,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
       .then(([s,w,m,wd])=>{
         setStats(s.data);setWeekData(w.data);setMonthData(m.data);setWithdrawalsData(wd.data);
         const tbc=s.data?.tipsByCurrency||[];
-        if(tbc.length>0){const most=tbc.reduce((a,b)=>Number(b.count)>Number(a.count)?b:a);setSelectedCurrency(most.currency);}
+        if(tbc.length>0){const most=tbc.reduce((a,b)=>Number(b.count)>Number(a.count)?b:a);onCurrencyChange(most.currency);}
       })
       .catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout();}else showToast('Failed to load dashboard','error');})
       .finally(()=>setLoading(false));
@@ -270,7 +269,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
       <div style={{display:'flex',alignItems:'center',gap:8}}>
         <span style={{fontSize:12,color:'rgba(255,255,255,.35)',fontWeight:600}}>Currency</span>
         <div style={{position:'relative'}}>
-          <select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(255,255,255,.07)',border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 36px 9px 14px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>
+          <select value={selectedCurrency} onChange={e=>onCurrencyChange(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(255,255,255,.07)',border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 36px 9px 14px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>
             {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#222222'}}>{c.label}</option>)}
           </select>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2.5" style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><polyline points="6 9 12 15 18 9"/></svg>
@@ -695,17 +694,18 @@ function BusinessesSection({showToast,onLogout}){
 }
 
 /* ═══ TRANSACTIONS ═══ */
-function TransactionsSection({showToast,onLogout}){
+function TransactionsSection({showToast,onLogout,selectedCurrency}){
   const[data,setData]=useState({transactions:[],totalVolume:0,totalCommission:0,totalCount:0});const[loading,setLoading]=useState(true);const[range,setRange]=useState('all');
   const fetchT=useCallback(()=>{setLoading(true);api().get('/transactions',{params:{range}}).then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[range,onLogout]);
   useEffect(()=>{fetchT()},[fetchT]);
-  const exportCSV=()=>{const h='Date,Employee,Username,Amount,Currency,Commission,Method\n';const rows=data.transactions.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${(Number(t.amount)*.1).toFixed(2)},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_transactions_${range}.csv`;a.click();showToast('CSV exported!')};
+  const filtered=useMemo(()=>(data.transactions||[]).filter(t=>t.currency===selectedCurrency),[data.transactions,selectedCurrency]);
+  const exportCSV=()=>{const h='Date,Employee,Username,Amount,Currency,Commission,Method\n';const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${(Number(t.amount)*.1).toFixed(2)},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')};
   return(<>
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Transactions</h1>
     <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
-      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TOTAL VOLUME</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtMoney(data.totalVolume)}</p></div>
-      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>COMMISSION (10%)</p><p style={{fontSize:20,fontWeight:800,color:PURPLE}}>{fmtMoney(data.totalCommission)}</p></div>
-      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TRANSACTIONS</p><p style={{fontSize:20,fontWeight:800,color:'#fff'}}>{data.totalCount}</p></div>
+      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>VOLUME ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0),selectedCurrency)}</p></div>
+      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>COMMISSION ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:PURPLE}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0)*0.1,selectedCurrency)}</p></div>
+      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TRANSACTIONS</p><p style={{fontSize:20,fontWeight:800,color:'#fff'}}>{filtered.length}</p></div>
     </div>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <div style={{display:'flex',gap:6}}>{['today','week','month','all'].map(r=><button key={r} onClick={()=>setRange(r)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:range===r?'rgba(0,255,204,.15)':'rgba(255,255,255,.04)',color:range===r?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{r==='all'?'All Time':r==='week'?'This Week':r==='month'?'This Month':'Today'}</button>)}</div>
@@ -714,41 +714,43 @@ function TransactionsSection({showToast,onLogout}){
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
     <div style={{background:CARD,borderRadius:16,border:`1px solid ${BORDER}`,overflow:'auto'}}>
       <table><thead><tr><th>Date</th><th>Employee</th><th>Amount</th><th>Commission</th><th>Method</th></tr></thead>
-      <tbody>{data.transactions.map((t,i)=><tr key={i}>
+      <tbody>{filtered.map((t,i)=><tr key={i}>
         <td style={{fontSize:12}}>{fmtDate(t.created_at)}</td>
         <td><span style={{fontWeight:600,color:'#fff'}}>{t.full_name}</span> <span style={{color:'rgba(255,255,255,.3)'}}>@{t.username}</span></td>
         <td style={{fontWeight:700,color:'#fff'}}><CurrencyPill currency={t.currency} amount={t.amount}/></td>
         <td><CurrencyPill currency={t.currency} amount={Number(t.amount)*.1}/></td>
         <td><Badge text={t.payment_method||'mock'} bg='rgba(255,255,255,.06)' color='rgba(255,255,255,.5)'/></td>
       </tr>)}
-      {!data.transactions.length&&<tr><td colSpan={5} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No transactions for this period</td></tr>}
+      {!filtered.length&&<tr><td colSpan={5} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No {selectedCurrency} transactions for this period</td></tr>}
       </tbody></table>
     </div>}
   </>);
 }
 
 /* ═══ ANALYTICS ═══ */
-function AnalyticsSection({showToast}){
+function AnalyticsSection({showToast,selectedCurrency}){
   const[data,setData]=useState(null);const[loading,setLoading]=useState(true);
   useEffect(()=>{api().get('/analytics').then(r=>setData(r.data)).catch(()=>showToast('Failed','error')).finally(()=>setLoading(false))},[]);
   if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>;
   if(!data)return null;
-  const maxTip=Math.max(...(data.topEmployees||[]).map(e=>e.total_tips),1),maxHour=Math.max(...(data.peakHours||[]).map(h=>h.count),1);
+  const filteredEmp=(data.topEmployees||[]).filter(e=>!e.currency||e.currency===selectedCurrency);
+  const avgTip=filteredEmp.length>0?filteredEmp.reduce((a,e)=>a+Number(e.total_tips),0)/filteredEmp.length:0;
+  const maxTip=Math.max(...filteredEmp.map(e=>e.total_tips),1),maxHour=Math.max(...(data.peakHours||[]).map(h=>h.count),1);
   return(<>
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:24}}>Analytics</h1>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,marginBottom:28}}>
-      <div style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>AVG TIP AMOUNT</p><p style={{fontSize:22,fontWeight:800,color:GREEN}}>{fmtMoney(data.avgTip)}</p></div>
+      <div style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>AVG TIP (${selectedCurrency})</p><p style={{fontSize:22,fontWeight:800,color:GREEN}}>{fmtCur(avgTip,selectedCurrency)}</p></div>
       {(data.methodBreakdown||[]).map((m,i)=><div key={i} style={{background:CARD,borderRadius:16,padding:'18px 22px',border:`1px solid ${BORDER}`}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:6}}>{(m.payment_method||'mock').toUpperCase()}</p><p style={{fontSize:22,fontWeight:800,color:ACCENT}}>{m.count}</p><p style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:4}}>{fmtMoney(m.total)}</p></div>)}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:14,marginBottom:28}}>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:16}}>Top 10 Employees by Tips</p>
-        {(data.topEmployees||[]).map((e,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+        {filteredEmp.map((e,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
           <span style={{width:24,fontSize:14,fontWeight:800,color:i<3?[YELLOW,'#C0C0C0','#CD7F32'][i]:'rgba(255,255,255,.3)'}}>#{i+1}</span>
-          <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontWeight:600,color:'#fff',fontSize:13}}>{e.full_name}</span><span style={{fontWeight:700,color:GREEN,fontSize:13}}>{fmtMoney(e.total_tips,e.currency)}</span></div>
+          <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontWeight:600,color:'#fff',fontSize:13}}>{e.full_name}</span><span style={{fontWeight:700,color:GREEN,fontSize:13}}>{fmtCur(e.total_tips,selectedCurrency)}</span></div>
           <div style={{height:6,background:'rgba(255,255,255,.04)',borderRadius:3}}><div style={{height:6,borderRadius:3,background:`linear-gradient(90deg,${ACCENT},${GREEN})`,width:`${(e.total_tips/maxTip)*100}%`}}/></div></div>
         </div>)}
-        {(!data.topEmployees||!data.topEmployees.length)&&<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No data</p>}
+        {!filteredEmp.length&&<p style={{color:'rgba(255,255,255,.3)',fontSize:13}}>No {selectedCurrency} data yet</p>}
       </div>
       <div style={{background:CARD,borderRadius:16,padding:20,border:`1px solid ${BORDER}`}}>
         <p style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.5)',marginBottom:16}}>Peak Hours</p>
