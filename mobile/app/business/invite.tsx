@@ -13,7 +13,7 @@ const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 
 interface Invite {

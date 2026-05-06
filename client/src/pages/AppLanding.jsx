@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 /* ─── design tokens ──────────────────────────────────────────────────── */
 const BG      = '#1a1a1a';
 const GREEN   = '#00C896';
-const ACCENT  = '#00B4D8';
+const ACCENT  = '#00ffcc';
 const GREEN2  = '#00ff88';
 
 /* ─── SVG logos ──────────────────────────────────────────────────────── */
@@ -39,7 +39,7 @@ const GlobeIcon = ({ color = ACCENT, size = 22 }) => (
   </svg>
 );
 
-const WalletIcon = ({ color = '#0096FF', size = 22 }) => (
+const WalletIcon = ({ color = '#00ffcc', size = 22 }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="5" width="20" height="14" rx="2" />
     <path d="M16 12h2" />
@@ -70,15 +70,15 @@ const FEATURES = [
   },
   {
     icon: <GlobeIcon color={ACCENT} size={24} />,
-    bg: 'rgba(0,180,216,0.10)',
-    border: 'rgba(0,180,216,0.18)',
+    bg: 'rgba(0,255,204,0.10)',
+    border: 'rgba(0,255,204,0.18)',
     title: 'Global Payments',
     desc: 'Accept tips in MAD, EUR, USD, AED and more. Multi-currency support built in from day one.',
   },
   {
-    icon: <WalletIcon color="#0096FF" size={24} />,
-    bg: 'rgba(0,150,255,0.10)',
-    border: 'rgba(0,150,255,0.18)',
+    icon: <WalletIcon color="#00ffcc" size={24} />,
+    bg: 'rgba(0,255,204,0.10)',
+    border: 'rgba(0,255,204,0.18)',
     title: 'Instant Withdrawals',
     desc: 'Cash out your balance at any time. Your earnings, your wallet — always in your control.',
   },
@@ -105,8 +105,8 @@ export default function AppLanding() {
 
       {/* ── ambient glow ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        <div ref={glowRef} style={{ transition: 'transform 0.6s ease', position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)', width: 700, height: 700, background: `radial-gradient(ellipse at center, rgba(0,200,150,0.12) 0%, rgba(0,180,216,0.06) 50%, transparent 80%)`, borderRadius: '50%', filter: 'blur(40px)' }} />
-        <div style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 500, height: 500, background: 'radial-gradient(ellipse, rgba(0,180,216,0.10) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(60px)' }} />
+        <div ref={glowRef} style={{ transition: 'transform 0.6s ease', position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)', width: 700, height: 700, background: `radial-gradient(ellipse at center, rgba(0,200,150,0.12) 0%, rgba(0,255,204,0.06) 50%, transparent 80%)`, borderRadius: '50%', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', bottom: '5%', right: '-10%', width: 500, height: 500, background: 'radial-gradient(ellipse, rgba(0,255,204,0.10) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(60px)' }} />
       </div>
 
       {/* ════════════════════ NAVBAR ════════════════════ */}

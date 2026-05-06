@@ -21,7 +21,7 @@ const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
@@ -272,7 +272,7 @@ export default function JoinBusiness() {
             <>
               {/* Business Card */}
               <View style={{ backgroundColor: CARD, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: BORDER, alignItems: 'center', marginBottom: 24 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 2, borderColor: ACCENT }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 2, borderColor: ACCENT }}>
                   <BizIcon />
                 </View>
                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4, textAlign: 'center' }}>{businessName}</Text>
@@ -337,12 +337,12 @@ export default function JoinBusiness() {
             <View style={{ gap: 16 }}>
               {/* Photo Upload — required */}
               <TouchableOpacity onPress={pickPhoto} activeOpacity={0.85} style={{ alignItems: 'center', marginBottom: 8 }}>
-                <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: photoB64 ? GREEN : ACCENT, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: photoB64 ? GREEN : ACCENT, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   {photoB64 ? (
                     <Image source={{ uri: photoB64 }} style={{ width: 100, height: 100 }} />
                   ) : (
                     <View style={{ alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="camera" size={28} color="rgba(0,180,216,0.5)" />
+                      <Ionicons name="camera" size={28} color="rgba(0,255,204,0.5)" />
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Required</Text>
                     </View>
                   )}

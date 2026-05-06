@@ -17,7 +17,7 @@ const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 
 const BIZ_TYPES = [
@@ -143,11 +143,11 @@ export default function BusinessProfileSettings() {
         {/* ── Logo Upload ── */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <TouchableOpacity onPress={pickLogo} activeOpacity={0.85}>
-            <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: ACCENT, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: ACCENT, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               {logoSrc ? (
                 <Image source={{ uri: logoSrc }} style={{ width: 100, height: 100 }} />
               ) : (
-                <Ionicons name="business-outline" size={36} color="rgba(0,180,216,0.5)" />
+                <Ionicons name="business-outline" size={36} color="rgba(0,255,204,0.5)" />
               )}
             </View>
             <View style={{ position: 'absolute', bottom: 2, right: 2, width: 30, height: 30, borderRadius: 15, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG }}>
@@ -194,7 +194,7 @@ export default function BusinessProfileSettings() {
                       paddingHorizontal: 14,
                       paddingVertical: 10,
                       borderRadius: 50,
-                      backgroundColor: sel ? 'rgba(0,180,216,0.12)' : 'rgba(255,255,255,0.05)',
+                      backgroundColor: sel ? 'rgba(0,255,204,0.12)' : 'rgba(255,255,255,0.05)',
                       borderWidth: 1.5,
                       borderColor: sel ? ACCENT : 'rgba(255,255,255,0.08)',
                     }}

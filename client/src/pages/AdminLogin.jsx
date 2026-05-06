@@ -86,7 +86,7 @@ export default function AdminLogin({ onSuccess }) {
       <style>{styles}</style>
       <div style={{
         minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'radial-gradient(ellipse at top, rgba(0,180,216,0.12) 0%, transparent 60%), #1a1a1a',
+        background: 'radial-gradient(ellipse at top, rgba(0,255,204,0.12) 0%, transparent 60%), #1a1a1a',
         padding: '20px',
       }}>
         <div style={{
@@ -158,8 +158,8 @@ export default function AdminLogin({ onSuccess }) {
               disabled={loading || isLocked}
               style={{
                 width: '100%', height: '52px', borderRadius: '50px',
-                background: (loading || isLocked) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#4facfe,#0096FF)',
-                boxShadow: (loading || isLocked) ? 'none' : '0 8px 24px rgba(0,150,255,0.4)',
+                background: (loading || isLocked) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#4facfe,#00ffcc)',
+                boxShadow: (loading || isLocked) ? 'none' : '0 8px 24px rgba(0,255,204,0.4)',
                 border: 'none', color: '#fff', fontSize: '16px', fontWeight: '700',
                 cursor: (loading || isLocked) ? 'not-allowed' : 'pointer', opacity: (loading || isLocked) ? 0.6 : 1,
                 transition: 'all 0.2s',

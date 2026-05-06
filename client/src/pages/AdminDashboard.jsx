@@ -3,9 +3,9 @@ import axios from 'axios';
 import { clearAdminToken } from './AdminLogin';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const BG='#1a1a1a',CARD='#222222',BORDER='rgba(255,255,255,0.06)',ACCENT='#00B4D8',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#0096FF';
+const BG='#1a1a1a',CARD='#222222',BORDER='rgba(255,255,255,0.06)',ACCENT='#00ffcc',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#00ffcc';
 const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
-const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00B4D8',USD:'#00C896',AED:'#0096FF',GBP:'#06b6d4'};
+const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#00ffcc',GBP:'#06b6d4'};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
 // Auth is sent automatically via httpOnly admin cookie. No Authorization header.
 function api(){return axios.create({baseURL:'/api/admin',withCredentials:true})}
@@ -75,7 +75,7 @@ export default function AdminDashboard({onLogout}){
       th{text-align:left;padding:10px 12px;color:rgba(255,255,255,.35);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid ${BORDER}}
       td{padding:10px 12px;color:rgba(255,255,255,.7);font-size:13px;border-bottom:1px solid ${BORDER}}
       tr:hover td{background:rgba(255,255,255,.02)}
-      .admin-sidebar button:hover{background:rgba(0,180,216,0.08)!important}
+      .admin-sidebar button:hover{background:rgba(0,255,204,0.08)!important}
     `}</style>
     <Toast toast={toast}/>
 
@@ -88,7 +88,7 @@ export default function AdminDashboard({onLogout}){
       </div>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <span style={{color:'rgba(255,255,255,.5)',fontSize:13}}>Logged in as Admin</span>
-        <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,180,216,.2)',border:`2px solid ${ACCENT}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:ACCENT,flexShrink:0}}>AD</div>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,255,204,.2)',border:`2px solid ${ACCENT}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:ACCENT,flexShrink:0}}>AD</div>
       </div>
     </div>
 
@@ -103,7 +103,7 @@ export default function AdminDashboard({onLogout}){
     {sideOpen&&<div onClick={()=>setSideOpen(false)} style={{position:'fixed',inset:0,zIndex:199,background:'rgba(0,0,0,.6)'}}>
       <div onClick={e=>e.stopPropagation()} style={{width:260,height:'100%',background:CARD,padding:20,borderRight:`1px solid ${BORDER}`}}>
         <div style={{marginBottom:24,paddingTop:8}}><div style={{fontSize:20,fontWeight:800,color:'#fff'}}>SnapTip</div><p style={{fontSize:11,color:'rgba(255,255,255,.3)',marginTop:4}}>Admin Panel</p></div>
-        {NAV.map(n=><button key={n.key} onClick={()=>switchSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'12px 14px',border:'none',borderRadius:12,background:section===n.key?'rgba(0,180,216,.12)':'transparent',color:section===n.key?ACCENT:'rgba(255,255,255,.5)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left'}}>
+        {NAV.map(n=><button key={n.key} onClick={()=>switchSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'12px 14px',border:'none',borderRadius:12,background:section===n.key?'rgba(0,255,204,.12)':'transparent',color:section===n.key?ACCENT:'rgba(255,255,255,.5)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left'}}>
           <span style={{display:'flex'}}>{n.icon}</span>{n.label}
           {n.key==='withdrawals'&&pendingCount>0&&<span style={{marginLeft:'auto',background:YELLOW,color:'#000',fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:50}}>{pendingCount}</span>}
         </button>)}
@@ -122,7 +122,7 @@ export default function AdminDashboard({onLogout}){
         </div>
       </div>
       <div style={{flex:1}}>
-        {NAV.map(n=><button key={n.key} onClick={()=>setSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'11px 14px',border:'none',borderLeft:section===n.key?`3px solid ${ACCENT}`:'3px solid transparent',borderRadius:10,background:section===n.key?'rgba(0,180,216,.15)':'transparent',color:section===n.key?'#fff':'rgba(255,255,255,.45)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left',transition:'all .15s',paddingLeft:section===n.key?11:14}}>
+        {NAV.map(n=><button key={n.key} onClick={()=>setSection(n.key)} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'11px 14px',border:'none',borderLeft:section===n.key?`3px solid ${ACCENT}`:'3px solid transparent',borderRadius:10,background:section===n.key?'rgba(0,255,204,.15)':'transparent',color:section===n.key?'#fff':'rgba(255,255,255,.45)',fontSize:14,fontWeight:600,cursor:'pointer',marginBottom:4,textAlign:'left',transition:'all .15s',paddingLeft:section===n.key?11:14}}>
           <span style={{display:'flex'}}>{n.icon}</span>{n.label}
           {n.key==='withdrawals'&&pendingCount>0&&<span style={{marginLeft:'auto',background:YELLOW,color:'#000',fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:50}}>{pendingCount}</span>}
         </button>)}
@@ -333,7 +333,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
         </div>
         <div style={{color:'rgba(255,255,255,.6)',flexShrink:0}}>{I.arrowDown}</div>
       </div>
-      <div onClick={()=>onNavigate('transactions')} style={{background:'linear-gradient(135deg,#7c3aed 0%,#00B4D8 100%)',borderRadius:20,padding:'28px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid rgba(0,180,216,.3)',transition:'opacity .2s'}}
+      <div onClick={()=>onNavigate('transactions')} style={{background:'linear-gradient(135deg,#7c3aed 0%,#00ffcc 100%)',borderRadius:20,padding:'28px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid rgba(0,255,204,.3)',transition:'opacity .2s'}}
         onMouseEnter={e=>e.currentTarget.style.opacity='0.88'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
         <div>
           <p style={{fontSize:12,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}}>Total Tips Collected</p>
@@ -400,12 +400,12 @@ function UsersSection({showToast,onLogout}){
     setActionLoading(null);
   };
 
-  const typeBadge=t=>{if(t==='business')return<Badge text="Business" bg="rgba(0,200,150,.12)" color={GREEN}/>;if(t==='member')return<Badge text="Member" bg="rgba(0,180,216,.12)" color={ACCENT}/>;return<Badge text={t||'Individual'} bg="rgba(255,255,255,.06)" color="rgba(255,255,255,.4)"/>};
+  const typeBadge=t=>{if(t==='business')return<Badge text="Business" bg="rgba(0,200,150,.12)" color={GREEN}/>;if(t==='member')return<Badge text="Member" bg="rgba(0,255,204,.12)" color={ACCENT}/>;return<Badge text={t||'Individual'} bg="rgba(255,255,255,.06)" color="rgba(255,255,255,.4)"/>};
   return(<>
     {detail&&<div onClick={()=>setDetail(null)} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:520,width:'100%',marginTop:20,marginBottom:20}}>
         <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,paddingBottom:24,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(0,180,216,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(0,255,204,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
             {detail.photo_base64||detail.profile_image_url?<img src={detail.photo_base64||detail.profile_image_url} style={{width:72,height:72,objectFit:'cover'}} alt=""/>:<span style={{fontSize:28,fontWeight:700,color:ACCENT}}>{(detail.full_name||'?')[0]}</span>}
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -425,14 +425,14 @@ function UsersSection({showToast,onLogout}){
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Users Management</h1>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search name, email, country..." style={{maxWidth:320}}/>
-      <div style={{display:'flex',gap:6}}>{['all','members','business','suspended'].map(f=><button key={f} onClick={()=>setFilterType(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filterType===f?'rgba(0,180,216,.15)':'rgba(255,255,255,.04)',color:filterType===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
+      <div style={{display:'flex',gap:6}}>{['all','members','business','suspended'].map(f=><button key={f} onClick={()=>setFilterType(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filterType===f?'rgba(0,255,204,.15)':'rgba(255,255,255,.04)',color:filterType===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
       <span style={{fontSize:12,color:'rgba(255,255,255,.3)',marginLeft:'auto'}}>{filtered.length} user{filtered.length!==1?'s':''}</span>
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
     <div style={{background:CARD,borderRadius:16,border:`1px solid ${BORDER}`,overflow:'auto'}}>
       <table><thead><tr><th>User</th><th>Email</th><th>Type</th><th>Country</th><th>Balance</th><th>Last Login</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>{filtered.map(u=><tr key={u.id}>
-        <td><div style={{display:'flex',alignItems:'center',gap:10}}><div style={{width:34,height:34,borderRadius:'50%',background:'rgba(0,180,216,.12)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>{u.photo_base64||u.profile_image_url?<img src={u.photo_base64||u.profile_image_url} style={{width:34,height:34,objectFit:'cover'}} alt=""/>:<span style={{fontWeight:700,color:ACCENT,fontSize:13}}>{(u.full_name||'?')[0].toUpperCase()}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{u.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>@{u.username}</div></div></div></td>
+        <td><div style={{display:'flex',alignItems:'center',gap:10}}><div style={{width:34,height:34,borderRadius:'50%',background:'rgba(0,255,204,.12)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>{u.photo_base64||u.profile_image_url?<img src={u.photo_base64||u.profile_image_url} style={{width:34,height:34,objectFit:'cover'}} alt=""/>:<span style={{fontWeight:700,color:ACCENT,fontSize:13}}>{(u.full_name||'?')[0].toUpperCase()}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{u.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>@{u.username}</div></div></div></td>
         <td style={{fontSize:12}}>{u.email}</td>
         <td>{typeBadge(u.account_type)}</td>
         <td><CountryBadge country={u.country}/> <span style={{marginLeft:4}}>{u.country}</span></td>
@@ -441,13 +441,13 @@ function UsersSection({showToast,onLogout}){
         <td>{u.is_suspended?<Badge text="Suspended" bg="rgba(239,68,68,.12)" color={RED}/>:<Badge text="Active" bg="rgba(0,200,150,.12)" color={GREEN}/>}</td>
         <td>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-            <button type="button" style={{background:'rgba(0,180,216,.15)',color:ACCENT,border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();setDetail(u)}}>View</button>
+            <button type="button" style={{background:'rgba(0,255,204,.15)',color:ACCENT,border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();setDetail(u)}}>View</button>
             {u.is_suspended?(
               <button type="button" style={{background:'#22c55e',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reactivate',u.id,u.full_name)}}>Activate</button>
             ):(
               <button type="button" style={{background:'#f59e0b',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('suspend',u.id,u.full_name)}}>Suspend</button>
             )}
-            <button type="button" style={{background:'#00B4D8',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reset',u.id,u.full_name)}}>Reset PW</button>
+            <button type="button" style={{background:'#00ffcc',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();doAction('reset',u.id,u.full_name)}}>Reset PW</button>
             <button type="button" style={{background:'#ef4444',color:'white',border:'none',padding:'6px 12px',borderRadius:'6px',cursor:'pointer',fontSize:12,fontWeight:600}} onClick={(e)=>{e.preventDefault();e.stopPropagation();if(!window.confirm('Delete '+u.full_name+'? Cannot be undone.'))return;doAction('delete',u.id,u.full_name)}}>Delete</button>
           </div>
         </td>
@@ -505,7 +505,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
   const AccountDetailsBlock=({w})=>{
     const d=parseDetails(w.account_details);
     const m=(w.method||'').toLowerCase();
-    const CopyBtn=({val})=>val?<button onClick={()=>{navigator.clipboard.writeText(val);showToast('Copied!');}} style={{marginLeft:6,background:'rgba(0,180,216,.12)',border:'none',color:ACCENT,fontSize:11,cursor:'pointer',fontWeight:700,padding:'2px 7px',borderRadius:6}}>Copy</button>:null;
+    const CopyBtn=({val})=>val?<button onClick={()=>{navigator.clipboard.writeText(val);showToast('Copied!');}} style={{marginLeft:6,background:'rgba(0,255,204,.12)',border:'none',color:ACCENT,fontSize:11,cursor:'pointer',fontWeight:700,padding:'2px 7px',borderRadius:6}}>Copy</button>:null;
     const Row=({label,val,copy})=>(<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13,minWidth:120}}>{label}</span><span style={{color:'#fff',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',textAlign:'right',wordBreak:'break-all'}}>{val||'—'}{copy&&<CopyBtn val={val}/>}</span></div>);
     if(m.includes('wise')||m.includes('international'))return(<>
       <Row label="Account Holder" val={d.accountHolder||d.account_holder} copy/>
@@ -539,7 +539,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     {detail&&<div onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:560,width:'100%',marginTop:20,marginBottom:20}}>
         <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,paddingBottom:24,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(0,180,216,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(0,255,204,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
             {detail.photo_base64||detail.profile_image_url?<img src={detail.photo_base64||detail.profile_image_url} style={{width:72,height:72,objectFit:'cover'}} alt=""/>:<span style={{fontSize:28,fontWeight:700,color:ACCENT}}>{(detail.full_name||'?')[0]}</span>}
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -558,7 +558,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         <div style={{background:'rgba(255,255,255,.03)',borderRadius:12,padding:'4px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Admin Notes (internal)</p>
         <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} placeholder="Add internal notes..." rows={2} style={{width:'100%',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:8,boxSizing:'border-box'}}/>
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}><Btn small onClick={handleSaveNote} bg='rgba(0,180,216,.12)' color={ACCENT}>Save Note</Btn></div>
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}><Btn small onClick={handleSaveNote} bg='rgba(0,255,204,.12)' color={ACCENT}>Save Note</Btn></div>
         {rejectMode&&<><p style={{fontSize:11,fontWeight:700,color:RED,textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Rejection Reason (sent to employee)</p><textarea value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Enter reason..." rows={2} style={{width:'100%',background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.25)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:16,boxSizing:'border-box'}}/></>}
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
           {detail.status==='pending'&&<>{!rejectMode?<><Btn onClick={()=>handlePaid(detail.id)} bg={GREEN} color='#1a1a1a' disabled={!!actionId}>{I.check} Mark as Paid</Btn><Btn onClick={()=>setRejectMode(true)} bg='rgba(239,68,68,.1)' color={RED}>{I.x} Reject</Btn></>:<><Btn onClick={()=>handleRejectConfirm(detail.id,rejectReason)} bg={RED} disabled={!!actionId}>Confirm Reject</Btn><Btn onClick={()=>{setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn></>}</>}
@@ -570,7 +570,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     <h1 style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:20}}>Withdrawals</h1>
     <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search by name or @username..." style={{maxWidth:260}}/>
-      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(0,180,216,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(0,255,204,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
       <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#222222'}}>{m==='all'?'All Methods':m}</option>)}</select>
       <span style={{fontSize:12,color:'rgba(255,255,255,.3)',marginLeft:'auto'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
     </div>
@@ -579,7 +579,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
       <table><thead><tr><th>Date</th><th>Employee</th><th>Method</th><th>Amount</th><th>Fee</th><th>Net</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>{filtered.map(w=><tr key={w.id}>
         <td style={{fontSize:12,whiteSpace:'nowrap'}}>{fmtDate(w.created_at)}</td>
-        <td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:30,height:30,borderRadius:'50%',background:'rgba(0,180,216,.12)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{w.photo_base64||w.profile_image_url?<img src={w.photo_base64||w.profile_image_url} style={{width:30,height:30,objectFit:'cover'}} alt=""/>:<span style={{fontSize:12,fontWeight:700,color:ACCENT}}>{(w.full_name||'?')[0]}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{w.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)',display:'flex',alignItems:'center',gap:4}}>@{w.username} <CountryBadge country={w.country}/></div></div></div></td>
+        <td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:30,height:30,borderRadius:'50%',background:'rgba(0,255,204,.12)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{w.photo_base64||w.profile_image_url?<img src={w.photo_base64||w.profile_image_url} style={{width:30,height:30,objectFit:'cover'}} alt=""/>:<span style={{fontSize:12,fontWeight:700,color:ACCENT}}>{(w.full_name||'?')[0]}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{w.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)',display:'flex',alignItems:'center',gap:4}}>@{w.username} <CountryBadge country={w.country}/></div></div></div></td>
         <td style={{fontSize:12,color:'rgba(255,255,255,.6)',maxWidth:140}}>{w.method}</td>
         <td style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.amount,w.currency)}</td>
         <td style={{color:YELLOW}}>{fmtMoney(w.fee,w.currency)}</td>
@@ -608,7 +608,7 @@ function BusinessesSection({showToast,onLogout}){
       <tbody>{businesses.map(b=><tr key={b.id}>
         <td style={{fontWeight:700,color:'#fff'}}>{b.business_name}</td>
         <td><div style={{fontSize:13}}>{b.owner_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)'}}>{b.owner_email}</div></td>
-        <td><Badge text={b.business_type} bg='rgba(0,180,216,.12)' color={ACCENT}/></td>
+        <td><Badge text={b.business_type} bg='rgba(0,255,204,.12)' color={ACCENT}/></td>
         <td><CountryBadge country={b.country}/> {b.country}</td>
         <td style={{fontWeight:700,color:'#fff'}}>{b.team_count}</td>
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(b.total_tips)}</td>
@@ -635,7 +635,7 @@ function TransactionsSection({showToast,onLogout}){
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TRANSACTIONS</p><p style={{fontSize:20,fontWeight:800,color:'#fff'}}>{data.totalCount}</p></div>
     </div>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-      <div style={{display:'flex',gap:6}}>{['today','week','month','all'].map(r=><button key={r} onClick={()=>setRange(r)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:range===r?'rgba(0,180,216,.15)':'rgba(255,255,255,.04)',color:range===r?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{r==='all'?'All Time':r==='week'?'This Week':r==='month'?'This Month':'Today'}</button>)}</div>
+      <div style={{display:'flex',gap:6}}>{['today','week','month','all'].map(r=><button key={r} onClick={()=>setRange(r)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:range===r?'rgba(0,255,204,.15)':'rgba(255,255,255,.04)',color:range===r?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{r==='all'?'All Time':r==='week'?'This Week':r==='month'?'This Month':'Today'}</button>)}</div>
       <Btn small onClick={exportCSV} bg='rgba(0,200,150,.12)' color={GREEN} style={{marginLeft:'auto'}}>Export CSV</Btn>
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:

@@ -4,7 +4,7 @@ import api from '../api';
 
 /* ── Inline SVG Icons ── */
 const ClickIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00B4D8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 15l-2 5L9 9l11 4-5 2z" /><path d="M22 22l-5-10" />
   </svg>
 );
@@ -93,7 +93,7 @@ export default function AdminStats() {
   if (loading) {
     return (
       <div className="flex items-center justify-center" style={pageBg}>
-        <div style={{ width: '36px', height: '36px', border: '3px solid #00B4D8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <div style={{ width: '36px', height: '36px', border: '3px solid #00ffcc', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
       </div>
     );
   }
@@ -219,7 +219,7 @@ export default function AdminStats() {
           </div>
 
           {/* Conversion Insight */}
-          <div style={{ ...card, background: 'rgba(0,180,216,0.06)', border: '1px solid rgba(0,180,216,0.12)' }}>
+          <div style={{ ...card, background: 'rgba(0,255,204,0.06)', border: '1px solid rgba(0,255,204,0.12)' }}>
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', fontWeight: 500, lineHeight: 1.5 }}>{insight}</p>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function AdminStats() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {events.map((ev) => {
                 const isClick = ev.event === 'click_payment';
-                const dotColor = isClick ? '#00B4D8' : '#00C896';
+                const dotColor = isClick ? '#00ffcc' : '#00C896';
                 const label = isClick ? 'Payment Click' : 'View Message';
                 return (
                   <div key={ev.id} style={card}>

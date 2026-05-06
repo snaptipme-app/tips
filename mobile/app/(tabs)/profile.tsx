@@ -20,7 +20,7 @@ const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
@@ -247,7 +247,7 @@ export default function Profile() {
         <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: BORDER, marginBottom: 24 }}>
           {/* Avatar */}
           <View style={{ width: 96, height: 96, marginBottom: 14 }}>
-            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2.5, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,180,216,0.15)', opacity: uploading ? 0.5 : 1 }}>
+            <View style={{ width: 96, height: 96, borderRadius: 48, overflow: 'hidden', borderWidth: 2.5, borderColor: ACCENT, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,255,204,0.15)', opacity: uploading ? 0.5 : 1 }}>
               {photoSrc ? (
                 <Image source={photoSrc} style={{ width: 96, height: 96 }} />
               ) : (
@@ -308,7 +308,7 @@ export default function Profile() {
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('business_settings')}</Text>
             <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
               <TouchableOpacity onPress={() => router.push('/business/team')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="people-outline" size={18} color={ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -335,7 +335,7 @@ export default function Profile() {
         <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('settings')}</Text>
         <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 24, overflow: 'hidden' }}>
           <TouchableOpacity onPress={() => setShowLangModal(true)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
-            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="language-outline" size={18} color={ACCENT} />
             </View>
             <View style={{ flex: 1 }}>
@@ -362,7 +362,7 @@ export default function Profile() {
 
           {/* Support row */}
           <TouchableOpacity onPress={() => router.push('/support' as any)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
-            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="help-circle-outline" size={18} color={ACCENT} />
             </View>
             <View style={{ flex: 1 }}>
@@ -379,7 +379,7 @@ export default function Profile() {
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>{t('recent_withdrawals')}</Text>
             {withdrawals.slice(0, 10).map((w) => (
               <View key={w.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}>
-                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,180,216,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
                   <Ionicons name="arrow-up-outline" size={18} color={ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -440,7 +440,7 @@ export default function Profile() {
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 20 }}>{t('change_photo')}</Text>
 
             <TouchableOpacity onPress={() => pickImage('camera')} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 16 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="camera-outline" size={22} color={ACCENT} />
               </View>
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>{t('take_photo')}</Text>

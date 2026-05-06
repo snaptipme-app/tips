@@ -11,7 +11,7 @@ const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 
 const TYPES = [
@@ -90,7 +90,7 @@ export default function BusinessSetup() {
               const sel = type === t.id;
               return (
                 <TouchableOpacity key={t.id} onPress={() => setType(t.id)} activeOpacity={0.8} style={{
-                  width: '47%', paddingVertical: 16, borderRadius: 14, backgroundColor: sel ? 'rgba(0,180,216,0.12)' : INPUT_BG,
+                  width: '47%', paddingVertical: 16, borderRadius: 14, backgroundColor: sel ? 'rgba(0,255,204,0.12)' : INPUT_BG,
                   borderWidth: 1.5, borderColor: sel ? ACCENT : BORDER, alignItems: 'center',
                 }}>
                   <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: sel ? `${t.color}20` : 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>

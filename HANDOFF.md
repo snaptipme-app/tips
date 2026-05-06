@@ -97,10 +97,10 @@ Routing logic in `app/index.tsx`: all users go to `/(tabs)/home`. `home.tsx` laz
 ```
 Background:   #1a1a1a
 Cards:        rgba(255,255,255,0.05)  border: rgba(255,255,255,0.08)
-Accent:       #00B4D8  (teal/cyan blue)
+Accent:       #00ffcc  (bright cyan)
 Green:        #00C896  (primary action, success, tips)
 Yellow:       #f59e0b
-Blue:         #0096FF
+Blue:         #00ffcc
 Tab bar bg:   #1a1a1a
 Sheet bg:     #1a1a1a
 Border:       rgba(255,255,255,0.06–0.08)

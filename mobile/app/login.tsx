@@ -13,7 +13,7 @@ const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 
 const LoginInput = memo(({ icon, placeholder, value, onChangeText, secureTextEntry, right, ...props }: any) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1, borderColor: BORDER }}>

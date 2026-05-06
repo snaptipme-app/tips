@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 
-const ACCENT = '#00B4D8';
+const ACCENT = '#00ffcc';
 const INACTIVE = 'rgba(255,255,255,0.3)';
 
 export default function TabLayout() {
@@ -32,7 +32,7 @@ export default function TabLayout() {
   const tabBarBackground = () => (
     <View style={{ flex: 1 }}>
       <LinearGradient
-        colors={['rgba(0,180,216,0.15)', 'rgba(0,180,216,0.03)', 'transparent']}
+        colors={['rgba(0,255,204,0.15)', 'rgba(0,255,204,0.03)', 'transparent']}
         style={{ height: 1 }}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
