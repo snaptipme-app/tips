@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput, ScrollView, Image,
+  View, Text, TouchableOpacity, TextInput, ScrollView,
   Modal, KeyboardAvoidingView, Platform, RefreshControl, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,6 +15,8 @@ import SnapTipLogo from '../../components/SnapTipLogo';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
+import { CountryFlag } from '../../components/CountryFlag';
+import { COUNTRY_CODE_MAP } from '../../lib/countryData';
 
 /* ── Design tokens ── */
 const BG = '#1a1a1a';
@@ -26,17 +28,6 @@ const GREEN = '#00C896';
 const YELLOW = '#f59e0b';
 const RED = '#ef4444';
 
-/* ══════════════════════════════════════════════════════════════════════
-   COUNTRY → FLAG MAP
-   ══════════════════════════════════════════════════════════════════════ */
-/* eslint-disable @typescript-eslint/no-require-imports */
-const COUNTRY_FLAG_IMAGES: Record<string, any> = {
-  'Morocco': require('../../assets/images/morocco_icon.png'),
-  'United States': require('../../assets/images/us_icon.png'),
-  'France': require('../../assets/images/france_icon.png'),
-  'Spain': require('../../assets/images/spain_icon.png'),
-  'UAE': require('../../assets/images/uae_icon.png'),
-};
 
 /* ══════════════════════════════════════════════════════════════════════
    METHOD DEFINITIONS
@@ -184,8 +175,8 @@ export default function MemberWithdraw() {
 
   const userCountry = user?.country || 'Morocco';
   const cur = user?.currency || 'MAD';
+  const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
   const isMorocco = userCountry === 'Morocco';
-  const countryFlagSource = COUNTRY_FLAG_IMAGES[userCountry] || null;
 
   const [balance, setBalance] = useState(user?.balance ?? 0);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -348,7 +339,7 @@ export default function MemberWithdraw() {
 
           {/* Country info row — display only, not a selector */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            {countryFlagSource && <Image source={countryFlagSource} style={{ width: 20, height: 20, borderRadius: 4 }} resizeMode="contain" />}
+            {countryCode && <CountryFlag code={countryCode} width={20} height={14} style={{ borderRadius: 2 }} />}
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }}>{userCountry} · {cur}</Text>
           </View>
 

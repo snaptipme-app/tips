@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Imag
 import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../lib/AuthContext';
@@ -56,7 +56,7 @@ export default function Profile() {
   const { language, changeLanguage, t, languageLabel, LANG_INFO } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
-  const [balance, setBalance] = useState(0);
+  const balance = user?.balance ?? 0;
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -89,12 +89,17 @@ export default function Profile() {
   const fetchData = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
-      setBalance(data.employee?.balance ?? data.balance ?? 0);
+      const fetchedBalance = data.employee?.balance ?? data.balance ?? 0;
+      updateUser({ balance: fetchedBalance });
       setWithdrawals(data.recent_withdrawals || data.withdrawals || []);
     } catch {} finally { setLoading(false); }
-  }, []);
+  }, [updateUser]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   // Sync displayPhoto from AsyncStorage on mount (handles async AuthContext load)
   useEffect(() => {
@@ -296,7 +301,7 @@ export default function Profile() {
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds') || 'Withdraw Funds'}</Text>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Cash out your earnings</Text>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{Math.floor(balance)} {user?.currency || 'MAD'}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
               <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
             </HapticButton>
           </View>

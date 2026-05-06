@@ -10,6 +10,8 @@ import { useAuth } from '../lib/AuthContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
 import SnapTipLogo from '../components/SnapTipLogo';
+import { CountryFlag } from '../components/CountryFlag';
+import { COUNTRY_DATA } from '../lib/countryData';
 
 const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -67,15 +69,7 @@ const LANG_NAMES: Record<string, string> = {
   es: 'Español',
 };
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const COUNTRY_OPTIONS = [
-  { id: 'Morocco', icon: require('../assets/images/morocco_icon.png'), name: 'Morocco', currency: 'MAD' },
-  { id: 'United States', icon: require('../assets/images/us_icon.png'), name: 'United States', currency: 'USD' },
-  { id: 'France', icon: require('../assets/images/france_icon.png'), name: 'France', currency: 'EUR' },
-  { id: 'Spain', icon: require('../assets/images/spain_icon.png'), name: 'Spain', currency: 'EUR' },
-  { id: 'UAE', icon: require('../assets/images/uae_icon.png'), name: 'UAE', currency: 'AED' },
-];
-/* eslint-enable @typescript-eslint/no-require-imports */
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP 1 — Personal Info
@@ -169,7 +163,7 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
 const Step3 = memo(({ username, password, confirmPw, showPw, accountType, usernameValid, errors, selectedCountry,
   onUsername, onPassword, onConfirmPw, onTogglePw, onAccountType, onOpenCountrySheet, onNext, onBack, loading }: any) => {
   const { t } = useLanguage();
-  const country = selectedCountry ? COUNTRY_OPTIONS.find(c => c.id === selectedCountry) : null;
+  const country = selectedCountry ? COUNTRY_DATA.find(c => c.id === selectedCountry) : null;
   const accountOptions = [
     { key: 'individual', icon: 'person-outline' as const, title: t('reg_individual'), desc: t('reg_i_work_alone') },
     { key: 'business', icon: 'business-outline' as const, title: t('reg_business_label'), desc: t('reg_i_manage_team') },
@@ -224,7 +218,7 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
       >
         {country ? (
           <>
-            <Image source={country.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+            <CountryFlag code={country.code} width={32} height={22} style={{ borderRadius: 4 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{country.name}</Text>
             </View>
@@ -451,7 +445,7 @@ export default function Register() {
     if (Object.keys(errs).length) return;
     setLoading(true);
     try {
-      const countryInfo = COUNTRY_OPTIONS.find(c => c.id === selectedCountry) || COUNTRY_OPTIONS[0];
+      const countryInfo = COUNTRY_DATA.find(c => c.id === selectedCountry) || COUNTRY_DATA[0];
       const result = await api.post('/auth/register', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -676,14 +670,14 @@ export default function Register() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>{t('reg_select_country')}</Text>
-            {COUNTRY_OPTIONS.map((c) => (
+            {COUNTRY_DATA.map((c) => (
               <TouchableOpacity
                 key={c.id}
                 onPress={() => handleCountryChange(c.id)}
                 activeOpacity={0.8}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
               >
-                <Image source={c.icon} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
+                <CountryFlag code={c.code} width={32} height={22} style={{ borderRadius: 4 }} />
                 <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCountry === c.id ? '#fff' : 'rgba(255,255,255,0.5)', flex: 1 }}>{c.name}</Text>
                 <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(0,255,204,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: selectedCountry === c.id ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
