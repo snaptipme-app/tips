@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, TextInput, ScrollView,
+  View, Text, TouchableOpacity, TextInput, ScrollView, Image,
   Modal, KeyboardAvoidingView, Platform, RefreshControl, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -138,18 +138,79 @@ const MOROCCAN_METHODS: MainMethod[] = [
   },
 ];
 
-const INTERNATIONAL_METHOD: SubMethod = {
-  id: 'international_wire', label: 'International Bank Transfer', sublabel: 'via Wise',
-  fee: 0, min: 50, processingTime: '1-3 business days',
-  fields: [
-    { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
-    { key: 'iban', label: 'IBAN', placeholder: 'FR76 3000 1007 9412 3456 7890 185', keyboard: 'default', ibanValidation: true },
-    { key: 'swift', label: 'SWIFT / BIC Code', placeholder: 'BNPAFRPPXXX', keyboard: 'default', swiftValidation: true },
-    { key: 'bank_name', label: 'Bank Name', placeholder: 'e.g. Bank of America', keyboard: 'default' },
-    { key: 'contact_phone', label: 'Contact Phone Number', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
-  ],
-};
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+/* ══════════════════════════════════════════════════════════════════════
+   COUNTRY-SPECIFIC PAYOUT METHODS (via Wise Business)
+   ══════════════════════════════════════════════════════════════════════ */
+const EWALLET_NAMES: Record<string, string> = {
+  Philippines: 'GCash',
+  Indonesia: 'GoPay / OVO / DANA',
+  Thailand: 'PromptPay',
+};
+
+const EWALLET_PLACEHOLDERS: Record<string, string> = {
+  Philippines: '+63 9XX XXX XXXX',
+  Indonesia: '+62 8XX XXXX XXXX',
+  Thailand: '+66 8X XXX XXXX',
+};
+
+const getPayoutMethod = (country: string): SubMethod => {
+  // Europe + UAE → IBAN only
+  if (['France', 'Spain', 'Germany', 'Italy', 'UAE'].includes(country)) {
+    const ph = country === 'UAE'
+      ? 'AE07 0331 2345 6789 0123 456'
+      : 'FR76 3000 1007 9412 3456 7890 185';
+    return {
+      id: 'iban_transfer', label: 'Bank Transfer (IBAN)', sublabel: 'via Wise Business',
+      fee: 0, min: 50, processingTime: '1-2 business days',
+      fields: [
+        { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
+        { key: 'iban', label: 'IBAN', placeholder: ph, keyboard: 'default', ibanValidation: true },
+        { key: 'contact_phone', label: 'Contact Phone Number', placeholder: '+XX XXX XXX XXXX', keyboard: 'phone-pad' },
+      ],
+    };
+  }
+  // USA → ACH (Routing Number + Account Number)
+  if (country === 'United States') {
+    return {
+      id: 'us_ach', label: 'US Bank Transfer (ACH)', sublabel: 'via Wise Business',
+      fee: 0, min: 50, processingTime: '1-2 business days',
+      fields: [
+        { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
+        { key: 'routing_number', label: 'Routing Number (9 digits)', placeholder: '021000021', keyboard: 'numeric', exactLen: 9 },
+        { key: 'account_number', label: 'Account Number', placeholder: 'Your bank account number', keyboard: 'numeric' },
+        { key: 'contact_phone', label: 'Contact Phone Number', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
+      ],
+    };
+  }
+  // Asia → E-Wallet
+  if (EWALLET_NAMES[country]) {
+    const walletName = EWALLET_NAMES[country];
+    const phonePh = EWALLET_PLACEHOLDERS[country] || '+XX XXX XXX XXXX';
+    return {
+      id: 'ewallet', label: `E-Wallet (${walletName})`, sublabel: 'via Wise Business',
+      fee: 0, min: 20, processingTime: '1-2 business days',
+      fields: [
+        { key: 'full_name', label: 'Full Name (as registered)', placeholder: 'Your full legal name', keyboard: 'default' },
+        { key: 'phone', label: `${walletName} Phone Number`, placeholder: phonePh, keyboard: 'phone-pad' },
+        { key: 'contact_phone', label: 'Contact Phone (if different)', placeholder: phonePh, keyboard: 'phone-pad' },
+      ],
+    };
+  }
+  // Fallback → full international wire
+  return {
+    id: 'international_wire', label: 'International Bank Transfer', sublabel: 'via Wise Business',
+    fee: 0, min: 50, processingTime: '1-3 business days',
+    fields: [
+      { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
+      { key: 'iban', label: 'IBAN', placeholder: 'XX00 0000 0000 0000 0000 000', keyboard: 'default', ibanValidation: true },
+      { key: 'swift', label: 'SWIFT / BIC Code', placeholder: 'BNPAFRPPXXX', keyboard: 'default', swiftValidation: true },
+      { key: 'bank_name', label: 'Bank Name', placeholder: 'e.g. Bank of America', keyboard: 'default' },
+      { key: 'contact_phone', label: 'Contact Phone Number', placeholder: '+1 234 567 8900', keyboard: 'phone-pad' },
+    ],
+  };
+};
 
 /* ── Status styles ── */
 const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
@@ -177,6 +238,8 @@ export default function MemberWithdraw() {
   const cur = user?.currency || 'MAD';
   const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
   const isMorocco = userCountry === 'Morocco';
+  const payoutMethod = useMemo(() => getPayoutMethod(userCountry), [userCountry]);
+  const isEWallet = !!EWALLET_NAMES[userCountry];
 
   const [balance, setBalance] = useState(user?.balance ?? 0);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -230,7 +293,7 @@ export default function MemberWithdraw() {
 
   const openInternational = () => {
     if (balance <= 0) { showToast('No funds to withdraw.', 'error'); return; }
-    openForm(INTERNATIONAL_METHOD);
+    openForm(payoutMethod);
   };
 
   const setField = (key: string, val: string) => {
@@ -295,6 +358,8 @@ export default function MemberWithdraw() {
       const { data } = await api.post('/withdrawals/request', {
         amount: amt,
         method: activeMethod.label,
+        payout_type: activeMethod.id,
+        country: userCountry,
         account_details: details,
         contact_phone: contactPhone,
       });
@@ -380,27 +445,48 @@ export default function MemberWithdraw() {
               ))}
             </View>
           ) : (
-            /* ── International ── */
+            /* ── International (dynamic per country) ── */
             <View style={{ marginBottom: 28 }}>
+              {/* Info Card */}
               <View style={{ backgroundColor: 'rgba(0,255,204,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,255,204,0.15)', marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Ionicons name="bulb-outline" size={16} color={ACCENT} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>International Transfers</Text>
+                  <Ionicons name={isEWallet ? 'phone-portrait-outline' : 'bulb-outline'} size={16} color={ACCENT} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>
+                    {isEWallet
+                      ? `E-Wallet Transfer (${EWALLET_NAMES[userCountry]})`
+                      : payoutMethod.id === 'us_ach'
+                        ? 'ACH Bank Transfer'
+                        : payoutMethod.id === 'iban_transfer'
+                          ? 'IBAN Bank Transfer'
+                          : 'International Transfer'}
+                  </Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
-                  Transfers processed via Wise. Processing time: 1-3 business days. Wise fees (~0.5%) will be deducted from your amount.
+                  {isEWallet
+                    ? `Funds sent directly to your ${EWALLET_NAMES[userCountry]} wallet via Wise Business. Processing: ${payoutMethod.processingTime}.`
+                    : payoutMethod.id === 'us_ach'
+                      ? `Transfers via ACH to your US bank account through Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`
+                      : `Transfers processed via Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`}
                 </Text>
               </View>
+
+              {/* Method Card */}
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                    <SvgPath d="M3 21h18v-2H3v2zm0-4h2v-4H3v4zm4 0h2v-4H7v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zM1 11l11-7 11 7H1z" fill={ACCENT} />
-                  </Svg>
+                  {isEWallet ? (
+                    <Ionicons name="phone-portrait-outline" size={26} color={ACCENT} />
+                  ) : payoutMethod.id === 'us_ach' ? (
+                    <Ionicons name="card-outline" size={26} color={ACCENT} />
+                  ) : (
+                    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                      <SvgPath d="M3 21h18v-2H3v2zm0-4h2v-4H3v4zm4 0h2v-4H7v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zM1 11l11-7 11 7H1z" fill={ACCENT} />
+                    </Svg>
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>International Bank Transfer</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>via Wise · Min {INTERNATIONAL_METHOD.min} {cur}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{payoutMethod.label}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{payoutMethod.sublabel} · Min {payoutMethod.min} {cur}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
