@@ -22,6 +22,29 @@ const METHOD_CONFIG = {
   'Wafacash (Jibi App)':     { fee: 0,  min: 400 },
 };
 
+/* ── Per-country minimum withdrawal config ───────────────────────────── */
+// Mirror of mobile/lib/payoutConfig.ts — keep in sync.
+const PAYOUT_CONFIG = {
+  MA: { currency: 'MAD',  minAmount: 200    },
+  AE: { currency: 'AED',  minAmount: 50     },
+  US: { currency: 'USD',  minAmount: 20     },
+  FR: { currency: 'EUR',  minAmount: 20     },
+  ES: { currency: 'EUR',  minAmount: 20     },
+  DE: { currency: 'EUR',  minAmount: 20     },
+  IT: { currency: 'EUR',  minAmount: 20     },
+  PH: { currency: 'PHP',  minAmount: 1500   },
+  ID: { currency: 'IDR',  minAmount: 300000 },
+  TH: { currency: 'THB',  minAmount: 700    },
+};
+
+/** Maps country full-name (stored in DB) to ISO code */
+const COUNTRY_TO_ISO = {
+  'Morocco': 'MA', 'UAE': 'AE', 'United Arab Emirates': 'AE',
+  'United States': 'US',
+  'France': 'FR', 'Spain': 'ES', 'Germany': 'DE', 'Italy': 'IT',
+  'Philippines': 'PH', 'Indonesia': 'ID', 'Thailand': 'TH',
+};
+
 /* ══════════════════════════════════════════════════════
    POST /api/withdrawals/request
    Creates a pending withdrawal and immediately deducts
@@ -30,7 +53,7 @@ const METHOD_CONFIG = {
 router.post('/request', authMiddleware, async (req, res) => {
   try {
     const employeeId = req.employee.id;
-    const { amount, method, account_details, contact_phone } = req.body;
+    const { amount, method, payout_type, country: reqCountry, account_details, contact_phone } = req.body;
 
     /* ── Validation ── */
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
@@ -55,15 +78,28 @@ router.post('/request', authMiddleware, async (req, res) => {
       });
     }
 
+    /* ── Per-country minimum check ── */
+    const { rows: empRows } = await pool.query(
+      'SELECT balance, country FROM employees WHERE id = $1', [employeeId]
+    );
+    if (empRows.length === 0) return res.status(404).json({ error: 'Employee not found.' });
+
+    const employeeCountry = empRows[0].country || reqCountry || 'Morocco';
+    const isoCode = COUNTRY_TO_ISO[employeeCountry] || 'MA';
+    const payoutCfg = PAYOUT_CONFIG[isoCode] || { currency: 'USD', minAmount: 20 };
+
+    if (amt < payoutCfg.minAmount) {
+      return res.status(400).json({
+        error: `Minimum withdrawal in ${employeeCountry} is ${payoutCfg.minAmount.toLocaleString()} ${payoutCfg.currency}. Requested: ${amt} ${payoutCfg.currency}.`,
+      });
+    }
+
     // For international transfers, fee is 0.5% of amount
     const fee = config.fee === -1 ? Math.round(amt * 0.005 * 100) / 100 : config.fee;
     const netAmount = amt - fee;
 
     /* ── Check balance ── */
-    const { rows: employeeRows } = await pool.query('SELECT balance FROM employees WHERE id = $1', [employeeId]);
-    if (employeeRows.length === 0) return res.status(404).json({ error: 'Employee not found.' });
-    
-    if (Number(employeeRows[0].balance) < amt) {
+    if (Number(empRows[0].balance) < amt) {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
 

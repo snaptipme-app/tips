@@ -17,6 +17,7 @@ import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 import { CountryFlag } from '../../components/CountryFlag';
 import { COUNTRY_CODE_MAP } from '../../lib/countryData';
+import { getPayoutConfig } from '../../lib/payoutConfig';
 
 /* ── Design tokens ── */
 const BG = '#1a1a1a';
@@ -155,7 +156,7 @@ const EWALLET_PLACEHOLDERS: Record<string, string> = {
   Thailand: '+66 8X XXX XXXX',
 };
 
-const getPayoutMethod = (country: string): SubMethod => {
+const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
   // Europe + UAE → IBAN only
   if (['France', 'Spain', 'Germany', 'Italy', 'UAE'].includes(country)) {
     const ph = country === 'UAE'
@@ -163,7 +164,7 @@ const getPayoutMethod = (country: string): SubMethod => {
       : 'FR76 3000 1007 9412 3456 7890 185';
     return {
       id: 'iban_transfer', label: 'Bank Transfer (IBAN)', sublabel: 'via Wise Business',
-      fee: 0, min: 50, processingTime: '1-2 business days',
+      fee: 0, min: minAmount, processingTime: '1-2 business days',
       fields: [
         { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
         { key: 'iban', label: 'IBAN', placeholder: ph, keyboard: 'default', ibanValidation: true },
@@ -175,7 +176,7 @@ const getPayoutMethod = (country: string): SubMethod => {
   if (country === 'United States') {
     return {
       id: 'us_ach', label: 'US Bank Transfer (ACH)', sublabel: 'via Wise Business',
-      fee: 0, min: 50, processingTime: '1-2 business days',
+      fee: 0, min: minAmount, processingTime: '1-2 business days',
       fields: [
         { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
         { key: 'routing_number', label: 'Routing Number (9 digits)', placeholder: '021000021', keyboard: 'numeric', exactLen: 9 },
@@ -190,7 +191,7 @@ const getPayoutMethod = (country: string): SubMethod => {
     const phonePh = EWALLET_PLACEHOLDERS[country] || '+XX XXX XXX XXXX';
     return {
       id: 'ewallet', label: `E-Wallet (${walletName})`, sublabel: 'via Wise Business',
-      fee: 0, min: 20, processingTime: '1-2 business days',
+      fee: 0, min: minAmount, processingTime: '1-2 business days',
       fields: [
         { key: 'full_name', label: 'Full Name (as registered)', placeholder: 'Your full legal name', keyboard: 'default' },
         { key: 'phone', label: `${walletName} Phone Number`, placeholder: phonePh, keyboard: 'phone-pad' },
@@ -201,7 +202,7 @@ const getPayoutMethod = (country: string): SubMethod => {
   // Fallback → full international wire
   return {
     id: 'international_wire', label: 'International Bank Transfer', sublabel: 'via Wise Business',
-    fee: 0, min: 50, processingTime: '1-3 business days',
+    fee: 0, min: minAmount, processingTime: '1-3 business days',
     fields: [
       { key: 'full_name', label: 'Account Holder Full Name', placeholder: 'Your full legal name', keyboard: 'default' },
       { key: 'iban', label: 'IBAN', placeholder: 'XX00 0000 0000 0000 0000 000', keyboard: 'default', ibanValidation: true },
@@ -238,7 +239,9 @@ export default function MemberWithdraw() {
   const cur = user?.currency || 'MAD';
   const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
   const isMorocco = userCountry === 'Morocco';
-  const payoutMethod = useMemo(() => getPayoutMethod(userCountry), [userCountry]);
+  const payoutCfg = getPayoutConfig(countryCode);
+  const minWithdrawal = payoutCfg.minAmount;
+  const payoutMethod = useMemo(() => getPayoutMethod(userCountry, minWithdrawal), [userCountry, minWithdrawal]);
   const isEWallet = !!EWALLET_NAMES[userCountry];
 
   const [balance, setBalance] = useState(user?.balance ?? 0);
@@ -278,6 +281,9 @@ export default function MemberWithdraw() {
   /* ── Handlers ── */
   const onMainMethodTap = (m: MainMethod) => {
     if (balance <= 0) { showToast('No funds to withdraw.', 'error'); return; }
+    if (balance < m.directMethod?.min || 0) {
+      showToast(`Minimum withdrawal is ${m.directMethod?.min} ${cur}.`, 'error'); return;
+    }
     if (m.subMethods) { setSubPickerMethod(m); setShowSubPicker(true); }
     else if (m.directMethod) openForm(m.directMethod);
   };
@@ -293,6 +299,10 @@ export default function MemberWithdraw() {
 
   const openInternational = () => {
     if (balance <= 0) { showToast('No funds to withdraw.', 'error'); return; }
+    if (balance < minWithdrawal) {
+      showToast(`Minimum withdrawal is ${minWithdrawal.toLocaleString()} ${cur}. Your balance is ${balance.toFixed(2)} ${cur}.`, 'error');
+      return;
+    }
     openForm(payoutMethod);
   };
 
