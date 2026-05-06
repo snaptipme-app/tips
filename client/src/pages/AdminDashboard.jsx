@@ -94,7 +94,7 @@ export default function AdminDashboard({onLogout}){
   const switchSection=s=>{setSection(s);setSideOpen(false)};
   const[pendingCount,setPendingCount]=useState(0);
   const[selectedCurrency,setSelectedCurrency]=useState('MAD');
-  useEffect(()=>{api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0)).catch(()=>{});},[section]);
+  useEffect(()=>{api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0)).catch(()=>{});},[]);
 
   return(<>
     <style>{`

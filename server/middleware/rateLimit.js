@@ -5,10 +5,19 @@ const rateLimit = require('express-rate-limit');
 
 const message = (msg) => ({ error: msg, code: 'RATE_LIMITED' });
 
-// Global fallback — generous; per-endpoint limiters are stricter.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max: 200,
+  max: (req, res) => {
+    // Specifically increase limits for Admin/Business routes
+    if (req.originalUrl.includes('/admin') || req.originalUrl.includes('/business')) {
+      return 500;
+    }
+    // Differentiate limits for authenticated users via headers/cookies
+    if (req.headers.authorization || (req.cookies && req.cookies.admin_token)) {
+      return 500;
+    }
+    return 200;
+  },
   standardHeaders: true,
   legacyHeaders: false,
   message: message('Too many requests, please slow down.'),
