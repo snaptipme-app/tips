@@ -19,10 +19,10 @@ import HapticButton from '../../components/HapticButton';
 const BG      = '#080818';
 const CARD    = 'rgba(255,255,255,0.05)';
 const BORDER  = 'rgba(255,255,255,0.08)';
-const ACCENT  = '#6c6cff';
+const ACCENT  = '#00B4D8';
 const GREEN   = '#00C896';
 const YELLOW  = '#f59e0b';
-const PURPLE  = '#a855f7';
+const PURPLE  = '#0096FF';
 
 const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
@@ -201,7 +201,7 @@ export default function BusinessDashboard() {
             <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.75}>
               <View style={{
                 width: 44, height: 44, borderRadius: 22,
-                backgroundColor: 'rgba(108,108,255,0.15)',
+                backgroundColor: 'rgba(0,180,216,0.15)',
                 borderWidth: 2, borderColor: ACCENT,
                 overflow: 'hidden', justifyContent: 'center', alignItems: 'center',
               }}>
@@ -436,19 +436,19 @@ export default function BusinessDashboard() {
             style={{
               flexDirection: 'row', alignItems: 'center',
               backgroundColor: CARD,
-              borderWidth: 1, borderColor: 'rgba(108,108,255,0.35)',
+              borderWidth: 1, borderColor: 'rgba(0,180,216,0.35)',
               borderRadius: 16, paddingHorizontal: 16, paddingVertical: 15,
               gap: 14, marginBottom: 10,
             }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,180,216,0.15)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="people-outline" size={20} color={ACCENT} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>View Team</Text>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', marginTop: 1 }}>Manage your staff members</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(108,108,255,0.45)" />
+            <Ionicons name="chevron-forward" size={18} color="rgba(0,180,216,0.45)" />
           </TouchableOpacity>
 
           {/* Business Settings — ghost */}
@@ -463,7 +463,7 @@ export default function BusinessDashboard() {
               gap: 14,
             }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(168,85,247,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,150,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="settings-outline" size={20} color={PURPLE} />
             </View>
             <View style={{ flex: 1 }}>

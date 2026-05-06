@@ -120,7 +120,7 @@ export default function Home() {
         marginBottom: '20px',
       }}>
         {/* Purple blob on right side */}
-        <div className="absolute" style={{ right: '-20px', top: '-20px', width: '140px', height: '140px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.35) 0%, rgba(120,60,200,0.15) 50%, transparent 75%)', filter: 'blur(10px)' }} />
+        <div className="absolute" style={{ right: '-20px', top: '-20px', width: '140px', height: '140px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,150,255,0.35) 0%, rgba(120,60,200,0.15) 50%, transparent 75%)', filter: 'blur(10px)' }} />
         <div className="absolute" style={{ right: '15px', top: '15px', width: '90px', height: '90px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(180,100,255,0.25) 0%, transparent 65%)', filter: 'blur(5px)' }} />
 
         <div className="relative z-10">

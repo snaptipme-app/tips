@@ -10,7 +10,7 @@ import { Toast, useToast } from '../../components/Toast';
 const BG = '#080818';
 const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#00B4D8';
 const GREEN = '#00C896';
 
 interface Tip {
@@ -122,8 +122,8 @@ export default function Tips() {
 
   const EmptyState = () => (
     <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 }}>
-      <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(108,108,255,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(108,108,255,0.15)' }}>
-        <Ionicons name="wallet-outline" size={36} color="rgba(108,108,255,0.4)" />
+      <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: 'rgba(0,180,216,0.08)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,180,216,0.15)' }}>
+        <Ionicons name="wallet-outline" size={36} color="rgba(0,180,216,0.4)" />
       </View>
       <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{t('no_tips')}</Text>
       <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 20 }}>

@@ -12,14 +12,14 @@ export default function SuccessScreen({ amount, employeeName, onClose }) {
         angle: 60,
         spread: 70,
         origin: { x: 0, y: 0.6 },
-        colors: ['#00C896', '#00a87d', '#34d399', '#6ee7b7', '#fbbf24', '#a855f7'],
+        colors: ['#00C896', '#00a87d', '#34d399', '#6ee7b7', '#fbbf24', '#0096FF'],
       });
       confetti({
         particleCount: 5,
         angle: 120,
         spread: 70,
         origin: { x: 1, y: 0.6 },
-        colors: ['#00C896', '#00a87d', '#34d399', '#6ee7b7', '#fbbf24', '#a855f7'],
+        colors: ['#00C896', '#00a87d', '#34d399', '#6ee7b7', '#fbbf24', '#0096FF'],
       });
 
       if (Date.now() < end) {
@@ -78,8 +78,8 @@ export default function SuccessScreen({ amount, employeeName, onClose }) {
           maxWidth: '350px',
           height: '56px',
           borderRadius: '50px',
-          background: 'linear-gradient(135deg, #4facfe 0%, #a855f7 100%)',
-          boxShadow: '0 8px 32px rgba(168,85,247,0.5)',
+          background: 'linear-gradient(135deg, #4facfe 0%, #0096FF 100%)',
+          boxShadow: '0 8px 32px rgba(0,150,255,0.5)',
           border: 'none',
           color: '#ffffff',
           fontSize: '18px',

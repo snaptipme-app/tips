@@ -27,13 +27,13 @@ type ToastProps = {
 const ACCENT: Record<ToastType, string> = {
   success: '#00C896',
   error:   '#ef4444',
-  info:    '#6c6cff',
+  info:    '#00B4D8',
 };
 
 const BG: Record<ToastType, string> = {
   success: 'rgba(0,200,150,0.12)',
   error:   'rgba(239,68,68,0.12)',
-  info:    'rgba(108,108,255,0.12)',
+  info:    'rgba(0,180,216,0.12)',
 };
 
 const ICON_NAMES: Record<ToastType, keyof typeof Ionicons.glyphMap> = {

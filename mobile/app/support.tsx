@@ -16,7 +16,7 @@ const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const GREEN = '#00C896';
-const ACCENT = '#6c6cff';
+const ACCENT = '#00B4D8';
 
 const SUBJECTS = [
   'Account Issue',
@@ -162,7 +162,7 @@ export default function SupportScreen() {
                 activeOpacity={0.8}
                 style={{
                   height: 52, borderRadius: 12, backgroundColor: INPUT_BG,
-                  borderWidth: 1, borderColor: subject ? 'rgba(108,108,255,0.4)' : BORDER,
+                  borderWidth: 1, borderColor: subject ? 'rgba(0,180,216,0.4)' : BORDER,
                   paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 }}
               >
@@ -199,7 +199,7 @@ export default function SupportScreen() {
             {/* Send button */}
             <TouchableOpacity onPress={handleSend} disabled={sending} activeOpacity={0.85} style={{ opacity: sending ? 0.6 : 1 }}>
               <LinearGradient
-                colors={[ACCENT, '#a855f7']}
+                colors={[ACCENT, '#0096FF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 52, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}

@@ -18,7 +18,7 @@ import HapticButton from '../../components/HapticButton';
 const BG = '#080818';
 const CARD_DARK = '#0f0f2e';
 const BORDER_DARK = 'rgba(255,255,255,0.06)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#00B4D8';
 
 export default function MemberQR() {
   const { user } = useAuth();
@@ -187,8 +187,8 @@ export default function MemberQR() {
             activeOpacity={0.8}
             style={{
               height: 44, borderRadius: 50, borderWidth: 1,
-              borderColor: 'rgba(108,108,255,0.4)',
-              backgroundColor: 'rgba(108,108,255,0.1)',
+              borderColor: 'rgba(0,180,216,0.4)',
+              backgroundColor: 'rgba(0,180,216,0.1)',
               justifyContent: 'center', alignItems: 'center',
               opacity: savingSettings ? 0.5 : 1,
             }}
@@ -206,13 +206,13 @@ export default function MemberQR() {
           style={{ marginBottom: 12 }}
         >
           <LinearGradient
-            colors={capturing ? ['#444', '#444'] : ['#6c6cff', '#a855f7']}
+            colors={capturing ? ['#444', '#444'] : ['#00B4D8', '#0096FF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{
               height: 52, borderRadius: 50,
               flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
-              shadowColor: '#6c6cff',
+              shadowColor: '#00B4D8',
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: capturing ? 0 : 0.35,
               shadowRadius: 16,
@@ -232,8 +232,8 @@ export default function MemberQR() {
           activeOpacity={0.8}
           style={{
             height: 48, borderRadius: 50,
-            backgroundColor: 'rgba(108,108,255,0.1)',
-            borderWidth: 1, borderColor: 'rgba(108,108,255,0.3)',
+            backgroundColor: 'rgba(0,180,216,0.1)',
+            borderWidth: 1, borderColor: 'rgba(0,180,216,0.3)',
             flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
             marginBottom: 28,
           }}
@@ -244,9 +244,9 @@ export default function MemberQR() {
 
         {/* ── Info ── */}
         <View style={{
-          backgroundColor: 'rgba(108,108,255,0.06)',
+          backgroundColor: 'rgba(0,180,216,0.06)',
           borderRadius: 16, padding: 16,
-          borderWidth: 1, borderColor: 'rgba(108,108,255,0.12)',
+          borderWidth: 1, borderColor: 'rgba(0,180,216,0.12)',
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <Ionicons name="print-outline" size={16} color={ACCENT} />

@@ -20,7 +20,7 @@ const CARD = '#0f0f2e';
 const SHEET_BG = '#0d0d24';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#00B4D8';
 const GREEN = '#00C896';
 const RED = '#ef4444';
 
@@ -163,7 +163,7 @@ export default function MemberProfile() {
         {/* ── Avatar ── */}
         <View style={{ alignItems: 'center', marginBottom: 28 }}>
           <TouchableOpacity onPress={pickPhoto} activeOpacity={0.85}>
-            <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 3, borderColor: ACCENT, backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 90, height: 90, borderRadius: 45, overflow: 'hidden', borderWidth: 3, borderColor: ACCENT, backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               {photoSrc ? <Image source={{ uri: photoSrc }} style={{ width: 90, height: 90 }} /> : <Text style={{ fontSize: 32, fontWeight: '800', color: ACCENT }}>{initials}</Text>}
             </View>
             <View style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG }}>
@@ -208,7 +208,7 @@ export default function MemberProfile() {
           <View style={{ backgroundColor: CARD, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: BORDER, marginBottom: 16 }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 14 }}>{t('your_workplace')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 48, height: 48, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(108,108,255,0.12)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+              <View style={{ width: 48, height: 48, borderRadius: 14, overflow: 'hidden', backgroundColor: 'rgba(0,180,216,0.12)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
                 {bizLogo ? <Image source={{ uri: bizLogo }} style={{ width: 48, height: 48 }} /> : <Ionicons name="business-outline" size={22} color="rgba(255,255,255,0.3)" />}
               </View>
               <View>
@@ -255,7 +255,7 @@ export default function MemberProfile() {
                 key={l}
                 onPress={() => changeLanguage(l)}
                 activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: language === l ? ACCENT : 'rgba(255,255,255,0.06)', backgroundColor: language === l ? 'rgba(108,108,255,0.10)' : 'transparent' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: language === l ? ACCENT : 'rgba(255,255,255,0.06)', backgroundColor: language === l ? 'rgba(0,180,216,0.10)' : 'transparent' }}
               >
                 <Image source={LANG_IMAGES[l]} style={{ width: 32, height: 32, borderRadius: 6 }} resizeMode="contain" />
                 <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: language === l ? '#fff' : 'rgba(255,255,255,0.5)' }}>{LANG_NAMES[l]}</Text>
@@ -273,7 +273,7 @@ export default function MemberProfile() {
             activeOpacity={0.8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: BORDER }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(108,108,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,180,216,0.1)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="lock-closed-outline" size={20} color={ACCENT} />
             </View>
             <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff', flex: 1 }}>{t('change_password')}</Text>

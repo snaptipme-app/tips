@@ -19,7 +19,7 @@ import HapticButton from '../../components/HapticButton';
 const BG = '#080818';
 const CARD = '#0f0f2e';
 const BORDER = 'rgba(255,255,255,0.06)';
-const ACCENT = '#6c6cff';
+const ACCENT = '#00B4D8';
 const GREEN = '#00C896';
 
 interface Tip {
@@ -254,7 +254,7 @@ export default function MemberDashboard() {
           {[
             { label: t('my_qr_code_action'), sub: t('share_download_qr'), icon: 'qr-code' as const, color: ACCENT, route: '/member/qr' },
             { label: t('withdraw_earnings'), sub: t('request_earnings_payout'), icon: 'cash' as const, color: GREEN, route: '/member/withdraw' },
-            { label: t('profile_settings'), sub: t('photo_name_language'), icon: 'person' as const, color: '#a855f7', route: '/member/profile' },
+            { label: t('profile_settings'), sub: t('photo_name_language'), icon: 'person' as const, color: '#0096FF', route: '/member/profile' },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
