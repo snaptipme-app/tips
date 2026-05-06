@@ -22,6 +22,8 @@ interface Tip {
   id: number;
   amount: number;
   created_at: string;
+  payment_method?: string | null;
+  sender_name?: string | null;
 }
 
 export default function Home() {
@@ -234,21 +236,26 @@ export default function Home() {
                   </Text>
                 </View>
               ) : (
-                recentTips.map((tip) => (
-                  <View
-                    key={tip.id}
-                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}
-                  >
-                    <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                      <Ionicons name="arrow-down-outline" size={18} color={GREEN} />
+                recentTips.map((tip) => {
+                  const isSplit = tip.payment_method === 'split_in';
+                  return (
+                    <View
+                      key={tip.id}
+                      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}
+                    >
+                      <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: isSplit ? 'rgba(0,255,204,0.1)' : 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                        <Ionicons name={isSplit ? 'people' : 'arrow-down-outline'} size={18} color={isSplit ? ACCENT : GREEN} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                          {isSplit ? `Received from ${tip.sender_name || 'Colleague'}` : 'Tip received'}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{formatDate(tip.created_at)}</Text>
+                      </View>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: isSplit ? ACCENT : GREEN }}>+{Number(tip.amount).toFixed(2)} {cur}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Tip received</Text>
-                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{formatDate(tip.created_at)}</Text>
-                    </View>
-                    <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>+{Number(tip.amount).toFixed(2)} {cur}</Text>
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
 

@@ -18,6 +18,8 @@ interface Tip {
   amount: number;
   status: string;
   created_at: string;
+  payment_method?: string | null;
+  sender_name?: string | null;
 }
 
 export default function Tips() {
@@ -98,27 +100,32 @@ export default function Tips() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderTip = ({ item }: { item: Tip }) => (
-    <View style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: CARD,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: BORDER,
-    }}>
-      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-        <Ionicons name="arrow-down-outline" size={20} color={GREEN} />
+  const renderTip = ({ item }: { item: Tip }) => {
+    const isSplit = item.payment_method === 'split_in';
+    return (
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: CARD,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: BORDER,
+      }}>
+        <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: isSplit ? 'rgba(0,255,204,0.1)' : 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+          <Ionicons name={isSplit ? 'people' : 'arrow-down-outline'} size={20} color={isSplit ? ACCENT : GREEN} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+            {isSplit ? `Received from ${item.sender_name || 'Colleague'}` : t('tip_received')}
+          </Text>
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(item.created_at)}</Text>
+        </View>
+        <Text style={{ fontSize: 17, fontWeight: '800', color: isSplit ? ACCENT : GREEN }}>+{item.amount.toFixed(2)} {user?.currency || 'MAD'}</Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('tip_received')}</Text>
-        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(item.created_at)}</Text>
-      </View>
-      <Text style={{ fontSize: 17, fontWeight: '800', color: GREEN }}>+{item.amount.toFixed(2)} {user?.currency || 'MAD'}</Text>
-    </View>
-  );
+    );
+  };
 
   const EmptyState = () => (
     <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 }}>

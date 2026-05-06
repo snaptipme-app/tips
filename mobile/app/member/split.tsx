@@ -221,7 +221,7 @@ export default function SplitTip() {
               <TextInput
                 value={searchText}
                 onChangeText={handleSearchChange}
-                placeholder="Type a username..."
+                placeholder="Search colleagues..."
                 placeholderTextColor="rgba(255,255,255,0.2)"
                 autoCapitalize="none"
                 autoCorrect={false}

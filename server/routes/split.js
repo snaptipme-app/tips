@@ -27,6 +27,8 @@ router.get('/search', authMiddleware, searchLimiter, async (req, res) => {
        FROM employees
        WHERE LOWER(username) ILIKE $1
          AND id != $2
+         AND business_id IS NOT NULL
+         AND business_id = (SELECT business_id FROM employees WHERE id = $2)
          AND deleted_at IS NULL
          AND is_suspended = 0
        ORDER BY
@@ -75,6 +77,8 @@ router.get('/verify/:username', authMiddleware, searchLimiter, async (req, res) 
        FROM employees
        WHERE LOWER(username) = $1
          AND id != $2
+         AND business_id IS NOT NULL
+         AND business_id = (SELECT business_id FROM employees WHERE id = $2)
          AND deleted_at IS NULL
          AND is_suspended = 0
        LIMIT 1`,
@@ -189,9 +193,9 @@ router.post('/send', authMiddleware, async (req, res) => {
     );
     // SPLIT_IN for recipient
     await client.query(
-      `INSERT INTO payments (employee_id, amount, currency, payment_method, status, created_at)
-       VALUES ($1, $2, $3, 'split_in', 'completed', NOW())`,
-      [recipientId, amt, sender.currency]
+      `INSERT INTO payments (employee_id, amount, currency, payment_method, sender_id, status, created_at)
+       VALUES ($1, $2, $3, 'split_in', $4, 'completed', NOW())`,
+      [recipientId, amt, sender.currency, senderId]
     );
 
     await client.query('COMMIT');

@@ -205,6 +205,7 @@ async function initDB() {
       "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS is_valid BOOLEAN DEFAULT TRUE",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES employees(id)",
     ];
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }

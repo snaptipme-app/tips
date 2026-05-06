@@ -21,7 +21,21 @@ router.get('/', authMiddleware, async (req, res) => {
     const { rows: tipStatsRows } = await pool.query('SELECT COALESCE(SUM(amount), 0) as total_tips, COUNT(*) as tip_count FROM tips WHERE employee_id = $1', [employeeId]);
     const tipStats = tipStatsRows[0] || { total_tips: 0, tip_count: 0 };
 
-    const { rows: recentTips } = await pool.query('SELECT id, amount, status, created_at FROM tips WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 20', [employeeId]);
+    const { rows: recentTips } = await pool.query(
+      `(SELECT t.id, t.amount::REAL, COALESCE(t.currency, 'MAD') AS currency,
+          NULL::TEXT AS payment_method, NULL::INTEGER AS sender_id, NULL::TEXT AS sender_name,
+          t.status, t.created_at
+        FROM tips t WHERE t.employee_id = $1)
+       UNION ALL
+       (SELECT p.id, p.amount::REAL, p.currency,
+          p.payment_method, p.sender_id, s.full_name AS sender_name,
+          p.status, p.created_at
+        FROM payments p
+        LEFT JOIN employees s ON s.id = p.sender_id
+        WHERE p.employee_id = $1 AND p.payment_method = 'split_in')
+       ORDER BY created_at DESC LIMIT 20`,
+      [employeeId]
+    );
 
     const encKey = getEncryptionKey();
     const wParams = [employeeId];
@@ -42,7 +56,13 @@ router.get('/', authMiddleware, async (req, res) => {
       balance: Number(employee.balance) || 0,
       account_type: employee.account_type || 'individual',
     };
-    const tipsOut = recentTips.map((t) => ({ ...t, amount: Number(t.amount) || 0 }));
+    const tipsOut = recentTips.map((t) => ({
+      ...t,
+      amount: Number(t.amount) || 0,
+      payment_method: t.payment_method || null,
+      sender_id: t.sender_id || null,
+      sender_name: t.sender_name || null,
+    }));
     const wOut = recentWithdrawals.map((w) => ({ ...w, amount: Number(w.amount) || 0 }));
 
     res.json({
