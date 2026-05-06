@@ -86,7 +86,7 @@ export default function AdminLogin({ onSuccess }) {
       <style>{styles}</style>
       <div style={{
         minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'radial-gradient(ellipse at top, rgba(0,180,216,0.12) 0%, transparent 60%), #080818',
+        background: 'radial-gradient(ellipse at top, rgba(0,180,216,0.12) 0%, transparent 60%), #1a1a1a',
         padding: '20px',
       }}>
         <div style={{
@@ -99,7 +99,7 @@ export default function AdminLogin({ onSuccess }) {
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="36" height="36" style={{ borderRadius: '10px' }}>
-                <rect width="1024" height="1024" rx="225" fill="#080818" />
+                <rect width="1024" height="1024" rx="225" fill="#1a1a1a" />
                 <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round" />
               </svg>
               <span style={{ fontSize: '24px', fontWeight: '800', color: '#fff' }}>SnapTip Admin</span>

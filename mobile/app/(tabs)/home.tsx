@@ -12,7 +12,7 @@ import { playTipSound } from '../../lib/tipSound';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 
-const BG = '#080818';
+const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00B4D8';
@@ -204,8 +204,8 @@ export default function Home() {
                   onPress={() => router.push('/member/withdraw')}
                   style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
                 >
-                  <Ionicons name="arrow-up-circle" size={20} color="#080818" />
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#080818' }}>Cash Out</Text>
+                  <Ionicons name="arrow-up-circle" size={20} color="#1a1a1a" />
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#1a1a1a' }}>Cash Out</Text>
                 </HapticButton>
                 <HapticButton
                   onPress={() => router.push('/member/qr')}

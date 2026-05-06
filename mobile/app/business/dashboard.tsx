@@ -16,7 +16,7 @@ import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const BG      = '#080818';
+const BG      = '#1a1a1a';
 const CARD    = 'rgba(255,255,255,0.05)';
 const BORDER  = 'rgba(255,255,255,0.08)';
 const ACCENT  = '#00B4D8';

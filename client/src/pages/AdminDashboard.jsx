@@ -3,7 +3,7 @@ import axios from 'axios';
 import { clearAdminToken } from './AdminLogin';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const BG='#080818',CARD='#0d1117',BORDER='rgba(255,255,255,0.06)',ACCENT='#00B4D8',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#0096FF';
+const BG='#1a1a1a',CARD='#222222',BORDER='rgba(255,255,255,0.06)',ACCENT='#00B4D8',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#0096FF';
 const COUNTRY_CODES={Morocco:'MA','United States':'US',France:'FR',Spain:'ES',UAE:'AE'};
 const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00B4D8',USD:'#00C896',AED:'#0096FF',GBP:'#06b6d4'};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
@@ -114,7 +114,7 @@ export default function AdminDashboard({onLogout}){
     <div className="admin-sidebar" style={{position:'fixed',left:0,top:0,bottom:0,width:240,background:BG,borderRight:`1px solid ${BORDER}`,padding:'24px 16px',display:'flex',flexDirection:'column',zIndex:50}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:32}}>
         <div style={{width:36,height:36,borderRadius:9,background:GREEN,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#080818"><polygon points="13 2 4.5 13.5 11 13.5 11 22 19.5 10.5 13 10.5 13 2"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#1a1a1a"><polygon points="13 2 4.5 13.5 11 13.5 11 22 19.5 10.5 13 10.5 13 2"/></svg>
         </div>
         <div>
           <div style={{fontSize:15,fontWeight:800,color:'#fff'}}>SnapTip</div>
@@ -240,7 +240,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
         <span style={{fontSize:12,color:'rgba(255,255,255,.35)',fontWeight:600}}>Currency</span>
         <div style={{position:'relative'}}>
           <select value={selectedCurrency} onChange={e=>setSelectedCurrency(e.target.value)} style={{appearance:'none',WebkitAppearance:'none',background:'rgba(255,255,255,.07)',border:`1px solid ${BORDER}`,borderRadius:12,padding:'9px 36px 9px 14px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',outline:'none',fontFamily:'inherit'}}>
-            {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#0d1117'}}>{c.flag} {c.code}</option>)}
+            {CURRENCIES.map(c=><option key={c.code} value={c.code} style={{background:'#222222'}}>{c.flag} {c.code}</option>)}
           </select>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2.5" style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -307,7 +307,7 @@ function OverviewSection({showToast,onLogout,onNavigate}){
             <CartesianGrid strokeDasharray="3 3" stroke="#1e2a3a" vertical={false}/>
             <XAxis dataKey="label" tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false}/>
             <YAxis tick={{fill:'rgba(255,255,255,.35)',fontSize:11}} axisLine={false} tickLine={false} width={56} tickFormatter={v=>fmtCur(v,selectedCurrency)}/>
-            <Tooltip contentStyle={{background:'#0d1117',border:`1px solid ${BORDER}`,borderRadius:10,color:'#fff',fontSize:13}} formatter={v=>[fmtCur(v,selectedCurrency),'Volume']} labelStyle={{color:'rgba(255,255,255,.5)',marginBottom:4}}/>
+            <Tooltip contentStyle={{background:'#222222',border:`1px solid ${BORDER}`,borderRadius:10,color:'#fff',fontSize:13}} formatter={v=>[fmtCur(v,selectedCurrency),'Volume']} labelStyle={{color:'rgba(255,255,255,.5)',marginBottom:4}}/>
             <Line type="monotone" dataKey="amount" stroke="#ffffff" strokeWidth={2}
               dot={({cx,cy,value,index})=>(
                 <g key={index}>
@@ -561,7 +561,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}><Btn small onClick={handleSaveNote} bg='rgba(0,180,216,.12)' color={ACCENT}>Save Note</Btn></div>
         {rejectMode&&<><p style={{fontSize:11,fontWeight:700,color:RED,textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Rejection Reason (sent to employee)</p><textarea value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Enter reason..." rows={2} style={{width:'100%',background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.25)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:16,boxSizing:'border-box'}}/></>}
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
-          {detail.status==='pending'&&<>{!rejectMode?<><Btn onClick={()=>handlePaid(detail.id)} bg={GREEN} color='#080818' disabled={!!actionId}>{I.check} Mark as Paid</Btn><Btn onClick={()=>setRejectMode(true)} bg='rgba(239,68,68,.1)' color={RED}>{I.x} Reject</Btn></>:<><Btn onClick={()=>handleRejectConfirm(detail.id,rejectReason)} bg={RED} disabled={!!actionId}>Confirm Reject</Btn><Btn onClick={()=>{setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn></>}</>}
+          {detail.status==='pending'&&<>{!rejectMode?<><Btn onClick={()=>handlePaid(detail.id)} bg={GREEN} color='#1a1a1a' disabled={!!actionId}>{I.check} Mark as Paid</Btn><Btn onClick={()=>setRejectMode(true)} bg='rgba(239,68,68,.1)' color={RED}>{I.x} Reject</Btn></>:<><Btn onClick={()=>handleRejectConfirm(detail.id,rejectReason)} bg={RED} disabled={!!actionId}>Confirm Reject</Btn><Btn onClick={()=>{setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)'>Cancel</Btn></>}</>}
           <Btn onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} bg='rgba(255,255,255,.08)' color='rgba(255,255,255,.5)' style={{marginLeft:'auto'}}>Close</Btn>
         </div>
       </div>
@@ -571,7 +571,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
       <Input value={search} onChange={setSearch} placeholder="Search by name or @username..." style={{maxWidth:260}}/>
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{['all','pending','paid','rejected'].map(f=><button key={f} onClick={()=>setFilter(f)} style={{padding:'6px 14px',borderRadius:50,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:filter===f?'rgba(0,180,216,.15)':'rgba(255,255,255,.04)',color:filter===f?ACCENT:'rgba(255,255,255,.4)',textTransform:'capitalize'}}>{f}</button>)}</div>
-      <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#0d1117'}}>{m==='all'?'All Methods':m}</option>)}</select>
+      <select value={methodFilter} onChange={e=>setMethodFilter(e.target.value)} style={{background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,height:36,padding:'0 12px',color:'rgba(255,255,255,.7)',fontSize:12,cursor:'pointer',outline:'none'}}>{allMethods.map(m=><option key={m} value={m} style={{background:'#222222'}}>{m==='all'?'All Methods':m}</option>)}</select>
       <span style={{fontSize:12,color:'rgba(255,255,255,.3)',marginLeft:'auto'}}>{filtered.length} result{filtered.length!==1?'s':''}</span>
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
@@ -585,7 +585,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         <td style={{color:YELLOW}}>{fmtMoney(w.fee,w.currency)}</td>
         <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(w.net_amount,w.currency)}</td>
         <td><StatusBadge status={w.status}/></td>
-        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_notes||'');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#080818' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
+        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_notes||'');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#1a1a1a' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
       </tr>)}
       {!filtered.length&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
       </tbody></table>

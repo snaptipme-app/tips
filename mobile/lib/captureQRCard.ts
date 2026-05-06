@@ -25,7 +25,7 @@ export const downloadAndShareQRCard = async (
   try {
     const qrValue = `https://snaptip.me/${employee.username}`;
 
-    // Use qrserver.com for a clean dark QR matching our NAVY (#080818) color
+    // Use qrserver.com for a clean dark QR matching our NAVY (#1a1a1a) color
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrValue)}&color=080818&bgcolor=ffffff&qzone=1`;
 
     const ctaText = customMessage?.trim() || 'Leave a tip!';
@@ -134,7 +134,7 @@ export const downloadAndShareQRCard = async (
           .emp-name {
             font-size: 15px;
             font-weight: 800;
-            color: #080818;
+            color: #1a1a1a;
             margin-top: 10px;
             letter-spacing: 0.4px;
             text-transform: uppercase;

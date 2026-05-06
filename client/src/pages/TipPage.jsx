@@ -45,7 +45,7 @@ function getCurrencySuffix(currency) {
 /* ─── SVG Components ─────────────────────────────────────────────────── */
 const SnapTipIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32" style={{ borderRadius: '10px', display: 'block' }}>
-    <rect width="1024" height="1024" rx="225" fill="#080818" />
+    <rect width="1024" height="1024" rx="225" fill="#1a1a1a" />
     <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round" />
   </svg>
 );
@@ -176,7 +176,7 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, onClo
       background: `
         radial-gradient(ellipse at bottom left, rgba(0,200,150,0.18) 0%, transparent 60%),
         radial-gradient(ellipse at top right, rgba(0,255,102,0.06) 0%, transparent 60%),
-        #080818
+        #1a1a1a
       `,
       padding: '20px',
       animation: 'fadeIn 0.3s ease-out',
@@ -210,7 +210,7 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, onClo
           width: '100%', maxWidth: '340px', height: '56px', borderRadius: '50px',
           background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
           boxShadow: '0 8px 32px rgba(0,200,150,0.4)',
-          border: 'none', color: '#080818', fontSize: '18px', fontWeight: 700,
+          border: 'none', color: '#1a1a1a', fontSize: '18px', fontWeight: 700,
           cursor: 'pointer', marginTop: '32px',
           transition: 'all 0.2s ease',
         }}
@@ -345,7 +345,7 @@ export default function TipPage() {
     background: `
       radial-gradient(ellipse at bottom left, rgba(0,200,150,0.12) 0%, transparent 55%),
       radial-gradient(ellipse at top right, rgba(0,200,150,0.04) 0%, transparent 50%),
-      #080818
+      #1a1a1a
     `,
   };
 
@@ -604,7 +604,7 @@ export default function TipPage() {
                 : 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
               boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(0,200,150,0.35)',
               border: 'none',
-              color: payDisabled ? 'rgba(255,255,255,0.3)' : '#080818',
+              color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
               fontSize: '18px', fontWeight: 700,
               opacity: payDisabled ? 0.5 : 1,
               cursor: payDisabled ? 'not-allowed' : 'pointer',
@@ -615,7 +615,7 @@ export default function TipPage() {
           >
             {sending ? (
               <>
-                <div style={{ width: '20px', height: '20px', border: '2px solid #080818', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                <div style={{ width: '20px', height: '20px', border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
                 Processing...
               </>
             ) : (

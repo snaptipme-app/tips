@@ -21,7 +21,7 @@ export default function TabLayout() {
   const tabBarHeight = 60 + insets.bottom;
 
   const tabBarStyle = {
-    backgroundColor: '#0d0d24',
+    backgroundColor: '#1a1a1a',
     borderTopWidth: 0,
     height: tabBarHeight,
     paddingBottom: tabBarPaddingBottom,
@@ -37,7 +37,7 @@ export default function TabLayout() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
       />
-      <View style={{ flex: 1, backgroundColor: '#0d0d24' }} />
+      <View style={{ flex: 1, backgroundColor: '#1a1a1a' }} />
     </View>
   );
 

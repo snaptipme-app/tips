@@ -1,7 +1,7 @@
 /**
  * SkeletonLoader — Shimmer skeleton placeholders (Notion/Linear aesthetic).
  *
- * Matches the app's dark theme (#080818 background).
+ * Matches the app's dark theme (#1a1a1a background).
  * Usage:
  *   <SkeletonLoader.Card />      — full-width content card placeholder
  *   <SkeletonLoader.Line />      — single text-line placeholder

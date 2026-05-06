@@ -17,8 +17,8 @@ import { Toast, useToast } from '../../components/Toast';
 const isValidInviteToken = (t: any): t is string =>
   typeof t === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(t);
 
-const BG = '#080818';
-const CARD = '#0f0f2e';
+const BG = '#1a1a1a';
+const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#00B4D8';
@@ -240,7 +240,7 @@ export default function JoinBusiness() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: BG }}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
+        <LinearGradient colors={['#1a1a1a', '#1a1a1a']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
           {/* Step indicator */}
           {(step === 'register' || step === 'withdrawal') && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>

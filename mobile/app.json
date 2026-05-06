@@ -12,7 +12,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/snaptip_icon.png",
-      "backgroundColor": "#080818",
+      "backgroundColor": "#1a1a1a",
       "resizeMode": "contain"
     },
     "ios": {
@@ -49,7 +49,7 @@
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/snaptip_icon.png",
-        "backgroundColor": "#080818"
+        "backgroundColor": "#1a1a1a"
       },
       "package": "me.snaptip.app",
       "permissions": [

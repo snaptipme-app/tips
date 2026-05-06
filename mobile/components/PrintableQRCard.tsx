@@ -24,7 +24,7 @@ export type PrintableQRCardProps = {
 
 const GREEN = '#00C896';
 const ACCENT = '#00B4D8';
-const NAVY = '#080818';
+const NAVY = '#1a1a1a';
 const GRAY = '#666666';
 const CORNER_COLOR = '#c8c8d8';
 const CORNER_SIZE = 18;

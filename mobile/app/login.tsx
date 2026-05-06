@@ -9,7 +9,7 @@ import SnapTipLogo from '../components/SnapTipLogo';
 import { Toast, useToast } from '../components/Toast';
 import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 
-const BG = '#080818';
+const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';

@@ -16,8 +16,8 @@ import { playTipSound } from '../../lib/tipSound';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 
-const BG = '#080818';
-const CARD = '#0f0f2e';
+const BG = '#1a1a1a';
+const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00B4D8';
 const GREEN = '#00C896';
@@ -119,7 +119,7 @@ export default function MemberDashboard() {
         }
       >
         {/* ── Header ── */}
-        <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 }}>
+        <LinearGradient colors={['#0d0d30', '#1a1a1a']} style={{ paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>

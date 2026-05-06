@@ -15,7 +15,7 @@ import App from './App.jsx'
     window.top.location.href = window.self.location.href;
   } catch {
     document.documentElement.innerHTML =
-      '<body style="margin:0;background:#080818;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px"><div><h1 style="margin:0 0 8px">SnapTip</h1><p style="opacity:0.6;margin:0">This page cannot be embedded in a frame.</p></div></body>';
+      '<body style="margin:0;background:#1a1a1a;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px"><div><h1 style="margin:0 0 8px">SnapTip</h1><p style="opacity:0.6;margin:0">This page cannot be embedded in a frame.</p></div></body>';
   }
 })();
 

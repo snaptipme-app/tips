@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-const BG = '#080818';
-const CARD = '#0d1117';
+const BG = '#1a1a1a';
+const CARD = '#222222';
 const GREEN = '#00C896';
 const TEXT = 'rgba(255,255,255,0.85)';
 const MUTED = 'rgba(255,255,255,0.55)';

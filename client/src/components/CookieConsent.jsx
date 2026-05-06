@@ -48,7 +48,7 @@ export default function CookieConsent() {
         right: 16,
         maxWidth: 720,
         margin: '0 auto',
-        background: '#0d1117',
+        background: '#222222',
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 14,
         padding: '18px 20px',
@@ -91,7 +91,7 @@ export default function CookieConsent() {
           onClick={() => persist('accepted')}
           style={{
             background: '#00C896',
-            color: '#080818',
+            color: '#1a1a1a',
             border: 'none',
             borderRadius: 10,
             padding: '10px 18px',

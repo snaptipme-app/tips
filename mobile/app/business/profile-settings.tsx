@@ -13,8 +13,8 @@ import { Toast, useToast } from '../../components/Toast';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 
-const BG = '#080818';
-const CARD = '#0f0f2e';
+const BG = '#1a1a1a';
+const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#00B4D8';
@@ -124,7 +124,7 @@ export default function BusinessProfileSettings() {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
-      <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
+      <LinearGradient colors={['#0d0d30', '#1a1a1a']} style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <TouchableOpacity
             onPress={() => router.back()}

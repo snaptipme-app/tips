@@ -37,7 +37,7 @@ export default function SuccessScreen({ amount, employeeName, onClose }) {
         background: `
           radial-gradient(ellipse at bottom left, rgba(120,0,180,0.4) 0%, transparent 60%),
           radial-gradient(ellipse at bottom right, rgba(80,0,160,0.3) 0%, transparent 60%),
-          #080818
+          #1a1a1a
         `,
         padding: '20px',
       }}

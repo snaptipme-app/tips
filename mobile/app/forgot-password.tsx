@@ -9,7 +9,7 @@ import { useLanguage } from '../lib/LanguageContext';
 import { Toast, useToast } from '../components/Toast';
 import SnapTipLogo from '../components/SnapTipLogo';
 
-const BG = '#080818';
+const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /* ─── design tokens ──────────────────────────────────────────────────── */
-const BG      = '#080818';
+const BG      = '#1a1a1a';
 const GREEN   = '#00C896';
 const ACCENT  = '#00B4D8';
 const GREEN2  = '#00ff88';
@@ -9,7 +9,7 @@ const GREEN2  = '#00ff88';
 /* ─── SVG logos ──────────────────────────────────────────────────────── */
 const SnapTipSVG = ({ size = 36 }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width={size} height={size} style={{ borderRadius: 12, display: 'block', flexShrink: 0 }}>
-    <rect width="1024" height="1024" rx="220" fill="#080818" />
+    <rect width="1024" height="1024" rx="220" fill="#1a1a1a" />
     <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="14" strokeLinejoin="round" />
   </svg>
 );
@@ -155,7 +155,7 @@ export default function AppLanding() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               background: `linear-gradient(135deg, ${GREEN} 0%, #00e8aa 100%)`,
-              color: '#080818', fontWeight: 800, fontSize: 16,
+              color: '#1a1a1a', fontWeight: 800, fontSize: 16,
               padding: '14px 28px', borderRadius: 50,
               boxShadow: '0 8px 32px rgba(0,200,150,0.35)',
               textDecoration: 'none', transition: 'transform 0.2s, box-shadow 0.2s',

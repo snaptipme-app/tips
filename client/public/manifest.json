@@ -13,7 +13,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#080818",
-  "background_color": "#080818",
+  "theme_color": "#1a1a1a",
+  "background_color": "#1a1a1a",
   "lang": "en"
 }

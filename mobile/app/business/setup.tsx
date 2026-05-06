@@ -7,8 +7,8 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import HapticButton from '../../components/HapticButton';
 
-const BG = '#080818';
-const CARD = '#0f0f2e';
+const BG = '#1a1a1a';
+const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00B4D8';

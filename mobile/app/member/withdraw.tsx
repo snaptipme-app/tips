@@ -17,9 +17,9 @@ import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 
 /* ── Design tokens ── */
-const BG = '#080818';
-const CARD = '#0f0f2e';
-const SHEET_BG = '#0d0d24';
+const BG = '#1a1a1a';
+const CARD = '#1a1a1a';
+const SHEET_BG = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00B4D8';
 const GREEN = '#00C896';
@@ -329,7 +329,7 @@ export default function MemberWithdraw() {
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor={ACCENT} />}>
 
         {/* ── Header ── */}
-        <LinearGradient colors={['#0d0d30', '#080818']} style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 }}>
+        <LinearGradient colors={['#0d0d30', '#1a1a1a']} style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
