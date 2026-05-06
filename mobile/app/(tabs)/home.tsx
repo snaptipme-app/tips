@@ -266,6 +266,16 @@ export default function Home() {
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>My QR Code</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={() => router.push('/member/split')}
+                activeOpacity={0.8}
+                style={{ flex: 1, backgroundColor: CARD, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="people-outline" size={22} color={ACCENT} />
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Split Tip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => router.push('/member/withdraw')}
                 activeOpacity={0.8}
                 style={{ flex: 1, backgroundColor: CARD, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: BORDER, alignItems: 'center', gap: 8 }}

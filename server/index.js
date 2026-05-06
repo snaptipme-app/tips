@@ -23,6 +23,7 @@ const paymentsRoutes = require('./routes/payments');
 const joinRoutes = require('./routes/join');
 const adminRoutes = require('./routes/admin');
 const supportRoutes = require('./routes/support');
+const splitRoutes = require('./routes/split');
 
 const path = require('path');
 
@@ -77,6 +78,7 @@ app.use('/api/payments', paymentsRoutes);
 // state-changing requests (SameSite=Strict cookie is the primary defence).
 app.use('/api/admin', checkOriginCsrf, adminRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/split', splitRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
