@@ -49,7 +49,7 @@ export default function SplitTip() {
   // ── Debounced search ──
   const searchUser = useCallback(async (username: string) => {
     const cleaned = username.trim().replace(/^@/, '');
-    if (cleaned.length < 2) {
+    if (cleaned.length < 3) {
       setVerified(null);
       setSearchError('');
       return;
@@ -76,7 +76,16 @@ export default function SplitTip() {
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchUser(text), 400);
+
+    const cleaned = text.trim().replace(/^@/, '');
+    if (cleaned.length < 3) {
+      setVerified(null);
+      setSearchError('');
+      setSearching(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => searchUser(text), 500);
   }, [searchUser]);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { searchLimiter } = require('../middleware/rateLimit');
 const { logFromReq } = require('../lib/audit');
 
 /* ══════════════════════════════════════════════════════
@@ -9,7 +10,7 @@ const { logFromReq } = require('../lib/audit');
    Returns minimal public info for recipient lookup.
    Auth required (only logged-in employees can search).
    ══════════════════════════════════════════════════════ */
-router.get('/verify/:username', authMiddleware, async (req, res) => {
+router.get('/verify/:username', authMiddleware, searchLimiter, async (req, res) => {
   try {
     const { username } = req.params;
     const senderId = req.employee.id;

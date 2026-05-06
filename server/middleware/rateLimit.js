@@ -8,7 +8,7 @@ const message = (msg) => ({ error: msg, code: 'RATE_LIMITED' });
 // Global fallback — generous; per-endpoint limiters are stricter.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max: 600,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: message('Too many requests, please slow down.'),
@@ -17,7 +17,7 @@ const globalLimiter = rateLimit({
 // Auth surfaces — login, register, password reset. Tight.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // a successful login shouldn't burn the budget
@@ -52,10 +52,20 @@ const adminLoginLimiter = rateLimit({
   message: message('Too many admin login attempts.'),
 });
 
+// Search/Verify Limiter: Allow 60 requests per minute
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: message('Too many search requests. Please slow down.'),
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
   otpLimiter,
   paymentLimiter,
   adminLoginLimiter,
+  searchLimiter,
 };
