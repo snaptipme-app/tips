@@ -192,9 +192,10 @@ async function sendEmail(to, { subject, html }) {
 router.post('/login', (req, res) => {
   try {
     const { password } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminPassword = process.env.ADMIN_PASSWORD ? process.env.ADMIN_PASSWORD.trim() : null;
+    const inputPassword = password ? String(password).trim() : null;
     if (!adminPassword) return res.status(500).json({ error: 'Admin password not configured on server.' });
-    if (!password || password !== adminPassword) {
+    if (!inputPassword || inputPassword !== adminPassword) {
       logFromReq(req, { actorType: 'admin', action: 'admin.login.failure' });
       return res.status(401).json({ error: 'Invalid admin password.' });
     }
