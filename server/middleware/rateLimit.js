@@ -10,13 +10,23 @@ const globalLimiter = rateLimit({
   max: (req, res) => {
     // Specifically increase limits for Admin/Business routes
     if (req.originalUrl.includes('/admin') || req.originalUrl.includes('/business')) {
-      return 500;
+      return 5000;
     }
     // Differentiate limits for authenticated users via headers/cookies
     if (req.headers.authorization || (req.cookies && req.cookies.admin_token)) {
-      return 500;
+      return 5000;
     }
-    return 200;
+    return 300;
+  },
+  keyGenerator: (req) => {
+    // If authenticated, limit by token to prevent NAT/WiFi sharing issues (e.g. whole restaurant blocked)
+    if (req.headers.authorization) {
+      return req.headers.authorization;
+    }
+    if (req.cookies && req.cookies.admin_token) {
+      return req.cookies.admin_token;
+    }
+    return req.ip;
   },
   standardHeaders: true,
   legacyHeaders: false,

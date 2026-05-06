@@ -204,10 +204,16 @@ async function initDB() {
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details_enc BYTEA",
       "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT",
+      "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS is_valid BOOLEAN DEFAULT TRUE",
     ];
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
     }
+
+    // Sync is_valid for pre-existing rows that were accepted or expired
+    try {
+      await pool.query("UPDATE invitations SET is_valid = FALSE WHERE status IN ('accepted','expired') AND is_valid = TRUE");
+    } catch (_) {}
 
     // Default settings
     await pool.query("UPDATE employees SET country = 'Morocco' WHERE country IS NULL");

@@ -138,7 +138,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO invitations (business_id, email, token, expires_at, required_country) VALUES ($1, $2, $3, extract(epoch from (now() + interval '7 days')) * 1000, $4)",
+      'INSERT INTO invitations (business_id, email, token, is_valid, required_country) VALUES ($1, $2, $3, TRUE, $4)',
       [business.id, normalizedEmail, token, ownerCountry]
     );
 
@@ -181,7 +181,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
       </div>
 
       <p style="color:#aaa;font-size:13px;text-align:center;margin:0;">
-        This invitation expires in <strong style="color:#666;">7 days</strong>
+        This invitation does not expire — it stays valid until you join or the manager revokes it.
       </p>
     </div>
 
@@ -218,23 +218,15 @@ router.get('/invite-link', authMiddleware, async (req, res) => {
     }
 
     let { rows: linkInviteRows } = await pool.query(
-      "SELECT * FROM invitations WHERE business_id = $1 AND email = 'link_invite' AND status = 'active'",
+      "SELECT * FROM invitations WHERE business_id = $1 AND email = 'link_invite' AND is_valid = TRUE",
       [business.id]
     );
     let linkInvite = linkInviteRows[0];
 
-    // If exists but expired, invalidate it.
-    // expires_at is stored as BIGINT in Postgres — pg returns it as a string,
-    // so we must cast with Number() before comparing to avoid string-vs-number bugs.
-    if (linkInvite && linkInvite.expires_at && Number(linkInvite.expires_at) < Date.now()) {
-      await pool.query("UPDATE invitations SET status = 'expired' WHERE id = $1", [linkInvite.id]);
-      linkInvite = null;
-    }
-
     if (!linkInvite) {
       const token = crypto.randomBytes(32).toString('hex');
       await pool.query(
-        "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '7 days')) * 1000)",
+        "INSERT INTO invitations (business_id, email, token, status, is_valid) VALUES ($1, 'link_invite', $2, 'active', TRUE)",
         [business.id, token]
       );
 
@@ -243,7 +235,7 @@ router.get('/invite-link', authMiddleware, async (req, res) => {
     }
 
     const invite_url = `https://snaptip.me/join/${linkInvite.token}`;
-    res.json({ invite_url, token: linkInvite.token, expires_at: linkInvite.expires_at });
+    res.json({ invite_url, token: linkInvite.token });
   } catch (err) {
     console.error('[business/invite-link]', err.message);
     res.status(500).json({ error: 'Server error.' });
@@ -260,19 +252,16 @@ router.post('/refresh-invite-link', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'You do not own a business.' });
     }
 
-    await pool.query("UPDATE invitations SET status = 'expired' WHERE business_id = $1 AND email = 'link_invite' AND status = 'active'", [business.id]);
+    await pool.query("UPDATE invitations SET is_valid = FALSE WHERE business_id = $1 AND email = 'link_invite' AND is_valid = TRUE", [business.id]);
 
     const token = crypto.randomBytes(32).toString('hex');
     await pool.query(
-      "INSERT INTO invitations (business_id, email, token, status, expires_at) VALUES ($1, 'link_invite', $2, 'active', extract(epoch from (now() + interval '7 days')) * 1000)",
+      "INSERT INTO invitations (business_id, email, token, status, is_valid) VALUES ($1, 'link_invite', $2, 'active', TRUE)",
       [business.id, token]
     );
 
-    const { rows: newRows } = await pool.query("SELECT expires_at FROM invitations WHERE token = $1", [token]);
-    const linkInvite = newRows[0];
-
     const invite_url = `https://snaptip.me/join/${token}`;
-    res.json({ invite_url, token, expires_at: linkInvite?.expires_at });
+    res.json({ invite_url, token });
   } catch (err) {
     console.error('[business/refresh-invite-link]', err.message);
     res.status(500).json({ error: 'Server error.' });
@@ -331,16 +320,14 @@ router.get('/invite-info/:token', async (req, res) => {
       return res.status(404).json({ error: 'Invitation not found.' });
     }
 
-    console.log(`[invite-info] token=${token.slice(0,8)}… status=${invitation.status} expires_at=${invitation.expires_at} now=${Date.now()}`);
+    console.log(`[invite-info] token=${token.slice(0,8)}… status=${invitation.status} is_valid=${invitation.is_valid}`);
+
+    if (!invitation.is_valid) {
+      return res.status(400).json({ error: 'This invitation has already been used or revoked.' });
+    }
 
     if (invitation.status !== 'pending' && invitation.status !== 'active') {
       return res.status(400).json({ error: 'This invitation has already been used.' });
-    }
-
-    // Cast to Number: Postgres returns BIGINT expires_at as a string — comparing
-    // a string to Date.now() (number) produces wrong results without this cast.
-    if (invitation.expires_at && Number(invitation.expires_at) < Date.now()) {
-      return res.status(400).json({ error: 'This invitation has expired.' });
     }
 
     const { rows: bizRows } = await pool.query('SELECT business_name, business_type, logo_url FROM businesses WHERE id = $1', [invitation.business_id]);
@@ -366,20 +353,17 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
     const { token } = req.params;
     const employeeId = req.employee.id;
 
-    const { rows: invRows } = await pool.query("SELECT * FROM invitations WHERE token = $1 AND status IN ('pending', 'active')", [token]);
+    const { rows: invRows } = await pool.query(
+      "SELECT * FROM invitations WHERE token = $1 AND is_valid = TRUE AND status IN ('pending','active')",
+      [token]
+    );
     const invitation = invRows[0];
 
     if (!invitation) {
       return res.status(404).json({ error: 'Invitation not found or already used.' });
     }
 
-    // Check expiry.
-    // Cast to Number: Postgres returns BIGINT expires_at as a string — string-vs-number
-    // comparison is unreliable and was causing valid tokens to be rejected.
-    console.log(`[join] token=${token.slice(0,8)}… status=${invitation.status} expires_at=${invitation.expires_at} now=${Date.now()}`);
-    if (invitation.expires_at && Number(invitation.expires_at) < Date.now()) {
-      return res.status(400).json({ error: 'This invitation has expired.' });
-    }
+    console.log(`[join] token=${token.slice(0,8)}… status=${invitation.status} is_valid=${invitation.is_valid}`);
 
     // Verify employee exists
     const { rows: joiningEmpRows } = await pool.query('SELECT id, country FROM employees WHERE id = $1', [employeeId]);
@@ -420,9 +404,9 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
       [invitation.business_id, employeeId]
     );
 
-    // Only mark email invites as accepted; link invites stay active (reusable)
+    // Email invites become invalid once used; link invites stay valid (reusable)
     if (invitation.email !== 'link_invite') {
-      await pool.query("UPDATE invitations SET status = 'accepted' WHERE token = $1", [token]);
+      await pool.query("UPDATE invitations SET is_valid = FALSE, status = 'accepted' WHERE token = $1", [token]);
     }
 
     const { rows: bizRows } = await pool.query('SELECT business_name FROM businesses WHERE id = $1', [invitation.business_id]);
@@ -440,6 +424,59 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[business/join]', err.message);
     res.status(500).json({ error: 'Server error joining business.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/business/revoke-invite/:invitationId  — manager revokes a pending invite
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/revoke-invite/:invitationId', authMiddleware, async (req, res) => {
+  try {
+    const { invitationId } = req.params;
+    const business = await getOwnedBusiness(pool, req.employee.id);
+    if (!business) {
+      return res.status(403).json({ error: 'You do not own a business.' });
+    }
+
+    const { rows } = await pool.query(
+      "SELECT id FROM invitations WHERE id = $1 AND business_id = $2",
+      [invitationId, business.id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Invitation not found.' });
+    }
+
+    await pool.query(
+      "UPDATE invitations SET is_valid = FALSE, status = 'revoked' WHERE id = $1",
+      [invitationId]
+    );
+
+    res.json({ success: true, message: 'Invitation revoked.' });
+  } catch (err) {
+    console.error('[business/revoke-invite]', err.message);
+    res.status(500).json({ error: 'Server error revoking invitation.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/invitations  — list all invitations for this business
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/invitations', authMiddleware, async (req, res) => {
+  try {
+    const business = await getOwnedBusiness(pool, req.employee.id);
+    if (!business) {
+      return res.status(403).json({ error: 'You do not own a business.' });
+    }
+
+    const { rows } = await pool.query(
+      "SELECT id, email, token, is_valid, status, created_at FROM invitations WHERE business_id = $1 AND email != 'link_invite' ORDER BY created_at DESC",
+      [business.id]
+    );
+
+    res.json({ invitations: rows });
+  } catch (err) {
+    console.error('[business/invitations]', err.message);
+    res.status(500).json({ error: 'Server error.' });
   }
 });
 

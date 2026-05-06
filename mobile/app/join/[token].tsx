@@ -120,13 +120,13 @@ export default function JoinBusiness() {
 
     setRegLoading(true);
     try {
-      // Register
-      const regRes = await api.post('/auth/register', {
+      // Register via invite — skips OTP, auto-generates username
+      const regRes = await api.post('/auth/register-via-invite', {
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
         photo_base64: photoB64,
-        account_type: 'individual',
+        invite_token: inviteToken,
       });
       const regToken = regRes.data.token;
       setJoinToken(regToken);

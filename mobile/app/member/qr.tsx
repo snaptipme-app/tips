@@ -33,7 +33,7 @@ export default function MemberQR() {
   const [savingSettings, setSavingSettings] = useState(false);
 
   const username = user?.username || '';
-  const tipUrl = `https://snaptip.me/${username}`;
+  const tipUrl = username ? `https://snaptip.me/${username}` : null;
 
   const employee = {
     username,
@@ -46,14 +46,15 @@ export default function MemberQR() {
     api.get('/business/member-business')
       .then(res => setBusiness(res.data.business || null))
       .catch(() => {});
-    // Load saved QR settings
-    api.get(`/employee/${user?.username}`)
-      .then(res => {
-        if (res.data.custom_message) setCustomMessage(res.data.custom_message);
-        if (res.data.show_photo_on_card !== undefined) setShowPhoto(res.data.show_photo_on_card !== 0);
-      })
-      .catch(() => {});
-  }, [user?.username]);
+    if (username) {
+      api.get(`/employee/${username}`)
+        .then(res => {
+          if (res.data.custom_message) setCustomMessage(res.data.custom_message);
+          if (res.data.show_photo_on_card !== undefined) setShowPhoto(res.data.show_photo_on_card !== 0);
+        })
+        .catch(() => {});
+    }
+  }, [username]);
 
   const handleSaveSettings = async () => {
     setSavingSettings(true);
@@ -71,6 +72,7 @@ export default function MemberQR() {
   };
 
   const handleDownload = async () => {
+    if (!tipUrl) { showToast('Cannot generate QR — username not set up yet.', 'error'); return; }
     setCapturing(true);
     await downloadAndShareQRCard(
       employee,
@@ -84,6 +86,7 @@ export default function MemberQR() {
   };
 
   const handlePreview = () => {
+    if (!tipUrl) { showToast('Username not set up yet.', 'error'); return; }
     Linking.openURL(tipUrl).catch(() =>
       showToast('Could not open browser.', 'error')
     );
@@ -136,7 +139,19 @@ export default function MemberQR() {
           shadowRadius: 24,
           elevation: 10,
         }}>
-          <PrintableQRCard employee={employee} business={business} customMessage={customMessage} showPhoto={showPhoto} />
+          {username ? (
+            <PrintableQRCard employee={employee} business={business} customMessage={customMessage} showPhoto={showPhoto} />
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
+              <Ionicons name="qr-code-outline" size={56} color="rgba(255,255,255,0.12)" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                QR code not available yet
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 20 }}>
+                Your username has not been set up.{'\n'}Contact support or complete your profile.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Customize Your Card ── */}

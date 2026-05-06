@@ -203,6 +203,101 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// POST /api/auth/register-via-invite
+// Skips OTP — the invite token acts as email trust. Auto-generates username from full_name.
+router.post('/register-via-invite', async (req, res) => {
+  try {
+    const { full_name, email, password, invite_token, photo_base64 } = req.body;
+
+    if (!full_name || !email || !password || !invite_token) {
+      return res.status(400).json({ error: 'full_name, email, password, and invite_token are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Validate invite token
+    const { rows: invRows } = await pool.query(
+      "SELECT * FROM invitations WHERE token = $1 AND is_valid = TRUE AND status IN ('pending','active')",
+      [invite_token]
+    );
+    const invitation = invRows[0];
+    if (!invitation) {
+      return res.status(400).json({ error: 'Invalid or revoked invitation token.' });
+    }
+
+    // If invite was for a specific email, enforce it
+    if (invitation.email && invitation.email !== 'link_invite' && invitation.email !== normalizedEmail) {
+      return res.status(400).json({ error: 'This invitation was sent to a different email address.' });
+    }
+
+    // Check email not already registered
+    const { rows: existingEmails } = await pool.query('SELECT id FROM employees WHERE email = $1', [normalizedEmail]);
+    if (existingEmails.length > 0) {
+      return res.status(400).json({ error: 'An account with this email already exists.' });
+    }
+
+    // Auto-generate username from full_name (lowercase alphanum, max 14 chars + 4-digit suffix)
+    const nameParts = full_name.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
+    const baseUsername = full_name.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14);
+
+    let username = baseUsername + Math.floor(1000 + Math.random() * 9000);
+    for (let i = 0; i < 5; i++) {
+      const { rows: taken } = await pool.query('SELECT id FROM employees WHERE username = $1', [username]);
+      if (taken.length === 0) break;
+      username = baseUsername + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    // Derive country/currency from invite
+    const userCountry = invitation.required_country || 'Morocco';
+    const currencyMap = {
+      Morocco: 'MAD', UAE: 'AED', 'United States': 'USD',
+      France: 'EUR', Spain: 'EUR', Germany: 'EUR', Italy: 'EUR',
+      Philippines: 'PHP', Indonesia: 'IDR', Thailand: 'THB',
+    };
+    const userCurrency = currencyMap[userCountry] || 'MAD';
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const { rows: insertRows } = await pool.query(
+      `INSERT INTO employees
+         (username, full_name, first_name, last_name, email, password, account_type, country, currency, photo_base64, custom_message, show_photo_on_card, reset_code_expires)
+       VALUES ($1, $2, $3, $4, $5, $6, 'individual', $7, $8, $9, '', 1, 0) RETURNING id`,
+      [username, fullName, firstName, lastName, normalizedEmail, hashedPassword, userCountry, userCurrency, photo_base64 || '']
+    );
+
+    const id = insertRows[0].id;
+
+    const token = jwt.sign(
+      { id, username, email: normalizedEmail, is_admin: 0 },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('[register-via-invite] created account:', username, 'for', normalizedEmail);
+
+    res.status(201).json({
+      token,
+      employee: {
+        id, username, full_name: fullName, first_name: firstName, last_name: lastName,
+        email: normalizedEmail, profile_image_url: '', photo_url: '',
+        photo_base64: photo_base64 || '', is_admin: 0, account_type: 'individual',
+        country: userCountry, currency: userCurrency, balance: 0, total_tips: 0,
+        job_title: '', custom_message: '', show_photo_on_card: 1,
+      },
+    });
+  } catch (err) {
+    console.error('[register-via-invite]', err.message, err.code, err.detail);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
