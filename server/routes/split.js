@@ -6,8 +6,57 @@ const { searchLimiter } = require('../middleware/rateLimit');
 const { logFromReq } = require('../lib/audit');
 
 /* ══════════════════════════════════════════════════════
+   GET /api/split/search?q=<partial>
+   Partial-match username search for autocomplete.
+   Returns up to 5 results ordered: exact first, prefix
+   matches second, substring matches last.
+   Auth required.
+   ══════════════════════════════════════════════════════ */
+router.get('/search', authMiddleware, searchLimiter, async (req, res) => {
+  try {
+    const { q } = req.query;
+    const senderId = req.employee.id;
+
+    const cleaned = String(q || '').trim().toLowerCase().replace(/^@/, '');
+    if (cleaned.length < 2) {
+      return res.json({ results: [] });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, full_name, username, profile_image_url, photo_url, photo_base64, currency
+       FROM employees
+       WHERE LOWER(username) ILIKE $1
+         AND id != $2
+         AND deleted_at IS NULL
+         AND is_suspended = 0
+       ORDER BY
+         CASE WHEN LOWER(username) = $3        THEN 0
+              WHEN LOWER(username) LIKE $4      THEN 1
+              ELSE 2 END,
+         username ASC
+       LIMIT 5`,
+      [`%${cleaned}%`, senderId, cleaned, `${cleaned}%`]
+    );
+
+    const results = rows.map(u => ({
+      id: u.id,
+      fullName: u.full_name,
+      username: u.username,
+      profilePicture: u.photo_url || u.profile_image_url || null,
+      photoBase64: u.photo_base64 || null,
+      currency: u.currency || 'MAD',
+    }));
+
+    res.json({ results });
+  } catch (err) {
+    console.error('[split/search]', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+/* ══════════════════════════════════════════════════════
    GET /api/split/verify/:username
-   Returns minimal public info for recipient lookup.
+   Exact-match lookup kept for backwards compatibility.
    Auth required (only logged-in employees can search).
    ══════════════════════════════════════════════════════ */
 router.get('/verify/:username', authMiddleware, searchLimiter, async (req, res) => {

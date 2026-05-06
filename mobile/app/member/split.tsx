@@ -17,14 +17,23 @@ const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const DROPDOWN_BG = '#080818';
 
-interface VerifiedUser {
+interface SearchResult {
   id: number;
   fullName: string;
   username: string;
   profilePicture: string | null;
   photoBase64: string | null;
   currency: string;
+}
+
+function resultPhoto(u: SearchResult) {
+  if (u.profilePicture) {
+    return { uri: u.profilePicture.startsWith('http') ? u.profilePicture : `https://snaptip.me${u.profilePicture}` };
+  }
+  if (u.photoBase64) return getImageSource(u.photoBase64);
+  return null;
 }
 
 export default function SplitTip() {
@@ -38,7 +47,8 @@ export default function SplitTip() {
   // ── Search state ──
   const [searchText, setSearchText] = useState('');
   const [searching, setSearching] = useState(false);
-  const [verified, setVerified] = useState<VerifiedUser | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [verified, setVerified] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,28 +56,21 @@ export default function SplitTip() {
   const [amount, setAmount] = useState('');
   const [sending, setSending] = useState(false);
 
-  // ── Debounced search ──
-  const searchUser = useCallback(async (username: string) => {
-    const cleaned = username.trim().replace(/^@/, '');
-    if (cleaned.length < 3) {
-      setVerified(null);
-      setSearchError('');
-      return;
-    }
-
+  // ── Partial search ──
+  const searchUsers = useCallback(async (cleaned: string) => {
     setSearching(true);
     setSearchError('');
-    setVerified(null);
+    setSearchResults([]);
 
     try {
-      const { data } = await api.get(`/split/verify/${encodeURIComponent(cleaned)}`);
-      setVerified(data);
-      setSearchError('');
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'User not found';
-      setSearchError(msg);
-      setVerified(null);
+      const { data } = await api.get(`/split/search?q=${encodeURIComponent(cleaned)}`);
+      const results: SearchResult[] = data.results || [];
+      setSearchResults(results);
+      if (results.length === 0) {
+        setSearchError('No users found matching that name.');
+      }
+    } catch {
+      setSearchError('Search failed. Please try again.');
     } finally {
       setSearching(false);
     }
@@ -75,18 +78,28 @@ export default function SplitTip() {
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchText(text);
+    setVerified(null);
+    setSearchResults([]);
+    setSearchError('');
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const cleaned = text.trim().replace(/^@/, '');
-    if (cleaned.length < 3) {
-      setVerified(null);
-      setSearchError('');
+    if (cleaned.length < 2) {
       setSearching(false);
       return;
     }
 
-    debounceRef.current = setTimeout(() => searchUser(text), 500);
-  }, [searchUser]);
+    debounceRef.current = setTimeout(() => searchUsers(cleaned), 500);
+  }, [searchUsers]);
+
+  const handleSelectUser = useCallback((u: SearchResult) => {
+    setVerified(u);
+    setSearchResults([]);
+    setSearchError('');
+    setSearchText(u.username);
+    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -111,17 +124,14 @@ export default function SplitTip() {
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
       showToast(data.message || `${amt.toFixed(2)} ${cur} sent!`, 'success');
 
-      // Update local balance
       if (data.newBalance !== undefined) {
         updateUser({ balance: data.newBalance });
       }
 
-      // Reset form
       setSearchText('');
       setVerified(null);
       setAmount('');
 
-      // Go back after a short delay
       setTimeout(() => router.back(), 1500);
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Failed to send split';
@@ -132,12 +142,16 @@ export default function SplitTip() {
     }
   }, [verified, amt, balance, cur, showToast, updateUser, router]);
 
-  // ── Recipient photo ──
-  const recipientPhoto = verified?.profilePicture
-    ? { uri: verified.profilePicture.startsWith('http') ? verified.profilePicture : `https://snaptip.me${verified.profilePicture}` }
-    : verified?.photoBase64
-      ? getImageSource(verified.photoBase64)
-      : null;
+  const recipientPhoto = verified ? resultPhoto(verified) : null;
+
+  // Border color for the search card
+  const cardBorderColor = verified
+    ? 'rgba(0,200,150,0.3)'
+    : searchError && !searching
+      ? 'rgba(239,68,68,0.3)'
+      : searchResults.length > 0
+        ? 'rgba(0,255,204,0.2)'
+        : BORDER;
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -195,10 +209,11 @@ export default function SplitTip() {
             backgroundColor: CARD,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: verified ? 'rgba(0,200,150,0.3)' : searchError ? 'rgba(239,68,68,0.3)' : BORDER,
+            borderColor: cardBorderColor,
             padding: 16,
             marginBottom: 20,
           }}>
+            {/* Input row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="search" size={20} color={ACCENT} />
@@ -206,7 +221,7 @@ export default function SplitTip() {
               <TextInput
                 value={searchText}
                 onChangeText={handleSearchChange}
-                placeholder="Enter @username"
+                placeholder="Type a username..."
                 placeholderTextColor="rgba(255,255,255,0.2)"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -224,10 +239,80 @@ export default function SplitTip() {
               {searching && (
                 <ActivityIndicator size="small" color={ACCENT} />
               )}
+              {verified && !searching && (
+                <TouchableOpacity
+                  onPress={() => { setVerified(null); setSearchText(''); setSearchResults([]); setSearchError(''); }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.3)" />
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Search Error */}
-            {searchError && !searching && searchText.length >= 2 && (
+            {/* Searching indicator */}
+            {searching && (
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 12 }}>
+                Searching...
+              </Text>
+            )}
+
+            {/* Autocomplete dropdown */}
+            {!searching && searchResults.length > 0 && !verified && (
+              <View style={{
+                marginTop: 10,
+                backgroundColor: DROPDOWN_BG,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.08)',
+                overflow: 'hidden',
+              }}>
+                {searchResults.map((u, i) => {
+                  const photo = resultPhoto(u);
+                  return (
+                    <TouchableOpacity
+                      key={u.id}
+                      onPress={() => handleSelectUser(u)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingHorizontal: 14,
+                        paddingVertical: 13,
+                        borderBottomWidth: i < searchResults.length - 1 ? 1 : 0,
+                        borderBottomColor: 'rgba(255,255,255,0.05)',
+                      }}
+                    >
+                      <View style={{
+                        width: 38, height: 38, borderRadius: 19,
+                        overflow: 'hidden',
+                        backgroundColor: 'rgba(0,255,204,0.12)',
+                        justifyContent: 'center', alignItems: 'center',
+                      }}>
+                        {photo ? (
+                          <Image source={photo} style={{ width: 38, height: 38 }} />
+                        ) : (
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: ACCENT }}>
+                            {(u.fullName || '?')[0].toUpperCase()}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{u.fullName}</Text>
+                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>
+                          @{u.username} · {u.currency}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Error — only shown after search completes with no results */}
+            {!searching && searchError && !verified && searchResults.length === 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
                 <Ionicons name="close-circle" size={16} color="#ef4444" />
                 <Text style={{ fontSize: 13, color: '#ef4444', fontWeight: '500' }}>{searchError}</Text>
