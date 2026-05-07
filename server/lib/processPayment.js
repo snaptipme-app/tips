@@ -66,14 +66,16 @@ function sendExpoPush(pushToken, title, body, data) {
  * @param {string}  currency      - Currency code (e.g. 'MAD', 'EUR', 'USD', 'AED')
  * @returns {object} The created payment object
  */
-async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD') {
-  console.log(`[DEBUG processPayment] employeeId=${employeeId} amount=${amount} currency=${currency} method=${method}`);
+async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD', rating = null) {
+  console.log(`[DEBUG processPayment] employeeId=${employeeId} amount=${amount} currency=${currency} method=${method} rating=${rating}`);
 
-  // 1. Insert payment record (with currency for full traceability)
+  const safeRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
+
+  // 1. Insert payment record (with currency + rating for full traceability)
   const { rows: paymentRows } = await pool.query(
-    `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency)
-     VALUES ($1, $2, $3, 'completed', $4, $5, $6) RETURNING *`,
-    [employeeId, amount, method, transactionId || null, touristEmail || null, currency]
+    `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency, rating)
+     VALUES ($1, $2, $3, 'completed', $4, $5, $6, $7) RETURNING *`,
+    [employeeId, amount, method, transactionId || null, touristEmail || null, currency, safeRating]
   );
   const payment = paymentRows[0];
   console.log(`[DEBUG processPayment] Payment inserted: id=${payment?.id}, currency=${payment?.currency}`);

@@ -347,6 +347,28 @@ router.get('/:username', async (req, res) => {
     }
 
     const emp = rows[0];
+
+    // Public stats — tip count + rating average for the tourist tip page
+    try {
+      const { rows: statRows } = await pool.query(
+        `SELECT COUNT(*)::INT AS tip_count,
+                COUNT(rating)::INT AS rating_count,
+                COALESCE(AVG(rating), 0)::FLOAT AS rating_avg
+         FROM payments
+         WHERE employee_id = $1 AND status = 'completed'
+           AND payment_method IN ('mock','stripe')`,
+        [emp.id]
+      );
+      const s = statRows[0] || {};
+      emp.tip_count = s.tip_count || 0;
+      emp.rating_count = s.rating_count || 0;
+      emp.rating_avg = s.rating_count > 0 ? Number(s.rating_avg.toFixed(1)) : null;
+    } catch (_) {
+      emp.tip_count = 0;
+      emp.rating_count = 0;
+      emp.rating_avg = null;
+    }
+
     // Ensure currency is always set — derive from country if missing
     if (!emp.currency) {
       const COUNTRY_CURRENCY = {

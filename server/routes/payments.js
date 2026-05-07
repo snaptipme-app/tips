@@ -20,6 +20,7 @@ router.post('/mock', async (req, res) => {
       currency: requestedCurrency = null,
       tourist_email = null,
       payment_method = 'mock',
+      rating = null,
     } = req.body;
 
     // Validation
@@ -60,7 +61,8 @@ router.post('/mock', async (req, res) => {
 
     console.log(`[DEBUG payments/mock] Employee: ${employee.full_name}, DB currency=${employee.currency}, derived=${employeeCurrency}`);
 
-    // Process payment using shared function — with the REAL currency
+    // Process payment using shared function — with the REAL currency + optional rating
+    const safeRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
     const payment = await processSuccessfulPayment(
       pool,
       employee.id,
@@ -68,7 +70,8 @@ router.post('/mock', async (req, res) => {
       'mock',
       null,
       tourist_email,
-      employeeCurrency
+      employeeCurrency,
+      safeRating
     );
 
     console.log(

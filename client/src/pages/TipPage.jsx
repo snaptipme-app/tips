@@ -3,116 +3,85 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
-/* ─── Suggested tip amounts per currency ─────────────────────────────── */
+/* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
-  // Hard currencies
-  USD: [2,  5,   10,   20 ],
-  EUR: [2,  5,   10,   20 ],
-  GBP: [1,  2,    5,   10 ],
-  // Dirham / Franc
-  MAD: [20, 50,  100,  200],
-  AED: [10, 20,   50,  100],
-  // South-East Asia
-  PHP: [50, 100, 200,  500],
-  THB: [50, 100, 200,  500],
+  USD: [2,    5,     10,    20    ],
+  EUR: [2,    5,     10,    20    ],
+  GBP: [1,    2,     5,     10    ],
+  MAD: [20,   50,    100,   200   ],
+  AED: [10,   20,    50,    100   ],
+  PHP: [50,   100,   200,   500   ],
+  THB: [50,   100,   200,   500   ],
   IDR: [20000, 50000, 100000, 200000],
 };
+
+const TIER_META = [
+  { emoji: '☕', label: 'Quick Thanks',   variant: 'subtle'   },
+  { emoji: '🌟', label: 'Great Service',  variant: 'popular'  },
+  { emoji: '💎', label: 'Excellent',      variant: 'cyan'     },
+  { emoji: '👑', label: 'Outstanding',    variant: 'gold'     },
+];
 
 function getTipPresets(currency) {
   return SUGGESTED_TIPS[currency] ?? SUGGESTED_TIPS.USD;
 }
 
 function formatCurrency(amount, currency) {
-  if (!amount && amount !== 0) return '';
-  switch (currency) {
-    case 'USD': return `$${amount}`;
-    case 'EUR': return `€${amount}`;
-    case 'GBP': return `£${amount}`;
-    default:    return `${amount} ${currency || 'USD'}`;
-  }
+  if (amount == null) return '';
+  return `${amount} ${currency || 'MAD'}`;
 }
 
-function getCurrencyPrefix(currency) {
-  switch (currency) {
-    case 'USD': return '$';
-    case 'EUR': return '€';
-    case 'GBP': return '£';
-    default:    return '';
-  }
-}
-
-function getCurrencySuffix(currency) {
-  switch (currency) {
-    case 'USD': case 'EUR': case 'GBP': return '';
-    default: return ` ${currency || 'USD'}`;
-  }
+/* ─── Slider range — adapt to currency magnitude ──────────────────────── */
+function getSliderConfig(presets) {
+  const [first, , , last] = presets;
+  const min = Math.max(1, Math.floor(first / 2));
+  const max = Math.ceil(last * 2.5);
+  const step = first >= 10000 ? 1000 : first >= 100 ? 10 : first >= 10 ? 5 : 1;
+  return { min, max, step };
 }
 
 /* ─── SVG Components ─────────────────────────────────────────────────── */
 const SnapTipIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32" style={{ borderRadius: '10px', display: 'block' }}>
-    <rect width="1024" height="1024" rx="225" fill="#1a1a1a" />
-    <path d="M620 200 L340 580 H540 L440 840 L720 460 H520 L620 200 Z" fill="#00FF66" stroke="#00FF66" strokeWidth="15" strokeLinejoin="round" />
+  <svg viewBox="0 0 24 24" width="22" height="22" style={{ display: 'block' }}>
+    <path d="M14 2L4 14h7l-1 8 10-12h-7l1-8z" fill="#00FF66" stroke="#00FF66" strokeWidth="0.5" strokeLinejoin="round" />
   </svg>
 );
 
-const ApplePayLogo = () => (
-  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: '#000', borderRadius: '6px', padding: '4px 10px', height: '28px' }}>
-    <svg width="12" height="14" viewBox="0 0 14 17" fill="white"><path d="M13.1 5.7c-.1.1-1.9 1.1-1.9 3.3 0 2.6 2.3 3.5 2.3 3.5 0 .1-.4 1.2-1.2 2.4-.7 1-1.5 2.1-2.6 2.1s-1.5-.6-2.8-.6c-1.4 0-1.8.7-2.9.7s-1.7-.9-2.5-2.1C.4 13.3 0 11.1 0 9 0 5.8 2 4.1 3.9 4.1c1 0 1.9.7 2.5.7.6 0 1.6-.7 2.8-.7.5 0 2.2.1 3.3 1.3l.6.3zm-3.8-1.3c.5-.6.9-1.5.9-2.3 0-.1 0-.3 0-.4-.8 0-1.8.6-2.4 1.2-.4.5-.9 1.4-.9 2.3 0 .1 0 .3 0 .4.1 0 .2 0 .3 0 .8 0 1.6-.5 2.1-1.2z" /></svg>
-    <span style={{ color: '#fff', fontSize: '11px', fontWeight: 600, marginLeft: '2px' }}>Pay</span>
-  </div>
+const VerifiedBadge = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+    <path d="M12 1l2.4 2 3.1-.4 1 3 2.9 1.3-.5 3.1L23 12l-2.1 2-.5 3.1-2.9 1.3-1 3-3.1-.4L12 23l-2.4-2-3.1.4-1-3-2.9-1.3.5-3.1L1 12l2.1-2 .5-3.1 2.9-1.3 1-3 3.1.4L12 1z" fill="#00C896"/>
+    <path d="M7.5 12.3l3 3 6-6.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
 );
 
-const GooglePayLogo = () => (
-  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: '#fff', borderRadius: '6px', padding: '4px 10px', height: '28px' }}>
-    <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '-0.02em' }}>
-      <span style={{ color: '#4285f4' }}>G</span>
-      <span style={{ color: '#ea4335' }}>P</span>
-      <span style={{ color: '#fbbc05' }}>a</span>
-      <span style={{ color: '#4285f4' }}>y</span>
-    </span>
-  </div>
+const RestaurantIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+  </svg>
 );
 
-const CreditCardIcon = () => (
-  <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-    <svg width="32" height="22" viewBox="0 0 32 22" fill="none">
-      <rect width="32" height="22" rx="4" fill="#1a3c7d" />
-      <rect x="0" y="6" width="32" height="3" fill="#d4380d" />
-      <rect x="0" y="9" width="32" height="3" fill="#ffd666" />
-    </svg>
-  </div>
+const VisaSmall = () => (
+  <span style={{ background: '#fff', borderRadius: 3, padding: '2px 5px', fontSize: 9, fontWeight: 800, color: '#1a1f71', fontStyle: 'italic', letterSpacing: '-0.02em', display: 'inline-block', lineHeight: 1 }}>VISA</span>
 );
-
-const VisaLogo = () => (
-  <div style={{ background: '#fff', borderRadius: '4px', padding: '2px 6px', height: '22px', display: 'flex', alignItems: 'center' }}>
-    <span style={{ fontSize: '11px', fontWeight: 800, color: '#1a1f71', fontStyle: 'italic', letterSpacing: '-0.02em' }}>VISA</span>
-  </div>
-);
-
-const MastercardLogo = () => (
-  <svg width="28" height="18" viewBox="0 0 28 18" fill="none">
+const MastercardSmall = () => (
+  <svg width="22" height="14" viewBox="0 0 28 18" fill="none">
     <circle cx="10" cy="9" r="8" fill="#eb001b" />
     <circle cx="18" cy="9" r="8" fill="#f79e1b" />
     <path d="M14 1.46a8 8 0 0 1 0 15.08A8 8 0 0 1 14 1.46z" fill="#ff5f00" />
   </svg>
 );
-
-const AmexLogo = () => (
-  <div style={{ background: '#016fd0', borderRadius: '4px', padding: '2px 5px', height: '22px', display: 'flex', alignItems: 'center' }}>
-    <span style={{ fontSize: '8px', fontWeight: 800, color: '#fff', letterSpacing: '0.02em' }}>AMEX</span>
-  </div>
+const AmexSmall = () => (
+  <span style={{ background: '#016fd0', borderRadius: 3, padding: '2px 4px', fontSize: 7, fontWeight: 800, color: '#fff', display: 'inline-block', lineHeight: 1 }}>AMEX</span>
 );
 
-const CheckCircleGreen = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <circle cx="11" cy="11" r="11" fill="#00C896" />
-    <path d="M6 11l3.5 3.5L16 8" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+const StarIcon = ({ filled, size = 32 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? '#f59e0b' : 'none'} stroke={filled ? '#f59e0b' : 'rgba(255,255,255,0.25)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
 
 const LockIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
@@ -133,111 +102,101 @@ function getPhotoSrc(employee) {
 function AvatarFallback({ name }) {
   const letter = (name || 'U').charAt(0).toUpperCase();
   return (
-    <div style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,200,150,0.12)' }}>
-      <span style={{ fontSize: '32px', fontWeight: 700, color: '#00C896' }}>{letter}</span>
+    <div style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,200,150,0.15)' }}>
+      <span style={{ fontSize: '64px', fontWeight: 700, color: '#00C896' }}>{letter}</span>
     </div>
   );
 }
 
 const PAYMENT_METHODS = [
-  { id: 'apple', label: 'Apple Pay', Logo: ApplePayLogo },
-  { id: 'google', label: 'Google Pay', Logo: GooglePayLogo },
-  { id: 'card', label: 'Pay with Card', Logo: CreditCardIcon },
+  { id: 'apple',  label: 'Apple Pay',     bg: '#000', logo: 'apple'  },
+  { id: 'google', label: 'Google Pay',    bg: '#fff', logo: 'google' },
+  { id: 'card',   label: 'Pay with Card', bg: 'rgba(255,255,255,0.05)', logo: 'card' },
 ];
 
-/* ─── Animated SVG Checkmark ──────────────────────────────────────────── */
+/* ─── Animated checkmark for success ──────────────────────────────────── */
 function AnimatedCheckmark() {
   return (
     <div style={{
-      width: '88px', height: '88px', borderRadius: '50%',
+      width: 88, height: 88, borderRadius: '50%',
       background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
       boxShadow: '0 0 48px rgba(0,200,150,0.5), 0 0 96px rgba(0,200,150,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       animation: 'scaleIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
     }}>
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M5 13l4 4L19 7"
-          stroke="#fff"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            strokeDasharray: 30,
-            strokeDashoffset: 30,
-            animation: 'drawCheck 0.6s ease 0.3s forwards',
-          }}
-        />
+        <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.6s ease 0.3s forwards' }} />
       </svg>
     </div>
   );
 }
 
-/* ─── Success Screen ──────────────────────────────────────────────────── */
 function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, onClose, t }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: `
-        radial-gradient(ellipse at bottom left, rgba(0,200,150,0.18) 0%, transparent 60%),
-        radial-gradient(ellipse at top right, rgba(0,255,102,0.06) 0%, transparent 60%),
-        #1a1a1a
-      `,
-      padding: '20px',
-      animation: 'fadeIn 0.3s ease-out',
+      background: `radial-gradient(ellipse at bottom left, rgba(0,200,150,0.18) 0%, transparent 60%), radial-gradient(ellipse at top right, rgba(0,255,102,0.06) 0%, transparent 60%), #1a1a1a`,
+      padding: 20, animation: 'fadeIn 0.3s ease-out',
     }}>
       <AnimatedCheckmark />
-
-      <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '28px', marginBottom: '12px', textAlign: 'center' }}>
-        {t.successTitle}
-      </h2>
-
-      <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: '8px', lineHeight: '1.6' }}>
+      <h2 style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginTop: 28, marginBottom: 12, textAlign: 'center' }}>{t.successTitle}</h2>
+      <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
         Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span> has been sent to{' '}
         <span style={{ color: '#fff', fontWeight: 600 }}>{employeeName}</span>
       </p>
-
       {thankYouMessage && (
-        <div style={{
-          background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '16px 20px',
-          border: '1px solid rgba(255,255,255,0.06)', marginTop: '12px', marginBottom: '8px',
-          maxWidth: '340px', width: '100%',
-        }}>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontStyle: 'italic', lineHeight: '1.5', margin: 0 }}>
-            "{thankYouMessage}"
-          </p>
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '16px 20px', border: '1px solid rgba(255,255,255,0.06)', marginTop: 12, marginBottom: 8, maxWidth: 340, width: '100%' }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.5, margin: 0 }}>"{thankYouMessage}"</p>
         </div>
       )}
-
-      <button
-        onClick={onClose}
-        style={{
-          width: '100%', maxWidth: '340px', height: '56px', borderRadius: '50px',
-          background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
-          boxShadow: '0 8px 32px rgba(0,200,150,0.4)',
-          border: 'none', color: '#1a1a1a', fontSize: '18px', fontWeight: 700,
-          cursor: 'pointer', marginTop: '32px',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        {t.successButton}
-      </button>
+      <button onClick={onClose} style={{
+        width: '100%', maxWidth: 340, height: 56, borderRadius: 50,
+        background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
+        boxShadow: '0 8px 32px rgba(0,200,150,0.4)',
+        border: 'none', color: '#1a1a1a', fontSize: 18, fontWeight: 700,
+        cursor: 'pointer', marginTop: 32, transition: 'all 0.2s ease',
+      }}>{t.successButton}</button>
     </div>
   );
 }
 
-/* ─── Inline keyframes ────────────────────────────────────────────────── */
+/* ─── Inline keyframes + slider styles ────────────────────────────────── */
 const inlineStyles = `
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes scaleIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @keyframes drawCheck { to { stroke-dashoffset: 0; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 32px rgba(0,200,150,0.35), 0 0 0 0 rgba(0,200,150,0.4); }
+    50%      { box-shadow: 0 0 56px rgba(0,200,150,0.55), 0 0 0 8px rgba(0,200,150,0.0); }
+  }
+
+  .tip-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 50px;
+    outline: none; cursor: pointer;
+  }
+  .tip-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #00C896; border: 3px solid #fff;
+    box-shadow: 0 0 16px rgba(0,200,150,0.6);
+    cursor: pointer; transition: transform 0.15s ease;
+  }
+  .tip-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  .tip-slider::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #00C896; border: 3px solid #fff;
+    box-shadow: 0 0 16px rgba(0,200,150,0.6);
+    cursor: pointer; border: none;
+  }
 `;
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TipPage — Tourist-facing payment page
+   TipPage — Tourist-facing payment page (premium fintech redesign)
    ═══════════════════════════════════════════════════════════════════════ */
 export default function TipPage() {
   const { username } = useParams();
@@ -247,11 +206,10 @@ export default function TipPage() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState('');
 
-  const [selectedAmount, setSelectedAmount] = useState(null);
-  const [customAmount, setCustomAmount] = useState('');
-  const [isCustom, setIsCustom] = useState(false);
-
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [amount, setAmount] = useState(0);          // single source of truth
+  const [rating, setRating] = useState(0);          // 0 = not rated; 1-5 = stars
+  const [hoverRating, setHoverRating] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('apple');
   const [sending, setSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
@@ -279,12 +237,8 @@ export default function TipPage() {
           setEmployee(empRes.value.data);
         } else {
           const status = empRes.reason?.response?.status;
-          if (status === 404) {
-            // Terminal state — never retry
-            setNotFound(true);
-          } else {
-            setError(empRes.reason?.response?.data?.error || 'Something went wrong.');
-          }
+          if (status === 404) setNotFound(true);
+          else setError(empRes.reason?.response?.data?.error || 'Something went wrong.');
         }
         if (bizRes.status === 'fulfilled') {
           setBusiness(bizRes.value.data?.business || null);
@@ -299,42 +253,28 @@ export default function TipPage() {
     return () => controller.abort();
   }, [username]);
 
-  const currency = employee?.currency || null;
-  const tipPresets = useMemo(() => getTipPresets(currency || 'USD'), [currency]);
-  const currencyPrefix = getCurrencyPrefix(currency || 'USD');
-  const currencySuffix = getCurrencySuffix(currency || 'USD');
+  const currency = employee?.currency || 'MAD';
+  const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
+  const sliderCfg = useMemo(() => getSliderConfig(tipPresets), [tipPresets]);
 
-  const handleSelectAmount = (amount) => {
-    setSelectedAmount(amount);
-    setIsCustom(false);
-    setCustomAmount('');
-  };
-
-  const handleCustom = () => {
-    setIsCustom(true);
-    setSelectedAmount(null);
-  };
-
-  const getFinalAmount = () => {
-    if (isCustom) return parseFloat(customAmount) || 0;
-    return selectedAmount || 0;
-  };
+  // Default to "Great Service" once presets are known
+  useEffect(() => {
+    if (employee && amount === 0) setAmount(tipPresets[1]);
+  }, [employee, tipPresets, amount]);
 
   const handlePay = async () => {
-    const amount = getFinalAmount();
     if (amount <= 0) return;
     setSending(true);
     setPaymentError('');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
-      console.log('[DEBUG TipPage] Sending payment:', { employee_username: username, amount, currency });
       const response = await api.post('/payments/mock', {
         employee_username: username,
         amount,
         currency,
         payment_method: paymentMethod,
+        rating: rating > 0 ? rating : null,
       });
-      console.log('[DEBUG TipPage] Payment response:', response.data);
       if (response.data?.success) {
         setTipAmount(amount);
         setShowSuccess(true);
@@ -342,7 +282,6 @@ export default function TipPage() {
         setPaymentError(response.data?.error || 'Payment failed. Please try again.');
       }
     } catch (err) {
-      console.error('[DEBUG TipPage] Payment error:', err?.response?.data || err.message);
       setPaymentError(err?.response?.data?.error || 'Payment failed. Please try again.');
     } finally {
       setSending(false);
@@ -351,18 +290,13 @@ export default function TipPage() {
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
-    setSelectedAmount(null);
-    setCustomAmount('');
-    setIsCustom(false);
+    setAmount(tipPresets[1]);
+    setRating(0);
   };
 
   const pageBg = {
     minHeight: '100dvh',
-    background: `
-      radial-gradient(ellipse at bottom left, rgba(0,200,150,0.12) 0%, transparent 55%),
-      radial-gradient(ellipse at top right, rgba(0,200,150,0.04) 0%, transparent 50%),
-      #1a1a1a
-    `,
+    background: `radial-gradient(ellipse at bottom left, rgba(0,200,150,0.12) 0%, transparent 55%), radial-gradient(ellipse at top right, rgba(0,200,150,0.04) 0%, transparent 50%), #1a1a1a`,
   };
 
   /* ─── Loading ─── */
@@ -370,30 +304,28 @@ export default function TipPage() {
     return (
       <>
         <style>{inlineStyles}</style>
-        <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 40, height: 40, border: '3px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
         </div>
       </>
     );
   }
 
-  /* ─── Not Found (terminal — no retry) ─── */
+  /* ─── Not Found ─── */
   if (notFound) {
     return (
       <>
         <style>{inlineStyles}</style>
-        <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', maxWidth: '360px', width: '100%' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '40px 24px', textAlign: 'center', maxWidth: 360, width: '100%' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
               </svg>
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{t.notFoundTitle || 'User Not Found'}</h2>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>This profile does not exist or may have been removed.</p>
-            <Link to="/login" style={{ fontSize: '13px', color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>
-              {t.employeeLogin}
-            </Link>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{t.notFoundTitle || 'User Not Found'}</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>This profile does not exist or may have been removed.</p>
+            <Link to="/login" style={{ fontSize: 13, color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>{t.employeeLogin}</Link>
           </div>
         </div>
       </>
@@ -405,28 +337,29 @@ export default function TipPage() {
     return (
       <>
         <style>{inlineStyles}</style>
-        <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '40px 24px', textAlign: 'center', maxWidth: '360px', width: '100%' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
-              </svg>
-            </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{t.notFoundTitle}</h2>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>{error}</p>
-            <Link to="/login" style={{ fontSize: '13px', color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>
-              {t.employeeLogin}
-            </Link>
+        <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '40px 24px', textAlign: 'center', maxWidth: 360, width: '100%' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{t.notFoundTitle}</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>{error}</p>
+            <Link to="/login" style={{ fontSize: 13, color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>{t.employeeLogin}</Link>
           </div>
         </div>
       </>
     );
   }
 
-  const finalAmount = getFinalAmount();
   const photoSrc = getPhotoSrc(employee);
-  const payDisabled = sending || finalAmount <= 0;
-  const avgTip = tipPresets[1]; // second value — approachable mid-range suggestion
+  const payDisabled = sending || amount <= 0;
+  const tipCount = employee.tip_count || 0;
+  const ratingAvg = employee.rating_avg;        // null if no ratings yet
+  const ratingDisplay = ratingAvg != null ? ratingAvg.toFixed(1) : '5.0';
+
+  // Slider fill % for the green track
+  const sliderPct = Math.max(
+    0,
+    Math.min(100, ((amount - sliderCfg.min) / (sliderCfg.max - sliderCfg.min)) * 100)
+  );
+  const sliderTrack = `linear-gradient(to right, #00C896 0%, #00C896 ${sliderPct}%, rgba(255,255,255,0.1) ${sliderPct}%, rgba(255,255,255,0.1) 100%)`;
 
   return (
     <>
@@ -445,30 +378,33 @@ export default function TipPage() {
           />
         )}
 
-        <div style={{ width: '100%', maxWidth: '390px', padding: '0 20px' }}>
+        <div style={{ width: '100%', maxWidth: 420, padding: '0 20px' }}>
 
-          {/* ① Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', paddingTop: '20px', marginBottom: '16px' }}>
+          {/* ── ① Header ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 24, marginBottom: 20 }}>
             <SnapTipIcon />
-            <span style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>SnapTip</span>
+            <span style={{ fontSize: 19, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>SnapTip</span>
           </div>
 
-          {/* ② Employee card */}
+          {/* ── ② Hero profile card ── */}
           <div style={{
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: '20px',
-            padding: '28px 24px',
-            marginBottom: '20px',
+            background: 'linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRadius: 24,
+            padding: '32px 24px 26px',
+            marginBottom: 24,
             textAlign: 'center',
-            border: '1px solid rgba(0,200,150,0.1)',
-            boxShadow: '0 0 40px rgba(0,200,150,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
             animation: 'slideUp 0.5s ease-out',
           }}>
+            {/* Photo with green glow */}
             <div style={{
-              width: '90px', height: '90px', borderRadius: '50%',
-              border: '2.5px solid rgba(0,200,150,0.6)',
-              boxShadow: '0 0 20px rgba(0,200,150,0.2)',
-              overflow: 'hidden', margin: '0 auto 14px',
+              width: 168, height: 168, borderRadius: '50%',
+              border: '3px solid #00ffcc',
+              boxShadow: '0 0 48px rgba(0,255,204,0.5), 0 0 80px rgba(0,200,150,0.25)',
+              overflow: 'hidden', margin: '0 auto 18px', position: 'relative',
             }}>
               {photoSrc ? (
                 <img src={photoSrc} alt={employee.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -477,202 +413,256 @@ export default function TipPage() {
               )}
             </div>
 
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', marginBottom: '4px' }}>{employee.full_name}</h1>
-
-            {employee.job_title && (
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>{employee.job_title}</p>
-            )}
-
-            {business && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0,200,150,0.08)', borderRadius: '50px', padding: '4px 12px', marginTop: '4px', border: '1px solid rgba(0,200,150,0.15)' }}>
-                {(business.logo_base64 || business.logo_url) ? (
-                  <img src={business.logo_base64 || business.logo_url} alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', objectFit: 'cover' }} />
-                ) : null}
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(0,200,150,0.8)' }}>{business.business_name}</span>
-              </div>
-            )}
-
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>{t.tagline}</p>
-          </div>
-
-          {/* ③ Tip Amount Selection */}
-          <div style={{ marginBottom: '20px', animation: 'slideUp 0.5s ease-out 0.1s both' }}>
-            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Choose tip amount
-            </h3>
-
-            {/* 2×2 preset grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              {tipPresets.map((amt) => {
-                const isSelected = selectedAmount === amt && !isCustom;
-                return (
-                  <button
-                    key={amt}
-                    onClick={() => handleSelectAmount(amt)}
-                    style={{
-                      height: '56px', borderRadius: '14px',
-                      border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
-                      background: isSelected ? 'rgba(0,200,150,0.12)' : 'rgba(255,255,255,0.05)',
-                      boxShadow: isSelected ? '0 0 20px rgba(0,200,150,0.2)' : 'none',
-                      color: isSelected ? '#00C896' : '#ffffff',
-                      fontSize: '18px', fontWeight: 700,
-                      cursor: 'pointer', transition: 'all 0.2s ease',
-                    }}
-                  >
-                    {formatCurrency(amt, currency)}
-                  </button>
-                );
-              })}
+            {/* Name + verified */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>{employee.full_name}</h1>
+              <VerifiedBadge />
             </div>
 
-            {/* Custom Amount */}
-            <button
-              onClick={handleCustom}
-              style={{
-                width: '100%', height: '52px', borderRadius: '14px',
-                border: isCustom ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
-                background: isCustom ? 'rgba(0,200,150,0.12)' : 'rgba(255,255,255,0.05)',
-                boxShadow: isCustom ? '0 0 20px rgba(0,200,150,0.2)' : 'none',
-                color: isCustom ? '#00C896' : '#ffffff',
-                fontSize: '15px', fontWeight: 700,
-                cursor: 'pointer', transition: 'all 0.2s ease',
-              }}
-            >
-              {t.customAmount}
-            </button>
+            {employee.job_title && (
+              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', margin: '0 0 12px' }}>{employee.job_title}</p>
+            )}
 
-            {isCustom && (
-              <div style={{ marginTop: '10px', position: 'relative', animation: 'fadeIn 0.3s ease-out' }}>
-                {currencyPrefix && (
-                  <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 700 }}>
-                    {currencyPrefix}
-                  </span>
-                )}
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  placeholder={t.enterAmount}
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  autoFocus
-                  style={{
-                    width: '100%', height: '52px', borderRadius: '14px',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(0,200,150,0.3)',
-                    color: '#ffffff', fontSize: '17px', fontWeight: 700,
-                    textAlign: 'center',
-                    paddingLeft: currencyPrefix ? '36px' : '14px',
-                    paddingRight: currencySuffix ? '60px' : '14px',
-                    outline: 'none', boxSizing: 'border-box',
-                  }}
-                />
-                {currencySuffix && (
-                  <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '14px', fontWeight: 600 }}>
-                    {currencySuffix.trim()}
-                  </span>
-                )}
+            {/* Restaurant pill */}
+            {business && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.06)', borderRadius: 50,
+                padding: '6px 14px', marginBottom: 14,
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.7)',
+              }}>
+                <RestaurantIcon />
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{business.business_name}</span>
               </div>
             )}
 
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '10px' }}>
-              Suggested tip: {formatCurrency(avgTip, currency)}
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              Hope you had a great experience!
             </p>
+
+            {/* Stats row */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+              <span style={{ color: '#f59e0b', fontSize: 14 }}>★</span>
+              <span style={{ fontWeight: 600 }}>{ratingDisplay}</span>
+              <span>·</span>
+              <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+            </div>
           </div>
 
-          {/* ④ Payment Method */}
-          <div style={{ marginBottom: '20px', animation: 'slideUp 0.5s ease-out 0.2s both' }}>
-            <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Payment method
-            </h3>
+          {/* ── ③ Tip amount ── */}
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Choose your tip
+          </h3>
 
-            {PAYMENT_METHODS.map((pm) => {
-              const isSelected = paymentMethod === pm.id;
+          {/* 2x2 preset grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18, animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+            {tipPresets.map((amt, i) => {
+              const meta = TIER_META[i];
+              const isSelected = amount === amt;
+              const baseStyle = {
+                position: 'relative', height: 70, borderRadius: 16,
+                cursor: 'pointer', transition: 'all 0.2s ease',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                fontFamily: 'inherit', padding: '8px 4px',
+              };
+              let style;
+              if (meta.variant === 'popular') {
+                style = isSelected
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.15)', border: '2px solid #00ffcc', boxShadow: '0 0 28px rgba(0,255,204,0.4)' }
+                  : { ...baseStyle, background: 'rgba(0,200,150,0.08)', border: '1.5px solid rgba(0,255,204,0.45)', boxShadow: '0 0 18px rgba(0,255,204,0.18)' };
+              } else if (meta.variant === 'cyan') {
+                style = isSelected
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid #00C896', boxShadow: '0 0 24px rgba(0,200,150,0.3)' }
+                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(0,255,204,0.05), rgba(255,255,255,0.03))', border: '1px solid rgba(0,255,204,0.18)' };
+              } else if (meta.variant === 'gold') {
+                style = isSelected
+                  ? { ...baseStyle, background: 'rgba(245,158,11,0.12)', border: '2px solid #f59e0b', boxShadow: '0 0 24px rgba(245,158,11,0.3)' }
+                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(255,255,255,0.03))', border: '1px solid rgba(245,158,11,0.25)' };
+              } else {
+                style = isSelected
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid #00C896', boxShadow: '0 0 24px rgba(0,200,150,0.3)' }
+                  : { ...baseStyle, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' };
+              }
+              const labelColor = meta.variant === 'gold' && !isSelected ? '#f59e0b' :
+                                  isSelected && meta.variant === 'popular' ? '#00ffcc' :
+                                  isSelected ? '#00C896' : '#fff';
               return (
-                <button
-                  key={pm.id}
-                  onClick={() => setPaymentMethod(pm.id)}
-                  style={{
-                    width: '100%', height: '58px', borderRadius: '14px',
-                    display: 'flex', alignItems: 'center',
-                    background: isSelected ? 'rgba(0,200,150,0.07)' : 'rgba(255,255,255,0.04)',
-                    border: isSelected ? '1.5px solid rgba(0,200,150,0.4)' : '1px solid rgba(255,255,255,0.06)',
-                    padding: '0 16px', gap: '14px', marginBottom: '10px',
-                    cursor: 'pointer', transition: 'all 0.2s ease',
-                  }}
-                >
-                  <pm.Logo />
-                  <span style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', flex: 1, textAlign: 'left' }}>{pm.label}</span>
-                  {pm.id === 'card' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <VisaLogo />
-                      <MastercardLogo />
-                      <AmexLogo />
-                    </div>
+                <button key={amt} onClick={() => setAmount(amt)} style={style}>
+                  {meta.variant === 'popular' && (
+                    <span style={{
+                      position: 'absolute', top: -8, right: 10,
+                      background: 'linear-gradient(135deg, #00C896, #00FF66)',
+                      color: '#1a1a1a', fontSize: 8, fontWeight: 800,
+                      padding: '3px 8px', borderRadius: 50, letterSpacing: 0.5,
+                      boxShadow: '0 2px 8px rgba(0,200,150,0.4)',
+                    }}>POPULAR</span>
                   )}
-                  {isSelected && <CheckCircleGreen />}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: labelColor, lineHeight: 1.1 }}>
+                    {meta.emoji} {meta.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+                    {amt} {currency}
+                  </span>
                 </button>
               );
             })}
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}>
-              <LockIcon />
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>SSL encrypted · Secure checkout</span>
+          {/* Custom amount slider */}
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: 16,
+            padding: '16px 18px 18px',
+            border: '1px solid rgba(255,255,255,0.06)',
+            marginBottom: 22,
+            animation: 'slideUp 0.5s ease-out 0.15s both',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>Custom Amount</span>
+              <span style={{ fontSize: 16, color: '#00C896', fontWeight: 800 }}>{amount} {currency}</span>
             </div>
+            <input
+              type="range"
+              className="tip-slider"
+              min={sliderCfg.min}
+              max={sliderCfg.max}
+              step={sliderCfg.step}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              style={{ background: sliderTrack }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+              <span>{sliderCfg.min} {currency}</span>
+              <span>{sliderCfg.max} {currency}</span>
+            </div>
+          </div>
+
+          {/* ── ④ Rating section ── */}
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Rating
+          </h3>
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: 16, padding: '20px 18px',
+            border: '1px solid rgba(255,255,255,0.06)',
+            marginBottom: 22, textAlign: 'center',
+            animation: 'slideUp 0.5s ease-out 0.2s both',
+          }}>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 14px', fontWeight: 600 }}>
+              How was your experience?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setRating(n === rating ? 0 : n)}
+                  onMouseEnter={() => setHoverRating(n)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  style={{ background: 'transparent', border: 'none', padding: 4, cursor: 'pointer', transition: 'transform 0.15s ease' }}
+                >
+                  <StarIcon filled={n <= (hoverRating || rating)} size={32} />
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+              {rating > 0 ? `${rating} / 5` : 'Optional'}
+            </p>
+          </div>
+
+          {/* ── ⑤ Payment method ── */}
+          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+            Payment
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18, animation: 'slideUp 0.5s ease-out 0.25s both' }}>
+            {PAYMENT_METHODS.map((pm) => {
+              const isSelected = paymentMethod === pm.id;
+              const cardStyle = {
+                height: 64, borderRadius: 14,
+                background: pm.bg,
+                border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: isSelected ? '0 0 24px rgba(0,200,150,0.4)' : 'none',
+                cursor: 'pointer', transition: 'all 0.2s ease',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                padding: 6,
+              };
+              return (
+                <button key={pm.id} onClick={() => setPaymentMethod(pm.id)} style={cardStyle}>
+                  {pm.logo === 'apple' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <svg width="14" height="16" viewBox="0 0 14 17" fill="#fff"><path d="M13.1 5.7c-.1.1-1.9 1.1-1.9 3.3 0 2.6 2.3 3.5 2.3 3.5 0 .1-.4 1.2-1.2 2.4-.7 1-1.5 2.1-2.6 2.1s-1.5-.6-2.8-.6c-1.4 0-1.8.7-2.9.7s-1.7-.9-2.5-2.1C.4 13.3 0 11.1 0 9 0 5.8 2 4.1 3.9 4.1c1 0 1.9.7 2.5.7.6 0 1.6-.7 2.8-.7.5 0 2.2.1 3.3 1.3l.6.3zm-3.8-1.3c.5-.6.9-1.5.9-2.3 0-.1 0-.3 0-.4-.8 0-1.8.6-2.4 1.2-.4.5-.9 1.4-.9 2.3 0 .1 0 .3 0 .4.1 0 .2 0 .3 0 .8 0 1.6-.5 2.1-1.2z" /></svg>
+                      <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>Pay</span>
+                    </div>
+                  )}
+                  {pm.logo === 'google' && (
+                    <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>
+                      <span style={{ color: '#4285f4' }}>G</span>
+                      <span style={{ color: '#000', marginLeft: 4 }}>Pay</span>
+                    </span>
+                  )}
+                  {pm.logo === 'card' && (
+                    <>
+                      <span style={{ fontSize: 11, color: '#fff', fontWeight: 700, lineHeight: 1 }}>Pay with Card</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                        <VisaSmall />
+                        <MastercardSmall />
+                        <AmexSmall />
+                      </div>
+                    </>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Payment error */}
           {paymentError && (
             <div style={{
               background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-              borderRadius: '12px', padding: '12px 16px', marginBottom: '12px',
+              borderRadius: 12, padding: '12px 16px', marginBottom: 12,
               textAlign: 'center', animation: 'fadeIn 0.3s ease-out',
             }}>
-              <p style={{ color: '#ef4444', fontSize: '14px', fontWeight: 600, margin: 0 }}>{paymentError}</p>
+              <p style={{ color: '#ef4444', fontSize: 14, fontWeight: 600, margin: 0 }}>{paymentError}</p>
             </div>
           )}
 
-          {/* ⑤ Pay button */}
+          {/* ── ⑥ Pay button ── */}
           <button
             onClick={handlePay}
             disabled={payDisabled}
             style={{
-              width: '100%', height: '58px', borderRadius: '50px',
-              background: payDisabled
-                ? 'rgba(255,255,255,0.08)'
-                : 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
-              boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(0,200,150,0.35)',
+              width: '100%', height: 60, borderRadius: 50,
+              background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
+              boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(0,200,150,0.45)',
               border: 'none',
               color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
-              fontSize: '18px', fontWeight: 700,
+              fontSize: 18, fontWeight: 800,
               opacity: payDisabled ? 0.5 : 1,
               cursor: payDisabled ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-              animation: 'slideUp 0.5s ease-out 0.3s both',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              animation: payDisabled ? 'slideUp 0.5s ease-out 0.3s both' : 'slideUp 0.5s ease-out 0.3s both, pulseGlow 2.4s ease-in-out 1.5s infinite',
+              letterSpacing: '-0.01em',
             }}
           >
             {sending ? (
               <>
-                <div style={{ width: '20px', height: '20px', border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                <div style={{ width: 20, height: 20, border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
                 Processing...
               </>
             ) : (
-              finalAmount > 0
-                ? `${t.payButton} ${formatCurrency(finalAmount, currency)}`
-                : t.payButton
+              `Pay ${amount} ${currency}`
             )}
           </button>
 
-          {/* ⑥ Footer */}
-          <div style={{ textAlign: 'center', marginTop: '20px', paddingBottom: '32px', animation: 'slideUp 0.5s ease-out 0.4s both' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
+          {/* ── ⑦ Footer ── */}
+          <div style={{ textAlign: 'center', marginTop: 18, paddingBottom: 32, animation: 'slideUp 0.5s ease-out 0.4s both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10, color: 'rgba(255,255,255,0.3)' }}>
               <LockIcon />
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>Secure payment · Powered by SnapTip</span>
+              <span style={{ fontSize: 12 }}>Secure payment · Powered by SnapTip</span>
             </div>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', marginBottom: '8px' }}>No account needed</p>
-            <Link to="/login" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>
-              {t.employeeLogin}
+            <Link to="/login" style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontWeight: 500 }}>
+              {t.employeeLogin} →
             </Link>
           </div>
         </div>
