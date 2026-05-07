@@ -59,6 +59,7 @@ export default function Profile() {
   const { toast, showToast } = useToast();
   const balance = user?.balance ?? 0;
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [totalEarned, setTotalEarned] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [localPhotoUri, setLocalPhotoUri] = useState('');
@@ -110,6 +111,7 @@ export default function Profile() {
       const fetchedBalance = data.employee?.balance ?? data.balance ?? 0;
       updateUser({ balance: fetchedBalance });
       setWithdrawals(data.recent_withdrawals || data.withdrawals || []);
+      setTotalEarned(data.total_tips ?? 0);
     } catch {} finally { setLoading(false); }
   }, [updateUser]);
 
@@ -303,6 +305,22 @@ export default function Profile() {
             <Ionicons name="create-outline" size={14} color="rgba(255,255,255,0.5)" />
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('edit_profile')}</Text>
           </TouchableOpacity>
+
+          {/* ── Earnings Summary Rows ── */}
+          <View style={{ width: '100%', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Earned</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalEarned.toFixed(2)} {user?.currency || 'MAD'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Withdrawn</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{Math.max(0, totalEarned - balance).toFixed(2)} {user?.currency || 'MAD'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Available Balance</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
+            </View>
+          </View>
         </View>
 
         {/* ── Withdraw Funds (non-business only) ── */}
