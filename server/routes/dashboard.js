@@ -21,6 +21,27 @@ router.get('/', authMiddleware, async (req, res) => {
     const { rows: tipStatsRows } = await pool.query('SELECT COALESCE(SUM(amount), 0) as total_tips, COUNT(*) as tip_count FROM tips WHERE employee_id = $1', [employeeId]);
     const tipStats = tipStatsRows[0] || { total_tips: 0, tip_count: 0 };
 
+    // Rating stats from payments table
+    const { rows: ratingRows } = await pool.query(
+      `SELECT
+         COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)::FLOAT AS average_rating,
+         COUNT(rating)::INT AS total_ratings,
+         COUNT(CASE WHEN rating = 1 THEN 1 END)::INT AS r1,
+         COUNT(CASE WHEN rating = 2 THEN 1 END)::INT AS r2,
+         COUNT(CASE WHEN rating = 3 THEN 1 END)::INT AS r3,
+         COUNT(CASE WHEN rating = 4 THEN 1 END)::INT AS r4,
+         COUNT(CASE WHEN rating = 5 THEN 1 END)::INT AS r5
+       FROM payments
+       WHERE employee_id = $1 AND rating IS NOT NULL AND status = 'completed'`,
+      [employeeId]
+    );
+    const rs = ratingRows[0] || {};
+    const rating_stats = {
+      average_rating: (rs.total_ratings > 0) ? Number(rs.average_rating) : null,
+      total_ratings: rs.total_ratings || 0,
+      rating_breakdown: { 1: rs.r1||0, 2: rs.r2||0, 3: rs.r3||0, 4: rs.r4||0, 5: rs.r5||0 },
+    };
+
     const { rows: recentTips } = await pool.query(
       `(SELECT t.id, t.amount::REAL, COALESCE(t.currency, 'MAD') AS currency,
           NULL::TEXT AS payment_method, NULL::INTEGER AS sender_id, NULL::TEXT AS sender_name,
@@ -71,6 +92,7 @@ router.get('/', authMiddleware, async (req, res) => {
       tip_count: Number(tipStats.tip_count) || 0,
       recent_tips: tipsOut,
       recent_withdrawals: wOut,
+      rating_stats,
     });
   } catch (err) {
     console.error('Dashboard error:', err);

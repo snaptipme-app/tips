@@ -292,15 +292,26 @@ router.get('/members', authMiddleware, async (req, res) => {
          e.photo_url,
          e.photo_base64,
          e.profile_image_url,
-         COALESCE((SELECT SUM(amount) FROM payments WHERE employee_id = e.id), 0) as total_tips
+         COALESCE((SELECT SUM(amount) FROM payments WHERE employee_id = e.id), 0) as total_tips,
+         COALESCE(ROUND(AVG(p.rating)::NUMERIC, 1), 0)::FLOAT AS average_rating,
+         COUNT(p.rating)::INT AS total_ratings
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
+       LEFT JOIN payments p ON p.employee_id = e.id AND p.rating IS NOT NULL AND p.status = 'completed'
        WHERE tm.business_id = $1
+       GROUP BY tm.id, tm.role, tm.joined_at, e.id, e.username, e.full_name, e.email,
+                e.balance, e.job_title, e.photo_url, e.photo_base64, e.profile_image_url
        ORDER BY tm.joined_at DESC`,
       [business.id]
     );
 
-    res.json({ members });
+    // Format: replace 0 average with null if no ratings
+    const membersOut = members.map(m => ({
+      ...m,
+      average_rating: m.total_ratings > 0 ? Number(m.average_rating) : null,
+    }));
+
+    res.json({ members: membersOut });
   } catch (err) {
     console.error('[business/members]', err.message);
     res.status(500).json({ error: 'Server error fetching members.' });
@@ -543,7 +554,9 @@ router.get('/stats', authMiddleware, async (req, res) => {
 
     const { rows: topPerformers } = await pool.query(
       `SELECT e.id, e.full_name, e.username, e.photo_base64, e.profile_image_url,
-              COALESCE(SUM(p.amount), 0) as total_tips
+              COALESCE(SUM(p.amount), 0) as total_tips,
+              COALESCE(ROUND(AVG(p.rating)::NUMERIC, 1), 0)::FLOAT AS average_rating,
+              COUNT(p.rating)::INT AS total_ratings
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
        LEFT JOIN payments p ON p.employee_id = e.id
@@ -554,12 +567,31 @@ router.get('/stats', authMiddleware, async (req, res) => {
       [business.id]
     );
 
+    // Team-wide average rating
+    const { rows: teamRatingRows } = await pool.query(
+      `SELECT
+         COALESCE(ROUND(AVG(p.rating)::NUMERIC, 1), 0)::FLOAT AS team_avg,
+         COUNT(p.rating)::INT AS team_total_ratings
+       FROM payments p
+       INNER JOIN team_members tm ON tm.employee_id = p.employee_id
+       WHERE tm.business_id = $1 AND p.rating IS NOT NULL AND p.status = 'completed'`,
+      [business.id]
+    );
+    const tr = teamRatingRows[0] || {};
+    const team_average_rating = tr.team_total_ratings > 0 ? Number(tr.team_avg) : null;
+    const team_total_ratings = tr.team_total_ratings || 0;
+
     res.json({
       total_tips: Number(totalTipsRow[0]?.total) || 0,
       total_transactions: Number(totalTxRow[0]?.count) || 0,
       active_members: Number(activeMembersRow[0]?.count) || 0,
-      top_performers: topPerformers,
+      top_performers: topPerformers.map(p => ({
+        ...p,
+        average_rating: p.total_ratings > 0 ? Number(p.average_rating) : null,
+      })),
       business_name: business.business_name,
+      team_average_rating,
+      team_total_ratings,
     });
   } catch (err) {
     console.error('[business/stats]', err.message);

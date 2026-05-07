@@ -15,6 +15,7 @@ const { logFromReq } = require('../lib/audit');
     await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS custom_message TEXT');
     await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1');
     await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS push_token TEXT');
+    await pool.query('ALTER TABLE tips ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)');
   } catch (_) {}
 })();
 
@@ -446,6 +447,62 @@ router.get('/my-business', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[employee/my-business]', err.message);
     res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+// ── GET /api/employee/:id/rating-stats ────────────────────────────────────────
+// Public — returns detailed rating statistics for an employee by numeric ID.
+// Used by mobile profile and admin dashboard.
+router.get('/:id/rating-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employeeId = parseInt(id, 10);
+    if (isNaN(employeeId)) {
+      return res.status(400).json({ error: 'Invalid employee ID.' });
+    }
+
+    // Check employee exists
+    const { rows: empRows } = await pool.query(
+      'SELECT id, full_name, username FROM employees WHERE id = $1',
+      [employeeId]
+    );
+    if (empRows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found.' });
+    }
+
+    // Aggregate ratings from payments table
+    const { rows: statsRows } = await pool.query(
+      `SELECT
+         COALESCE(ROUND(AVG(rating)::NUMERIC, 1), 0)::FLOAT AS average_rating,
+         COUNT(rating)::INT AS total_ratings,
+         COUNT(CASE WHEN rating = 1 THEN 1 END)::INT AS r1,
+         COUNT(CASE WHEN rating = 2 THEN 1 END)::INT AS r2,
+         COUNT(CASE WHEN rating = 3 THEN 1 END)::INT AS r3,
+         COUNT(CASE WHEN rating = 4 THEN 1 END)::INT AS r4,
+         COUNT(CASE WHEN rating = 5 THEN 1 END)::INT AS r5
+       FROM payments
+       WHERE employee_id = $1
+         AND rating IS NOT NULL
+         AND status = 'completed'`,
+      [employeeId]
+    );
+    const s = statsRows[0] || {};
+
+    res.json({
+      employee_id: employeeId,
+      average_rating: s.total_ratings > 0 ? Number(s.average_rating) : null,
+      total_ratings: s.total_ratings || 0,
+      rating_breakdown: {
+        1: s.r1 || 0,
+        2: s.r2 || 0,
+        3: s.r3 || 0,
+        4: s.r4 || 0,
+        5: s.r5 || 0,
+      },
+    });
+  } catch (err) {
+    console.error('[employee/:id/rating-stats]', err.message);
+    res.status(500).json({ error: 'Server error fetching rating stats.' });
   }
 });
 

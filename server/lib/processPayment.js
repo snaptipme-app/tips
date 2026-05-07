@@ -88,9 +88,13 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
 
   // 3. Insert into tips table (keeps existing dashboard/analytics working)
   await pool.query(
-    "INSERT INTO tips (employee_id, amount, status) VALUES ($1, $2, 'completed')",
-    [employeeId, amount]
+    "INSERT INTO tips (employee_id, amount, status, rating) VALUES ($1, $2, 'completed', $3)",
+    [employeeId, amount, safeRating]
   );
+  // Ensure rating column exists (idempotent — only runs if column is missing)
+  pool.query(
+    'ALTER TABLE tips ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)'
+  ).catch(() => {});
 
   // 4. Send push notification (fire-and-forget — never blocks payment flow)
   try {
