@@ -130,6 +130,21 @@ export default function BusinessDashboard() {
   const chartMax = Math.max(...chartData.map((d) => d.amount), 1);
   const recentTx = transactions.slice(0, 5);
 
+  // Current month tips (computed from already-fetched transactions)
+  const monthlyTips = useMemo(() => {
+    const now = new Date();
+    const currentYear  = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    return transactions
+      .filter((t) => {
+        const d = new Date(t.created_at || '');
+        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+      })
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [transactions]);
+
+  const currentMonthLabel = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
   const formatTime = (iso: string) => {
     const d       = new Date(iso);
     const now     = new Date();
@@ -235,8 +250,9 @@ export default function BusinessDashboard() {
               icon="cash-outline"
               color={GREEN}
               label="Total Tips"
-              value={totalTips.toFixed(2)}
+              value={monthlyTips.toFixed(2)}
               suffix={currency}
+              subtitle="This Month"
               highlight
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -543,12 +559,13 @@ function Label({ children, inline = false }: { children: React.ReactNode; inline
 }
 
 /** 2 × 2 grid stat card. */
-function StatCard({ icon, color, label, value, suffix, highlight = false }: {
+function StatCard({ icon, color, label, value, suffix, subtitle, highlight = false }: {
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   label: string;
   value: string;
   suffix?: string;
+  subtitle?: string;
   highlight?: boolean;
 }) {
   return (
@@ -586,9 +603,16 @@ function StatCard({ icon, color, label, value, suffix, highlight = false }: {
             {suffix}
           </Text>
         ) : null}
-        <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.38)', marginTop: 4 }}>
-          {label}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+          <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.38)' }}>
+            {label}
+          </Text>
+          {subtitle ? (
+            <Text style={{ fontSize: 10, fontWeight: '700', color: 'rgba(0,200,150,0.7)', letterSpacing: 0.3 }}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
       </View>
     </View>
   );
