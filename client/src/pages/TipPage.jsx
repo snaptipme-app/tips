@@ -15,28 +15,36 @@ const SUGGESTED_TIPS = {
   IDR: [20000, 50000, 100000, 200000],
 };
 
-/* ─── Inline SVG tier icons (20px, clean, matches card color) ────────── */
+/* ─── Premium tier icons (22px, stroke-based, clean minimal) ───────── */
 const TierIconHand = ({color='#fff'}) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/>
     <path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 16"/>
   </svg>
 );
 const TierIconStar = ({color='#fff'}) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill={color} stroke="none">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
   </svg>
 );
 const TierIconDiamond = ({color='#fff'}) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/><path d="M10 3l-2 6 4 13 4-13-2-6"/>
   </svg>
 );
 const TierIconCrown = ({color='#fff'}) => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M5 16h14v4H5z"/>
   </svg>
 );
+
+/* ─── Tier color palettes ──────────────────────────────────────── */
+const TIER_COLORS = {
+  subtle:  { accent: '#8b9dc3', bg: 'linear-gradient(135deg, rgba(139,157,195,0.08), rgba(139,157,195,0.03))', bgSel: 'rgba(139,157,195,0.14)', border: 'rgba(139,157,195,0.2)', borderSel: 'rgba(139,157,195,0.55)' },
+  popular: { accent: '#00C896', bg: 'linear-gradient(135deg, rgba(0,200,150,0.06), rgba(0,200,150,0.02))', bgSel: 'rgba(0,200,150,0.14)', border: 'rgba(0,200,150,0.2)', borderSel: 'rgba(0,200,150,0.55)' },
+  cyan:    { accent: '#818cf8', bg: 'linear-gradient(135deg, rgba(129,140,248,0.07), rgba(129,140,248,0.02))', bgSel: 'rgba(129,140,248,0.14)', border: 'rgba(129,140,248,0.18)', borderSel: 'rgba(129,140,248,0.55)' },
+  gold:    { accent: '#f59e0b', bg: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02))', bgSel: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.18)', borderSel: 'rgba(245,158,11,0.5)' },
+};
 
 const TIER_META = [
   { icon: TierIconHand,    label: 'Quick Thanks',   variant: 'subtle'   },
@@ -411,22 +419,25 @@ export default function TipPage() {
 
           {/* ── ② Hero profile card ── */}
           <div style={{
-            background: 'linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))',
+            background: 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             borderRadius: 24,
             padding: '32px 24px 26px',
-            marginBottom: 24,
+            marginBottom: 28,
             textAlign: 'center',
             border: '1px solid rgba(255,255,255,0.08)',
             boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
             animation: 'slideUp 0.5s ease-out',
+            position: 'relative', overflow: 'hidden',
           }}>
-            {/* Photo with green glow */}
+            {/* Subtle gradient overlay at bottom */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, rgba(26,26,26,0.15), transparent)', pointerEvents: 'none', borderRadius: '0 0 24px 24px' }} />
+            {/* Photo */}
             <div style={{
-              width: 168, height: 168, borderRadius: '50%',
-              border: '3px solid rgba(0,200,150,0.5)',
-              boxShadow: '0 0 20px rgba(0,200,150,0.15), 0 0 40px rgba(0,200,150,0.08)',
+              width: 148, height: 148, borderRadius: '50%',
+              border: '3px solid rgba(0,200,150,0.35)',
+              boxShadow: '0 0 16px rgba(0,200,150,0.1)',
               overflow: 'hidden', margin: '0 auto 18px', position: 'relative',
             }}>
               {photoSrc ? (
@@ -474,43 +485,26 @@ export default function TipPage() {
           </div>
 
           {/* ── ③ Tip amount ── */}
-          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <h3 style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1.2 }}>
             Choose your tip
           </h3>
 
           {/* 2x2 preset grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18, animation: 'slideUp 0.5s ease-out 0.1s both' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22, animation: 'slideUp 0.5s ease-out 0.1s both' }}>
             {tipPresets.map((amt, i) => {
               const meta = TIER_META[i];
               const isSelected = amount === amt;
-              const baseStyle = {
-                position: 'relative', height: 70, borderRadius: 16,
-                cursor: 'pointer', transition: 'all 0.2s ease',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-                fontFamily: 'inherit', padding: '8px 4px',
-              };
-              let style;
-              if (meta.variant === 'popular') {
-                style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid rgba(0,200,150,0.5)', boxShadow: '0 0 12px rgba(0,200,150,0.15)' }
-                  : { ...baseStyle, background: 'rgba(0,200,150,0.06)', border: '1.5px solid rgba(0,200,150,0.25)', boxShadow: 'none' };
-              } else if (meta.variant === 'cyan') {
-                style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.10)', border: '2px solid rgba(0,200,150,0.45)', boxShadow: '0 0 10px rgba(0,200,150,0.12)' }
-                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(0,200,150,0.04), rgba(255,255,255,0.03))', border: '1px solid rgba(0,200,150,0.15)' };
-              } else if (meta.variant === 'gold') {
-                style = isSelected
-                  ? { ...baseStyle, background: 'rgba(245,158,11,0.10)', border: '2px solid rgba(245,158,11,0.45)', boxShadow: '0 0 10px rgba(245,158,11,0.12)' }
-                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(255,255,255,0.03))', border: '1px solid rgba(245,158,11,0.18)' };
-              } else {
-                style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.10)', border: '2px solid rgba(0,200,150,0.45)', boxShadow: '0 0 10px rgba(0,200,150,0.12)' }
-                  : { ...baseStyle, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' };
-              }
-              const labelColor = meta.variant === 'gold' && !isSelected ? '#f59e0b' :
-                                  isSelected && meta.variant === 'popular' ? '#00C896' :
-                                  isSelected ? '#00C896' : '#fff';
+              const tc = TIER_COLORS[meta.variant];
               const IconComp = meta.icon;
+              const style = {
+                position: 'relative', height: 78, borderRadius: 16,
+                cursor: 'pointer', transition: 'all 250ms ease',
+                display: 'flex', alignItems: 'center', gap: 12,
+                fontFamily: 'inherit', padding: '12px 16px',
+                background: isSelected ? tc.bgSel : tc.bg,
+                border: isSelected ? `2px solid ${tc.borderSel}` : `1px solid ${tc.border}`,
+                boxShadow: isSelected ? `0 0 14px ${tc.accent}18` : 'none',
+              };
               return (
                 <button key={amt} onClick={() => setAmount(amt)} style={style}>
                   {meta.variant === 'popular' && (
@@ -522,12 +516,23 @@ export default function TipPage() {
                       boxShadow: '0 2px 6px rgba(0,200,150,0.2)',
                     }}>POPULAR</span>
                   )}
-                  <span style={{ fontSize: 14, fontWeight: 600, color: labelColor, lineHeight: 1.1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <IconComp color={labelColor} /> {meta.label}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
-                    {amt} {currency}
-                  </span>
+                  {/* Icon pill */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                    background: `${tc.accent}15`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <IconComp color={tc.accent} />
+                  </div>
+                  {/* Text */}
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: isSelected ? tc.accent : '#fff', lineHeight: 1.2, transition: 'color 250ms ease' }}>
+                      {meta.label}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: 500, marginTop: 2 }}>
+                      {amt} {currency}
+                    </div>
+                  </div>
                 </button>
               );
             })}
@@ -539,7 +544,7 @@ export default function TipPage() {
             borderRadius: 16,
             padding: '16px 18px 18px',
             border: '1px solid rgba(255,255,255,0.06)',
-            marginBottom: 22,
+            marginBottom: 26,
             animation: 'slideUp 0.5s ease-out 0.15s both',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -563,14 +568,14 @@ export default function TipPage() {
           </div>
 
           {/* ── ④ Rating section ── */}
-          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <h3 style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1.2 }}>
             Rating
           </h3>
           <div style={{
             background: 'rgba(255,255,255,0.04)',
             borderRadius: 16, padding: '20px 18px',
             border: '1px solid rgba(255,255,255,0.06)',
-            marginBottom: 22, textAlign: 'center',
+            marginBottom: 28, textAlign: 'center',
             animation: 'slideUp 0.5s ease-out 0.2s both',
           }}>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 14px', fontWeight: 600 }}>
@@ -583,7 +588,7 @@ export default function TipPage() {
                   onClick={() => setRating(n === rating ? 0 : n)}
                   onMouseEnter={() => setHoverRating(n)}
                   onMouseLeave={() => setHoverRating(0)}
-                  style={{ background: 'transparent', border: 'none', padding: 4, cursor: 'pointer', transition: 'transform 0.15s ease' }}
+                  style={{ background: 'transparent', border: 'none', padding: 4, cursor: 'pointer', transition: 'transform 250ms ease' }}
                 >
                   <StarIcon filled={n <= (hoverRating || rating)} size={32} />
                 </button>
@@ -595,10 +600,10 @@ export default function TipPage() {
           </div>
 
           {/* ── ⑤ Payment method ── */}
-          <h3 style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <h3 style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1.2 }}>
             Payment
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18, animation: 'slideUp 0.5s ease-out 0.25s both' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 22, animation: 'slideUp 0.5s ease-out 0.25s both' }}>
             {PAYMENT_METHODS.map((pm) => {
               const isSelected = paymentMethod === pm.id;
               const cardStyle = {
@@ -606,7 +611,7 @@ export default function TipPage() {
                 background: pm.bg,
                 border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
                 boxShadow: isSelected ? '0 0 10px rgba(0,200,150,0.15)' : 'none',
-                cursor: 'pointer', transition: 'all 0.2s ease',
+                cursor: 'pointer', transition: 'all 250ms ease',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
                 padding: 6,
               };
@@ -661,14 +666,14 @@ export default function TipPage() {
             disabled={payDisabled}
             style={{
               width: '100%', height: 60, borderRadius: 50,
-              background: payDisabled ? 'rgba(255,255,255,0.08)' : '#00C896',
-              boxShadow: payDisabled ? 'none' : '0 6px 20px rgba(0,200,150,0.2)',
+              background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+              boxShadow: payDisabled ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
               border: 'none',
               color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
               fontSize: 18, fontWeight: 800,
               opacity: payDisabled ? 0.5 : 1,
               cursor: payDisabled ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
+              transition: 'all 250ms ease',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               animation: payDisabled ? 'slideUp 0.5s ease-out 0.3s both' : 'slideUp 0.5s ease-out 0.3s both, pulseGlow 2.4s ease-in-out 1.5s infinite',
               letterSpacing: '-0.01em',
