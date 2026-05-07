@@ -835,13 +835,10 @@ export default function TipPage() {
 
           {/* ── ⑦ Footer ── */}
           <div style={{ textAlign: 'center', marginTop: 18, paddingBottom: 32, animation: 'slideUp 0.5s ease-out 0.4s both' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10, color: 'rgba(255,255,255,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'rgba(255,255,255,0.3)' }}>
               <LockIcon />
-              <span style={{ fontSize: 12 }}>Secure payment · Powered by SnapTip</span>
+              <span style={{ fontSize: 12 }}>Secure payment · Powered by Stripe</span>
             </div>
-            <Link to="/login" style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontWeight: 500 }}>
-              {t.employeeLogin} →
-            </Link>
           </div>
         </div>
       </div>
