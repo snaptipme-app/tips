@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Image, AppState, Animated } f
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getItem, SecureKeys } from '../../lib/secureStorage';
 import { useAuth } from '../../lib/AuthContext';
 import SnapTipLogo from '../../components/SnapTipLogo';
@@ -42,8 +43,25 @@ export default function Home() {
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
+  const [ratingVisible, setRatingVisible] = useState(true);
+  const RATING_PREF_KEY = 'snaptip_rating_card_visible';
   const prevBalanceRef = useRef<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Load rating visibility preference from AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem(RATING_PREF_KEY).then(val => {
+      if (val !== null) setRatingVisible(val === 'true');
+    }).catch(() => {});
+  }, []);
+
+  const toggleRatingVisible = useCallback(async () => {
+    const next = !ratingVisible;
+    setRatingVisible(next);
+    try {
+      await AsyncStorage.setItem(RATING_PREF_KEY, String(next));
+    } catch (_) {}
+  }, [ratingVisible]);
 
   const cur = user?.currency || 'MAD';
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
@@ -231,63 +249,93 @@ export default function Home() {
             {/* ── Rating Card ── */}
             {ratingStats && (
               <View style={{
-                backgroundColor: CARD, borderRadius: 20, padding: 20,
+                backgroundColor: CARD, borderRadius: 20,
                 marginBottom: 20, borderWidth: 1, borderColor: BORDER,
+                overflow: 'hidden',
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                {/* Card header — always visible */}
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  padding: 16, paddingBottom: ratingVisible ? 0 : 16,
+                }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
                     <Ionicons name="star" size={18} color="#f59e0b" />
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>My Rating</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', flex: 1 }}>My Rating</Text>
+                  <TouchableOpacity
+                    onPress={toggleRatingVisible}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ padding: 4 }}
+                  >
+                    <Ionicons
+                      name={ratingVisible ? 'eye-outline' : 'eye-off-outline'}
+                      size={18}
+                      color={ratingVisible ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)'}
+                    />
+                  </TouchableOpacity>
                 </View>
 
-                {ratingStats.average_rating !== null && ratingStats.total_ratings > 0 ? (
-                  <>
-                    {/* Large average display */}
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
-                      <Text style={{ fontSize: 48, fontWeight: '800', color: '#f59e0b', letterSpacing: -2, lineHeight: 52 }}>
-                        {Number(ratingStats.average_rating).toFixed(1)}
-                      </Text>
-                      <View style={{ paddingBottom: 6 }}>
-                        <View style={{ flexDirection: 'row', gap: 3, marginBottom: 4 }}>
-                          {[1,2,3,4,5].map(n => (
-                            <Ionicons
-                              key={n}
-                              name={n <= Math.round(ratingStats.average_rating!) ? 'star' : 'star-outline'}
-                              size={16} color="#f59e0b"
-                            />
-                          ))}
+                {/* Collapsed state */}
+                {!ratingVisible && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 14 }}>
+                    <Ionicons name="eye-off-outline" size={13} color="rgba(255,255,255,0.2)" />
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>Rating hidden</Text>
+                  </View>
+                )}
+
+                {/* Expanded content */}
+                {ratingVisible && (
+                  <View style={{ padding: 16, paddingTop: 12 }}>
+                    {ratingStats.average_rating !== null && ratingStats.total_ratings > 0 ? (
+                      <>
+                        {/* Large average display */}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
+                          <Text style={{ fontSize: 48, fontWeight: '800', color: '#f59e0b', letterSpacing: -2, lineHeight: 52 }}>
+                            {Number(ratingStats.average_rating).toFixed(1)}
+                          </Text>
+                          <View style={{ paddingBottom: 6 }}>
+                            <View style={{ flexDirection: 'row', gap: 3, marginBottom: 4 }}>
+                              {[1,2,3,4,5].map(n => (
+                                <Ionicons
+                                  key={n}
+                                  name={n <= Math.round(ratingStats.average_rating!) ? 'star' : 'star-outline'}
+                                  size={16} color="#f59e0b"
+                                />
+                              ))}
+                            </View>
+                            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                              {ratingStats.total_ratings} rating{ratingStats.total_ratings !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
                         </View>
-                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-                          {ratingStats.total_ratings} rating{ratingStats.total_ratings !== 1 ? 's' : ''}
+
+                        {/* Star breakdown bars */}
+                        <View style={{ gap: 6 }}>
+                          {[5, 4, 3, 2, 1].map(star => {
+                            const count = ratingStats.rating_breakdown?.[star] || 0;
+                            const pct = ratingStats.total_ratings > 0 ? (count / ratingStats.total_ratings) * 100 : 0;
+                            return (
+                              <View key={star} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 14, textAlign: 'right' }}>{star}</Text>
+                                <Ionicons name="star" size={10} color="#f59e0b" />
+                                <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
+                                  <View style={{ width: `${pct}%`, height: 5, borderRadius: 3, backgroundColor: '#f59e0b', opacity: 0.8 }} />
+                                </View>
+                                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', width: 22, textAlign: 'right' }}>{count}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </>
+                    ) : (
+                      <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                        <Ionicons name="star-outline" size={28} color="rgba(255,255,255,0.15)" />
+                        <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 8, textAlign: 'center' }}>
+                          No ratings yet{`\n`}Receive tips to collect star ratings
                         </Text>
                       </View>
-                    </View>
-
-                    {/* Star breakdown bars */}
-                    <View style={{ gap: 6 }}>
-                      {[5, 4, 3, 2, 1].map(star => {
-                        const count = ratingStats.rating_breakdown?.[star] || 0;
-                        const pct = ratingStats.total_ratings > 0 ? (count / ratingStats.total_ratings) * 100 : 0;
-                        return (
-                          <View key={star} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 14, textAlign: 'right' }}>{star}</Text>
-                            <Ionicons name="star" size={10} color="#f59e0b" />
-                            <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
-                              <View style={{ width: `${pct}%`, height: 5, borderRadius: 3, backgroundColor: '#f59e0b', opacity: 0.8 }} />
-                            </View>
-                            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', width: 22, textAlign: 'right' }}>{count}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </>
-                ) : (
-                  <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                    <Ionicons name="star-outline" size={28} color="rgba(255,255,255,0.15)" />
-                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 8, textAlign: 'center' }}>
-                      No ratings yet{`\n`}Receive tips to collect star ratings
-                    </Text>
+                    )}
                   </View>
                 )}
               </View>
