@@ -407,7 +407,15 @@ export default function TipPage() {
           api.get(`/business/public/${username}`, { signal: controller.signal }),
         ]);
         if (empRes.status === 'fulfilled') {
-          setEmployee(empRes.value.data);
+          const emp = empRes.value.data;
+          // Fetch detailed rating stats by employee ID
+          try {
+            const ratingRes = await api.get(`/employee/${emp.id}/rating-stats`, { signal: controller.signal });
+            emp.rating_avg = ratingRes.data.average_rating;
+            emp.rating_count = ratingRes.data.total_ratings;
+            emp.rating_breakdown = ratingRes.data.rating_breakdown;
+          } catch (_) { /* keep whatever the employee endpoint returned */ }
+          setEmployee(emp);
         } else {
           const status = empRes.reason?.response?.status;
           if (status === 404) setNotFound(true);
@@ -525,7 +533,9 @@ export default function TipPage() {
   const payDisabled = sending || amount <= 0;
   const tipCount = employee.tip_count || 0;
   const ratingAvg = employee.rating_avg;        // null if no ratings yet
-  const ratingDisplay = ratingAvg != null ? ratingAvg.toFixed(1) : '5.0';
+  const ratingCount = employee.rating_count || 0;
+  const hasRatings = ratingAvg != null && ratingCount > 0;
+  const ratingDisplay = hasRatings ? Number(ratingAvg).toFixed(1) : null;
 
   // Slider fill % for the green track
   const sliderPct = Math.max(
@@ -621,10 +631,22 @@ export default function TipPage() {
 
             {/* Stats row */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
-              <span style={{ color: '#f59e0b', fontSize: 14 }}>★</span>
-              <span style={{ fontWeight: 600 }}>{ratingDisplay}</span>
-              <span>·</span>
-              <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+              {hasRatings ? (
+                <>
+                  <span style={{ color: '#f59e0b', fontSize: 14 }}>★</span>
+                  <span style={{ fontWeight: 600 }}>{ratingDisplay}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.25)' }}>({ratingCount})</span>
+                  <span>·</span>
+                  <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>☆</span>
+                  <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No ratings yet</span>
+                  <span>·</span>
+                  <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+                </>
+              )}
             </div>
           </div>
 

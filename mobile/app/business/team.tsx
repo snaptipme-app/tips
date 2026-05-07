@@ -37,6 +37,8 @@ interface Member {
   photo_base64?: string;
   profile_image_url?: string;
   job_title?: string;
+  average_rating?: number | null;
+  total_ratings?: number;
 }
 
 export default function TeamManagement() {
@@ -206,9 +208,20 @@ export default function TeamManagement() {
           <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 3 }}>Joined {joinedDate}</Text>
         </View>
 
-        {/* Tips + Status */}
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+        {/* Tips + Rating + Status */}
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{Number(item.total_tips).toFixed(2)} {user?.currency || 'MAD'}</Text>
+          {item.average_rating !== null && item.average_rating !== undefined && (item.total_ratings ?? 0) > 0 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <Ionicons name="star" size={12} color="#f59e0b" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#f59e0b' }}>
+                {Number(item.average_rating).toFixed(1)}
+              </Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>({item.total_ratings})</Text>
+            </View>
+          ) : (
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>No ratings</Text>
+          )}
           <View style={{
             paddingHorizontal: 8, paddingVertical: 3, borderRadius: 50,
             backgroundColor: 'rgba(0,200,150,0.12)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)',

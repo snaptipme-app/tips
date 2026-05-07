@@ -32,6 +32,8 @@ interface Stats {
   total_transactions: number;
   active_members: number;
   business_name: string;
+  team_average_rating: number | null;
+  team_total_ratings: number;
   top_performers: {
     id: number;
     full_name: string;
@@ -39,6 +41,8 @@ interface Stats {
     total_tips: number | string;
     photo_base64?: string;
     profile_image_url?: string;
+    average_rating?: number | null;
+    total_ratings?: number;
   }[];
 }
 
@@ -249,6 +253,34 @@ export default function BusinessDashboard() {
                 value={String(teamSize)}
               />
             </View>
+            {/* Team average rating */}
+            {stats?.team_average_rating !== null && stats?.team_average_rating !== undefined && (
+              <View style={{
+                backgroundColor: CARD, borderRadius: 16, padding: 16,
+                borderWidth: 1, borderColor: BORDER,
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+              }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="star" size={20} color="#f59e0b" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 }}>Team Average Rating</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#f59e0b', letterSpacing: -0.5 }}>
+                      {Number(stats.team_average_rating).toFixed(1)}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                      {[1,2,3,4,5].map(n => (
+                        <Ionicons key={n} name={n <= Math.round(stats!.team_average_rating!) ? 'star' : 'star-outline'} size={14} color="#f59e0b" />
+                      ))}
+                    </View>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+                      ({stats.team_total_ratings || 0} ratings)
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* ════════════ 7-DAY TREND ════════════ */}
@@ -312,11 +344,21 @@ export default function BusinessDashboard() {
                       }
                     </View>
 
-                    {/* Name + progress bar */}
+                    {/* Name + progress bar + rating */}
                     <View style={{ flex: 1, gap: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }} numberOfLines={1}>
-                        {perf.full_name}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', flex: 1 }} numberOfLines={1}>
+                          {perf.full_name}
+                        </Text>
+                        {perf.average_rating !== null && perf.average_rating !== undefined && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <Ionicons name="star" size={11} color="#f59e0b" />
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#f59e0b' }}>
+                              {Number(perf.average_rating).toFixed(1)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 2 }}>
                         <View style={{ width: `${barPct}%`, height: 4, borderRadius: 2, backgroundColor: rankColor, opacity: 0.85 }} />
                       </View>

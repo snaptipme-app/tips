@@ -26,6 +26,12 @@ interface Tip {
   sender_name?: string | null;
 }
 
+interface RatingStats {
+  average_rating: number | null;
+  total_ratings: number;
+  rating_breakdown: { [key: string]: number };
+}
+
 export default function Home() {
   const { user, updateUser } = useAuth();
   const router = useRouter();
@@ -35,6 +41,7 @@ export default function Home() {
   const [tipCount, setTipCount] = useState(0);
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
   const prevBalanceRef = useRef<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -68,8 +75,9 @@ export default function Home() {
       const tips = data.total_tips ?? 0;
       const count = data.tip_count ?? 0;
       const recent = (data.recent_tips || data.tips || []).slice(0, 4);
+      const rs: RatingStats = data.rating_stats || { average_rating: null, total_ratings: 0, rating_breakdown: {} };
 
-      console.log('[polling] Balance:', b, '| Tips:', count);
+      console.log('[polling] Balance:', b, '| Tips:', count, '| Avg Rating:', rs.average_rating);
 
       // Detect new tip — play sound + toast
       if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
@@ -84,6 +92,7 @@ export default function Home() {
       setTotalEarned(tips);
       setTipCount(count);
       setRecentTips(recent);
+      setRatingStats(rs);
 
       // Sync balance to AuthContext (persists to AsyncStorage)
       updateUser({ balance: b, total_tips: tips });
@@ -218,6 +227,71 @@ export default function Home() {
                 </HapticButton>
               </View>
             </LinearGradient>
+
+            {/* ── Rating Card ── */}
+            {ratingStats && (
+              <View style={{
+                backgroundColor: CARD, borderRadius: 20, padding: 20,
+                marginBottom: 20, borderWidth: 1, borderColor: BORDER,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                    <Ionicons name="star" size={18} color="#f59e0b" />
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>My Rating</Text>
+                </View>
+
+                {ratingStats.average_rating !== null && ratingStats.total_ratings > 0 ? (
+                  <>
+                    {/* Large average display */}
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
+                      <Text style={{ fontSize: 48, fontWeight: '800', color: '#f59e0b', letterSpacing: -2, lineHeight: 52 }}>
+                        {Number(ratingStats.average_rating).toFixed(1)}
+                      </Text>
+                      <View style={{ paddingBottom: 6 }}>
+                        <View style={{ flexDirection: 'row', gap: 3, marginBottom: 4 }}>
+                          {[1,2,3,4,5].map(n => (
+                            <Ionicons
+                              key={n}
+                              name={n <= Math.round(ratingStats.average_rating!) ? 'star' : 'star-outline'}
+                              size={16} color="#f59e0b"
+                            />
+                          ))}
+                        </View>
+                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
+                          {ratingStats.total_ratings} rating{ratingStats.total_ratings !== 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Star breakdown bars */}
+                    <View style={{ gap: 6 }}>
+                      {[5, 4, 3, 2, 1].map(star => {
+                        const count = ratingStats.rating_breakdown?.[star] || 0;
+                        const pct = ratingStats.total_ratings > 0 ? (count / ratingStats.total_ratings) * 100 : 0;
+                        return (
+                          <View key={star} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 14, textAlign: 'right' }}>{star}</Text>
+                            <Ionicons name="star" size={10} color="#f59e0b" />
+                            <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
+                              <View style={{ width: `${pct}%`, height: 5, borderRadius: 3, backgroundColor: '#f59e0b', opacity: 0.8 }} />
+                            </View>
+                            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', width: 22, textAlign: 'right' }}>{count}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                    <Ionicons name="star-outline" size={28} color="rgba(255,255,255,0.15)" />
+                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 8, textAlign: 'center' }}>
+                      No ratings yet{`\n`}Receive tips to collect star ratings
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* ── Recent Tips ── */}
             <View style={{ marginBottom: 20 }}>
