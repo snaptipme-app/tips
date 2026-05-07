@@ -574,22 +574,20 @@ export default function TipPage() {
           <div style={{
             background: '#1a1a1a',
             borderRadius: 20,
-            padding: '20px 20px 16px',
-            marginBottom: 18,
+            padding: '16px 16px 14px',
+            marginBottom: 14,
             textAlign: 'center',
             border: '1px solid rgba(255,255,255,0.07)',
             boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
             animation: 'slideUp 0.5s ease-out',
             position: 'relative', overflow: 'hidden',
           }}>
-            {/* Subtle gradient overlay at bottom */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(to top, rgba(26,26,26,0.15), transparent)', pointerEvents: 'none', borderRadius: '0 0 20px 20px' }} />
             {/* Photo */}
             <div style={{
-              width: 110, height: 110, borderRadius: '50%',
+              width: 90, height: 90, borderRadius: '50%',
               border: '2px solid rgba(0,200,150,0.3)',
-              boxShadow: '0 0 12px rgba(0,200,150,0.08)',
-              overflow: 'hidden', margin: '0 auto 12px', position: 'relative',
+              boxShadow: '0 0 10px rgba(0,200,150,0.08)',
+              overflow: 'hidden', margin: '0 auto 10px', position: 'relative',
             }}>
               {photoSrc ? (
                 <img src={photoSrc} alt={employee.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -600,7 +598,7 @@ export default function TipPage() {
 
             {/* Name + verified */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>{employee.full_name}</h1>
+              <h1 style={{ fontSize: 18, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>{employee.full_name}</h1>
               <VerifiedBadge />
             </div>
 
@@ -622,26 +620,20 @@ export default function TipPage() {
               </div>
             )}
 
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: '0 0 8px', lineHeight: 1.4 }}>
-              Hope you had a great experience!
-            </p>
-
-            {/* Stats row */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
               {hasRatings ? (
                 <>
-                  <span style={{ color: '#f59e0b', fontSize: 13 }}>★</span>
+                  <span style={{ color: '#f59e0b' }}>★</span>
                   <span style={{ fontWeight: 600 }}>{ratingDisplay}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.25)' }}>({ratingCount})</span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>({ratingCount})</span>
                   <span>·</span>
-                  <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+                  <span>{tipCount} tips</span>
                 </>
               ) : (
                 <>
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>☆</span>
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No ratings yet</span>
-                  <span>·</span>
-                  <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>☆</span>
+                  <span style={{ fontStyle: 'italic' }}>No ratings yet</span>
+                  {tipCount > 0 && <><span>·</span><span>{tipCount} tips</span></>}
                 </>
               )}
             </div>
