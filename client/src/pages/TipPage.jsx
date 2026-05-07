@@ -145,50 +145,160 @@ const PAYMENT_METHODS = [
   { id: 'card',   label: 'Pay with Card', bg: 'rgba(255,255,255,0.05)', logo: 'card' },
 ];
 
-/* ─── Animated checkmark for success ──────────────────────────────────── */
+/* ─── Coin SVG for rain effect ──────────────────────────────────────── */
+function CoinIcon({ size = 28, symbol = '$', color = '#00C896' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" fill={color} opacity="0.9" />
+      <circle cx="16" cy="16" r="11" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
+      <text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="700" fontFamily="Inter, Arial, sans-serif">{symbol}</text>
+    </svg>
+  );
+}
+
+/* ─── Coin rain particles config ───────────────────────────────────── */
+const COINS = [
+  { left: '8%',  size: 24, delay: 0.1, duration: 2.2, symbol: '$', color: '#00C896' },
+  { left: '18%', size: 20, delay: 0.4, duration: 2.6, symbol: '€', color: '#818cf8' },
+  { left: '30%', size: 28, delay: 0.0, duration: 2.0, symbol: '$', color: '#f59e0b' },
+  { left: '42%', size: 22, delay: 0.6, duration: 2.8, symbol: '€', color: '#00C896' },
+  { left: '55%', size: 26, delay: 0.2, duration: 2.3, symbol: '$', color: '#818cf8' },
+  { left: '65%', size: 18, delay: 0.8, duration: 3.0, symbol: '€', color: '#f59e0b' },
+  { left: '75%', size: 30, delay: 0.3, duration: 2.1, symbol: '$', color: '#00C896' },
+  { left: '85%', size: 22, delay: 0.5, duration: 2.5, symbol: '€', color: '#818cf8' },
+  { left: '12%', size: 18, delay: 0.9, duration: 2.7, symbol: '$', color: '#f59e0b' },
+  { left: '92%', size: 20, delay: 0.7, duration: 2.4, symbol: '€', color: '#00C896' },
+];
+
+/* ─── Premium animated checkmark ───────────────────────────────────── */
 function AnimatedCheckmark() {
   return (
     <div style={{
-      width: 88, height: 88, borderRadius: '50%',
-      background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
-      boxShadow: '0 0 48px rgba(0,200,150,0.5), 0 0 96px rgba(0,200,150,0.15)',
+      width: 96, height: 96, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+      boxShadow: '0 0 40px rgba(0,200,150,0.35), 0 0 80px rgba(0,200,150,0.12)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      animation: 'scaleIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
+      animation: 'checkScaleIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards',
+      position: 'relative', zIndex: 2,
     }}>
-      <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+      {/* Expanding ring */}
+      <div style={{
+        position: 'absolute', inset: -8, borderRadius: '50%',
+        border: '2px solid rgba(0,200,150,0.3)',
+        animation: 'ringExpand 0.8s ease-out 0.3s forwards',
+        opacity: 0,
+      }} />
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
         <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.6s ease 0.3s forwards' }} />
+          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.5s ease 0.4s forwards' }} />
       </svg>
     </div>
   );
 }
 
-function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, onClose, t }) {
+/* ─── Rating stars display for success ─────────────────────────────── */
+function SuccessStars({ rating }) {
+  if (!rating || rating <= 0) return null;
+  return (
+    <div style={{
+      display: 'flex', gap: 6, justifyContent: 'center', marginTop: 16,
+      animation: 'fadeInUp 0.5s ease-out 1s both',
+    }}>
+      {[1,2,3,4,5].map(n => (
+        <svg key={n} width="22" height="22" viewBox="0 0 24 24"
+          fill={n <= rating ? '#f59e0b' : 'none'}
+          stroke={n <= rating ? '#f59e0b' : 'rgba(255,255,255,0.2)'}
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          style={{ animation: n <= rating ? `starPop 0.3s ease ${0.9 + n * 0.08}s both` : 'none' }}
+        >
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Full success overlay with coin rain ──────────────────────────── */
+function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, rating, onClose, t }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: `radial-gradient(ellipse at bottom left, rgba(0,200,150,0.18) 0%, transparent 60%), radial-gradient(ellipse at top right, rgba(0,255,102,0.06) 0%, transparent 60%), #1a1a1a`,
+      background: `radial-gradient(circle at 50% 45%, rgba(0,200,150,0.12) 0%, transparent 50%), #1a1a1a`,
       padding: 20, animation: 'fadeIn 0.3s ease-out',
+      overflow: 'hidden',
     }}>
-      <AnimatedCheckmark />
-      <h2 style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginTop: 28, marginBottom: 12, textAlign: 'center' }}>{t.successTitle}</h2>
-      <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
-        Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span> has been sent to{' '}
-        <span style={{ color: '#fff', fontWeight: 600 }}>{employeeName}</span>
-      </p>
-      {thankYouMessage && (
-        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '16px 20px', border: '1px solid rgba(255,255,255,0.06)', marginTop: 12, marginBottom: 8, maxWidth: 340, width: '100%' }}>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.5, margin: 0 }}>"{thankYouMessage}"</p>
-        </div>
-      )}
-      <button onClick={onClose} style={{
-        width: '100%', maxWidth: 340, height: 56, borderRadius: 50,
-        background: 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
-        boxShadow: '0 8px 32px rgba(0,200,150,0.4)',
-        border: 'none', color: '#1a1a1a', fontSize: 18, fontWeight: 700,
-        cursor: 'pointer', marginTop: 32, transition: 'all 0.2s ease',
-      }}>{t.successButton}</button>
+
+      {/* ── Coin rain layer ── */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 1 }}>
+        {COINS.map((coin, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: coin.left,
+            top: -40,
+            animation: `coinFall ${coin.duration}s ease-in ${coin.delay}s both`,
+            opacity: 0,
+          }}>
+            <div style={{ animation: `coinSpin ${coin.duration * 0.8}s linear ${coin.delay}s infinite` }}>
+              <CoinIcon size={coin.size} symbol={coin.symbol} color={coin.color} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Center content ── */}
+      <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: 360, width: '100%' }}>
+        <AnimatedCheckmark />
+
+        <h2 style={{
+          fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 24, marginBottom: 8,
+          textAlign: 'center', letterSpacing: '-0.02em',
+          animation: 'fadeInUp 0.5s ease-out 0.5s both',
+        }}>
+          Tip Sent! 🎉
+        </h2>
+
+        <p style={{
+          fontSize: 16, color: 'rgba(255,255,255,0.55)', textAlign: 'center',
+          marginBottom: 4, lineHeight: 1.6,
+          animation: 'fadeInUp 0.5s ease-out 0.7s both',
+        }}>
+          Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span> has been sent to{' '}
+          <span style={{ color: '#fff', fontWeight: 600 }}>{employeeName}</span>
+        </p>
+
+        <SuccessStars rating={rating} />
+
+        {thankYouMessage && (
+          <div style={{
+            background: 'rgba(255,255,255,0.05)', borderRadius: 14,
+            padding: '14px 20px', border: '1px solid rgba(255,255,255,0.06)',
+            marginTop: 14, width: '100%',
+            animation: 'fadeInUp 0.5s ease-out 1.1s both',
+          }}>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.5, margin: 0 }}>
+              "{thankYouMessage}"
+            </p>
+          </div>
+        )}
+
+        <p style={{
+          fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center',
+          marginTop: 16, fontWeight: 500,
+          animation: 'fadeInUp 0.4s ease-out 1.2s both',
+        }}>
+          Thank you for your generosity!
+        </p>
+
+        <button onClick={onClose} style={{
+          width: '100%', height: 56, borderRadius: 50,
+          background: 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+          boxShadow: '0 6px 24px rgba(0,180,216,0.2)',
+          border: 'none', color: '#1a1a1a', fontSize: 18, fontWeight: 700,
+          cursor: 'pointer', marginTop: 28, transition: 'all 250ms ease',
+          animation: 'slideUpBtn 0.6s cubic-bezier(0.16,1,0.3,1) 1.2s both',
+        }}>{t.successButton || 'Done'}</button>
+      </div>
     </div>
   );
 }
@@ -198,8 +308,40 @@ const inlineStyles = `
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes scaleIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes checkScaleIn {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes ringExpand {
+    0%   { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
   @keyframes drawCheck { to { stroke-dashoffset: 0; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fadeInUp {
+    from { transform: translateY(14px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slideUpBtn {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes coinFall {
+    0%   { transform: translateY(0); opacity: 0; }
+    8%   { opacity: 0.85; }
+    90%  { opacity: 0.6; }
+    100% { transform: translateY(105vh); opacity: 0; }
+  }
+  @keyframes coinSpin {
+    0%   { transform: rotateY(0deg) rotateZ(0deg); }
+    100% { transform: rotateY(360deg) rotateZ(25deg); }
+  }
+  @keyframes starPop {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.3); }
+    100% { transform: scale(1); opacity: 1; }
+  }
   @keyframes pulseGlow {
     0%, 100% { box-shadow: 0 0 16px rgba(0,200,150,0.15), 0 0 0 0 rgba(0,200,150,0.15); }
     50%      { box-shadow: 0 0 28px rgba(0,200,150,0.25), 0 0 0 6px rgba(0,200,150,0.0); }
@@ -404,6 +546,7 @@ export default function TipPage() {
             currency={currency}
             employeeName={employee.full_name}
             thankYouMessage={business?.thank_you_message}
+            rating={rating}
             onClose={handleCloseSuccess}
             t={t}
           />
