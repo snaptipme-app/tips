@@ -15,11 +15,34 @@ const SUGGESTED_TIPS = {
   IDR: [20000, 50000, 100000, 200000],
 };
 
+/* ─── Inline SVG tier icons (20px, clean, matches card color) ────────── */
+const TierIconHand = ({color='#fff'}) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/>
+    <path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 16"/>
+  </svg>
+);
+const TierIconStar = ({color='#fff'}) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill={color} stroke="none">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+);
+const TierIconDiamond = ({color='#fff'}) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/><path d="M10 3l-2 6 4 13 4-13-2-6"/>
+  </svg>
+);
+const TierIconCrown = ({color='#fff'}) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M5 16h14v4H5z"/>
+  </svg>
+);
+
 const TIER_META = [
-  { emoji: '☕', label: 'Quick Thanks',   variant: 'subtle'   },
-  { emoji: '🌟', label: 'Great Service',  variant: 'popular'  },
-  { emoji: '💎', label: 'Excellent',      variant: 'cyan'     },
-  { emoji: '👑', label: 'Outstanding',    variant: 'gold'     },
+  { icon: TierIconHand,    label: 'Quick Thanks',   variant: 'subtle'   },
+  { icon: TierIconStar,    label: 'Great Service',  variant: 'popular'  },
+  { icon: TierIconDiamond, label: 'Excellent',      variant: 'cyan'     },
+  { icon: TierIconCrown,   label: 'Outstanding',    variant: 'gold'     },
 ];
 
 function getTipPresets(currency) {
@@ -170,8 +193,8 @@ const inlineStyles = `
   @keyframes drawCheck { to { stroke-dashoffset: 0; } }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 32px rgba(0,200,150,0.35), 0 0 0 0 rgba(0,200,150,0.4); }
-    50%      { box-shadow: 0 0 56px rgba(0,200,150,0.55), 0 0 0 8px rgba(0,200,150,0.0); }
+    0%, 100% { box-shadow: 0 0 16px rgba(0,200,150,0.15), 0 0 0 0 rgba(0,200,150,0.15); }
+    50%      { box-shadow: 0 0 28px rgba(0,200,150,0.25), 0 0 0 6px rgba(0,200,150,0.0); }
   }
 
   .tip-slider {
@@ -183,14 +206,14 @@ const inlineStyles = `
     -webkit-appearance: none; appearance: none;
     width: 22px; height: 22px; border-radius: 50%;
     background: #00C896; border: 3px solid #fff;
-    box-shadow: 0 0 16px rgba(0,200,150,0.6);
+    box-shadow: 0 0 8px rgba(0,200,150,0.3);
     cursor: pointer; transition: transform 0.15s ease;
   }
   .tip-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
   .tip-slider::-moz-range-thumb {
     width: 22px; height: 22px; border-radius: 50%;
     background: #00C896; border: 3px solid #fff;
-    box-shadow: 0 0 16px rgba(0,200,150,0.6);
+    box-shadow: 0 0 8px rgba(0,200,150,0.3);
     cursor: pointer; border: none;
   }
 `;
@@ -402,8 +425,8 @@ export default function TipPage() {
             {/* Photo with green glow */}
             <div style={{
               width: 168, height: 168, borderRadius: '50%',
-              border: '3px solid #00ffcc',
-              boxShadow: '0 0 48px rgba(0,255,204,0.5), 0 0 80px rgba(0,200,150,0.25)',
+              border: '3px solid rgba(0,200,150,0.5)',
+              boxShadow: '0 0 20px rgba(0,200,150,0.15), 0 0 40px rgba(0,200,150,0.08)',
               overflow: 'hidden', margin: '0 auto 18px', position: 'relative',
             }}>
               {photoSrc ? (
@@ -469,37 +492,38 @@ export default function TipPage() {
               let style;
               if (meta.variant === 'popular') {
                 style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.15)', border: '2px solid #00ffcc', boxShadow: '0 0 28px rgba(0,255,204,0.4)' }
-                  : { ...baseStyle, background: 'rgba(0,200,150,0.08)', border: '1.5px solid rgba(0,255,204,0.45)', boxShadow: '0 0 18px rgba(0,255,204,0.18)' };
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid rgba(0,200,150,0.5)', boxShadow: '0 0 12px rgba(0,200,150,0.15)' }
+                  : { ...baseStyle, background: 'rgba(0,200,150,0.06)', border: '1.5px solid rgba(0,200,150,0.25)', boxShadow: 'none' };
               } else if (meta.variant === 'cyan') {
                 style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid #00C896', boxShadow: '0 0 24px rgba(0,200,150,0.3)' }
-                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(0,255,204,0.05), rgba(255,255,255,0.03))', border: '1px solid rgba(0,255,204,0.18)' };
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.10)', border: '2px solid rgba(0,200,150,0.45)', boxShadow: '0 0 10px rgba(0,200,150,0.12)' }
+                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(0,200,150,0.04), rgba(255,255,255,0.03))', border: '1px solid rgba(0,200,150,0.15)' };
               } else if (meta.variant === 'gold') {
                 style = isSelected
-                  ? { ...baseStyle, background: 'rgba(245,158,11,0.12)', border: '2px solid #f59e0b', boxShadow: '0 0 24px rgba(245,158,11,0.3)' }
-                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(255,255,255,0.03))', border: '1px solid rgba(245,158,11,0.25)' };
+                  ? { ...baseStyle, background: 'rgba(245,158,11,0.10)', border: '2px solid rgba(245,158,11,0.45)', boxShadow: '0 0 10px rgba(245,158,11,0.12)' }
+                  : { ...baseStyle, background: 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(255,255,255,0.03))', border: '1px solid rgba(245,158,11,0.18)' };
               } else {
                 style = isSelected
-                  ? { ...baseStyle, background: 'rgba(0,200,150,0.12)', border: '2px solid #00C896', boxShadow: '0 0 24px rgba(0,200,150,0.3)' }
+                  ? { ...baseStyle, background: 'rgba(0,200,150,0.10)', border: '2px solid rgba(0,200,150,0.45)', boxShadow: '0 0 10px rgba(0,200,150,0.12)' }
                   : { ...baseStyle, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' };
               }
               const labelColor = meta.variant === 'gold' && !isSelected ? '#f59e0b' :
-                                  isSelected && meta.variant === 'popular' ? '#00ffcc' :
+                                  isSelected && meta.variant === 'popular' ? '#00C896' :
                                   isSelected ? '#00C896' : '#fff';
+              const IconComp = meta.icon;
               return (
                 <button key={amt} onClick={() => setAmount(amt)} style={style}>
                   {meta.variant === 'popular' && (
                     <span style={{
                       position: 'absolute', top: -8, right: 10,
-                      background: 'linear-gradient(135deg, #00C896, #00FF66)',
+                      background: '#00C896',
                       color: '#1a1a1a', fontSize: 8, fontWeight: 800,
                       padding: '3px 8px', borderRadius: 50, letterSpacing: 0.5,
-                      boxShadow: '0 2px 8px rgba(0,200,150,0.4)',
+                      boxShadow: '0 2px 6px rgba(0,200,150,0.2)',
                     }}>POPULAR</span>
                   )}
-                  <span style={{ fontSize: 14, fontWeight: 600, color: labelColor, lineHeight: 1.1 }}>
-                    {meta.emoji} {meta.label}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: labelColor, lineHeight: 1.1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <IconComp color={labelColor} /> {meta.label}
                   </span>
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
                     {amt} {currency}
@@ -581,7 +605,7 @@ export default function TipPage() {
                 height: 64, borderRadius: 14,
                 background: pm.bg,
                 border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: isSelected ? '0 0 24px rgba(0,200,150,0.4)' : 'none',
+                boxShadow: isSelected ? '0 0 10px rgba(0,200,150,0.15)' : 'none',
                 cursor: 'pointer', transition: 'all 0.2s ease',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
                 padding: 6,
@@ -595,10 +619,15 @@ export default function TipPage() {
                     </div>
                   )}
                   {pm.logo === 'google' && (
-                    <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>
-                      <span style={{ color: '#4285f4' }}>G</span>
-                      <span style={{ color: '#000', marginLeft: 4 }}>Pay</span>
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                      <span style={{ color: '#3c4043', fontSize: 14, fontWeight: 500, fontFamily: "'Google Sans', 'Product Sans', Arial, sans-serif", letterSpacing: '0.25px' }}>Pay</span>
+                    </div>
                   )}
                   {pm.logo === 'card' && (
                     <>
@@ -632,8 +661,8 @@ export default function TipPage() {
             disabled={payDisabled}
             style={{
               width: '100%', height: 60, borderRadius: 50,
-              background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00FF66 100%)',
-              boxShadow: payDisabled ? 'none' : '0 8px 32px rgba(0,200,150,0.45)',
+              background: payDisabled ? 'rgba(255,255,255,0.08)' : '#00C896',
+              boxShadow: payDisabled ? 'none' : '0 6px 20px rgba(0,200,150,0.2)',
               border: 'none',
               color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
               fontSize: 18, fontWeight: 800,
