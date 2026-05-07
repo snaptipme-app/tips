@@ -40,9 +40,9 @@ const TierIconCrown = ({color='#fff'}) => (
 
 /* ─── Tier color palettes ──────────────────────────────────────── */
 const TIER_COLORS = {
-  subtle:  { accent: '#8b9dc3', bg: 'linear-gradient(135deg, rgba(139,157,195,0.08), rgba(139,157,195,0.03))', bgSel: 'rgba(139,157,195,0.14)', border: 'rgba(139,157,195,0.2)', borderSel: 'rgba(139,157,195,0.55)' },
-  popular: { accent: '#00C896', bg: 'linear-gradient(135deg, rgba(0,200,150,0.06), rgba(0,200,150,0.02))', bgSel: 'rgba(0,200,150,0.14)', border: 'rgba(0,200,150,0.2)', borderSel: 'rgba(0,200,150,0.55)' },
-  cyan:    { accent: '#818cf8', bg: 'linear-gradient(135deg, rgba(129,140,248,0.07), rgba(129,140,248,0.02))', bgSel: 'rgba(129,140,248,0.14)', border: 'rgba(129,140,248,0.18)', borderSel: 'rgba(129,140,248,0.55)' },
+  subtle:  { accent: '#00ffcc', bg: 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))', bgSel: 'rgba(0,255,204,0.10)', border: 'rgba(0,255,204,0.15)', borderSel: 'rgba(0,255,204,0.45)' },
+  popular: { accent: '#00ffcc', bg: 'linear-gradient(135deg, rgba(0,255,204,0.07), rgba(0,255,204,0.02))', bgSel: 'rgba(0,255,204,0.13)', border: 'rgba(0,255,204,0.18)', borderSel: 'rgba(0,255,204,0.5)' },
+  cyan:    { accent: '#00ffcc', bg: 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))', bgSel: 'rgba(0,255,204,0.10)', border: 'rgba(0,255,204,0.14)', borderSel: 'rgba(0,255,204,0.45)' },
   gold:    { accent: '#f59e0b', bg: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02))', bgSel: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.18)', borderSel: 'rgba(245,158,11,0.5)' },
 };
 
@@ -74,14 +74,14 @@ function getSliderConfig(presets) {
 /* ─── SVG Components ─────────────────────────────────────────────────── */
 const SnapTipIcon = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" style={{ display: 'block' }}>
-    <path d="M14 2L4 14h7l-1 8 10-12h-7l1-8z" fill="#00FF66" stroke="#00FF66" strokeWidth="0.5" strokeLinejoin="round" />
+    <path d="M14 2L4 14h7l-1 8 10-12h-7l1-8z" fill="#00ffcc" stroke="#00ffcc" strokeWidth="0.5" strokeLinejoin="round" />
   </svg>
 );
 
 const VerifiedBadge = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-    <path d="M12 1l2.4 2 3.1-.4 1 3 2.9 1.3-.5 3.1L23 12l-2.1 2-.5 3.1-2.9 1.3-1 3-3.1-.4L12 23l-2.4-2-3.1.4-1-3-2.9-1.3.5-3.1L1 12l2.1-2 .5-3.1 2.9-1.3 1-3 3.1.4L12 1z" fill="#00C896"/>
-    <path d="M7.5 12.3l3 3 6-6.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 1l2.4 2 3.1-.4 1 3 2.9 1.3-.5 3.1L23 12l-2.1 2-.5 3.1-2.9 1.3-1 3-3.1-.4L12 23l-2.4-2-3.1.4-1-3-2.9-1.3.5-3.1L1 12l2.1-2 .5-3.1 2.9-1.3 1-3 3.1.4L12 1z" fill="#00ffcc"/>
+    <path d="M7.5 12.3l3 3 6-6.5" stroke="#000" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -224,7 +224,7 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: `radial-gradient(circle at 50% 45%, rgba(0,200,150,0.12) 0%, transparent 50%), #1a1a1a`,
+      background: `radial-gradient(circle at 50% 45%, rgba(0,255,204,0.10) 0%, transparent 50%), #000000`,
       padding: 20, animation: 'fadeIn 0.3s ease-out',
       overflow: 'hidden',
     }}>
@@ -469,7 +469,7 @@ export default function TipPage() {
 
   const pageBg = {
     minHeight: '100dvh',
-    background: `radial-gradient(ellipse at bottom left, rgba(0,200,150,0.12) 0%, transparent 55%), radial-gradient(ellipse at top right, rgba(0,200,150,0.04) 0%, transparent 50%), #1a1a1a`,
+    background: `radial-gradient(ellipse at bottom left, rgba(0,255,204,0.07) 0%, transparent 55%), radial-gradient(ellipse at top right, rgba(0,255,204,0.03) 0%, transparent 50%), #000000`,
   };
 
   /* ─── Loading ─── */
@@ -569,10 +569,11 @@ export default function TipPage() {
             padding: '32px 24px 26px',
             marginBottom: 28,
             textAlign: 'center',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
             animation: 'slideUp 0.5s ease-out',
             position: 'relative', overflow: 'hidden',
+            background: '#1a1a1a',
           }}>
             {/* Subtle gradient overlay at bottom */}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, rgba(26,26,26,0.15), transparent)', pointerEvents: 'none', borderRadius: '0 0 24px 24px' }} />
@@ -683,7 +684,7 @@ export default function TipPage() {
 
           {/* Custom amount slider */}
           <div style={{
-            background: 'rgba(255,255,255,0.04)',
+            background: '#1a1a1a',
             borderRadius: 16,
             padding: '16px 18px 18px',
             border: '1px solid rgba(255,255,255,0.06)',
@@ -692,7 +693,7 @@ export default function TipPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>Custom Amount</span>
-              <span style={{ fontSize: 16, color: '#00C896', fontWeight: 800 }}>{amount} {currency}</span>
+              <span style={{ fontSize: 16, color: '#00ffcc', fontWeight: 800 }}>{amount} {currency}</span>
             </div>
             <input
               type="range"
@@ -715,7 +716,7 @@ export default function TipPage() {
             Rating
           </h3>
           <div style={{
-            background: 'rgba(255,255,255,0.04)',
+            background: '#1a1a1a',
             borderRadius: 16, padding: '20px 18px',
             border: '1px solid rgba(255,255,255,0.06)',
             marginBottom: 28, textAlign: 'center',
