@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, AppState, Animated } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,6 +68,17 @@ export default function Home() {
   const photoSrc = user?.photo_url
     ? { uri: user.photo_url }
     : getImageSource(user?.photo_base64 || user?.profile_image_url);
+
+  // Monthly earnings computed from recent tips
+  const monthlyEarned = useMemo(() => {
+    const now = new Date();
+    return recentTips
+      .filter((t) => {
+        const d = new Date(t.created_at || '');
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [recentTips]);
 
   // ── Core fetch function using direct fetch for reliability ──
   const fetchDashboard = useCallback(async () => {
@@ -220,7 +231,7 @@ export default function Home() {
 
               <View style={{ flexDirection: 'row', gap: 20, marginBottom: 20 }}>
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
-                  Total Earned: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{totalEarned.toFixed(2)} {cur}</Text>
+                  This Month: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{monthlyEarned.toFixed(2)} {cur}</Text>
                 </Text>
                 <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.15)' }} />
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
