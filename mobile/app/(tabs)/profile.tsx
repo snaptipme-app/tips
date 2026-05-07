@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, Image, Switch } from 'react-native';
 import { getItem, SecureKeys } from '../../lib/secureStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -77,6 +78,23 @@ export default function Profile() {
 
   // Language picker
   const [showLangModal, setShowLangModal] = useState(false);
+
+  // Rating visibility preference
+  const RATING_PREF_KEY = 'snaptip_show_rating';
+  const [showRating, setShowRating] = useState(true);
+
+  useEffect(() => {
+    AsyncStorage.getItem(RATING_PREF_KEY).then(val => {
+      setShowRating(val === null ? true : val === 'true');
+    }).catch(() => {});
+  }, []);
+
+  const toggleShowRating = useCallback(async (value: boolean) => {
+    setShowRating(value);
+    try {
+      await AsyncStorage.setItem(RATING_PREF_KEY, String(value));
+    } catch (_) {}
+  }, []);
 
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
 
@@ -364,6 +382,26 @@ export default function Profile() {
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{user?.country || 'Morocco'} · {user?.currency || 'MAD'}</Text>
             </View>
           </View>
+
+          {/* Rating visibility toggle — employees only */}
+          {user?.account_type !== 'business' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="star-outline" size={18} color="#f59e0b" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Show my rating</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>Display your rating on your dashboard</Text>
+              </View>
+              <Switch
+                value={showRating}
+                onValueChange={toggleShowRating}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(245,158,11,0.4)' }}
+                thumbColor={showRating ? '#f59e0b' : 'rgba(255,255,255,0.4)'}
+                ios_backgroundColor="rgba(255,255,255,0.1)"
+              />
+            </View>
+          )}
 
           {/* Support row */}
           <TouchableOpacity onPress={() => router.push('/support' as any)} activeOpacity={0.8} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
