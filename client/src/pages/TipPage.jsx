@@ -565,34 +565,31 @@ export default function TipPage() {
         <div style={{ width: '100%', maxWidth: 420, padding: '0 20px' }}>
 
           {/* ── ① Header ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 24, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 16, marginBottom: 14 }}>
             <SnapTipIcon />
-            <span style={{ fontSize: 19, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>SnapTip</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>SnapTip</span>
           </div>
 
           {/* ── ② Hero profile card ── */}
           <div style={{
-            background: 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderRadius: 24,
-            padding: '32px 24px 26px',
-            marginBottom: 28,
+            background: '#1a1a1a',
+            borderRadius: 20,
+            padding: '20px 20px 16px',
+            marginBottom: 18,
             textAlign: 'center',
             border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
             animation: 'slideUp 0.5s ease-out',
             position: 'relative', overflow: 'hidden',
-            background: '#1a1a1a',
           }}>
             {/* Subtle gradient overlay at bottom */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, rgba(26,26,26,0.15), transparent)', pointerEvents: 'none', borderRadius: '0 0 24px 24px' }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40, background: 'linear-gradient(to top, rgba(26,26,26,0.15), transparent)', pointerEvents: 'none', borderRadius: '0 0 20px 20px' }} />
             {/* Photo */}
             <div style={{
-              width: 148, height: 148, borderRadius: '50%',
-              border: '3px solid rgba(0,200,150,0.35)',
-              boxShadow: '0 0 16px rgba(0,200,150,0.1)',
-              overflow: 'hidden', margin: '0 auto 18px', position: 'relative',
+              width: 110, height: 110, borderRadius: '50%',
+              border: '2px solid rgba(0,200,150,0.3)',
+              boxShadow: '0 0 12px rgba(0,200,150,0.08)',
+              overflow: 'hidden', margin: '0 auto 12px', position: 'relative',
             }}>
               {photoSrc ? (
                 <img src={photoSrc} alt={employee.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -602,38 +599,38 @@ export default function TipPage() {
             </div>
 
             {/* Name + verified */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 4 }}>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>{employee.full_name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: '-0.01em' }}>{employee.full_name}</h1>
               <VerifiedBadge />
             </div>
 
             {employee.job_title && (
-              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', margin: '0 0 12px' }}>{employee.job_title}</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', margin: '0 0 8px' }}>{employee.job_title}</p>
             )}
 
             {/* Restaurant pill */}
             {business && (
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
                 background: 'rgba(255,255,255,0.06)', borderRadius: 50,
-                padding: '6px 14px', marginBottom: 14,
+                padding: '4px 12px', marginBottom: 8,
                 border: '1px solid rgba(255,255,255,0.08)',
                 color: 'rgba(255,255,255,0.7)',
               }}>
                 <RestaurantIcon />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{business.business_name}</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{business.business_name}</span>
               </div>
             )}
 
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: '0 0 8px', lineHeight: 1.4 }}>
               Hope you had a great experience!
             </p>
 
             {/* Stats row */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
               {hasRatings ? (
                 <>
-                  <span style={{ color: '#f59e0b', fontSize: 14 }}>★</span>
+                  <span style={{ color: '#f59e0b', fontSize: 13 }}>★</span>
                   <span style={{ fontWeight: 600 }}>{ratingDisplay}</span>
                   <span style={{ color: 'rgba(255,255,255,0.25)' }}>({ratingCount})</span>
                   <span>·</span>
@@ -641,7 +638,7 @@ export default function TipPage() {
                 </>
               ) : (
                 <>
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14 }}>☆</span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13 }}>☆</span>
                   <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No ratings yet</span>
                   <span>·</span>
                   <span>{tipCount} {tipCount === 1 ? 'tip received' : 'tips received'}</span>
