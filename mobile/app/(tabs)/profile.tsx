@@ -306,21 +306,23 @@ export default function Profile() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('edit_profile')}</Text>
           </TouchableOpacity>
 
-          {/* ── Earnings Summary Rows ── */}
-          <View style={{ width: '100%', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Earned</Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalEarned.toFixed(2)} {user?.currency || 'MAD'}</Text>
+          {/* ── Earnings Summary Rows (employees only) ── */}
+          {user?.account_type !== 'business' && (
+            <View style={{ width: '100%', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Earned</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalEarned.toFixed(2)} {user?.currency || 'MAD'}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Withdrawn</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{Math.max(0, totalEarned - balance).toFixed(2)} {user?.currency || 'MAD'}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Available Balance</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Withdrawn</Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{Math.max(0, totalEarned - balance).toFixed(2)} {user?.currency || 'MAD'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Available Balance</Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* ── Withdraw Funds (non-business only) ── */}
