@@ -207,6 +207,11 @@ async function initDB() {
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS is_valid BOOLEAN DEFAULT TRUE",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES employees(id)",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS rating INTEGER",
+      // balance_deducted tracks whether the withdrawal amount has been held from the employee's
+      // balance. TRUE = balance already reduced (legacy behaviour). FALSE = balance will be
+      // reduced only when admin approves (new behaviour). DEFAULT TRUE so that ALL existing
+      // pending withdrawal rows keep the old accounting; new rows are inserted with FALSE.
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS balance_deducted BOOLEAN DEFAULT TRUE",
     ];
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }

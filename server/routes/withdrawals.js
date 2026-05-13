@@ -98,18 +98,21 @@ router.post('/request', authMiddleware, async (req, res) => {
     const fee = config.fee === -1 ? Math.round(amt * 0.005 * 100) / 100 : config.fee;
     const netAmount = amt - fee;
 
-    /* ── Check balance ── */
-    if (Number(empRows[0].balance) < amt) {
+    /* ── Check available balance (balance minus any un-held pending requests) ── */
+    const { rows: availRows } = await pool.query(
+      `SELECT e.balance - COALESCE((
+         SELECT SUM(w.amount) FROM withdrawals w
+         WHERE w.employee_id = $1 AND w.status = 'pending' AND w.balance_deducted = FALSE
+       ), 0) AS available
+       FROM employees e WHERE e.id = $1`,
+      [employeeId]
+    );
+    const availableBalance = Number(availRows[0]?.available ?? empRows[0].balance);
+    if (availableBalance < amt) {
       return res.status(400).json({ error: 'Insufficient balance.' });
     }
 
-    /* ── Deduct balance immediately (prevents double-spending) ── */
-    await pool.query(
-      'UPDATE employees SET balance = balance - $1 WHERE id = $2',
-      [amt, employeeId]
-    );
-
-    /* ── Insert withdrawal record ── */
+    /* ── Insert withdrawal record (balance is NOT deducted until admin approval) ── */
     const accountJson = typeof account_details === 'object'
       ? JSON.stringify(account_details)
       : String(account_details);
@@ -119,16 +122,15 @@ router.post('/request', authMiddleware, async (req, res) => {
       // Encrypted path: write only to account_details_enc, leave plaintext col NULL.
       await pool.query(
         `INSERT INTO withdrawals
-           (employee_id, amount, fee, net_amount, method, account_details, account_details_enc, contact_phone, status)
-         VALUES ($1, $2, $3, $4, $5, NULL, pgp_sym_encrypt($6::text, $7::text), $8, 'pending')`,
+           (employee_id, amount, fee, net_amount, method, account_details, account_details_enc, contact_phone, status, balance_deducted)
+         VALUES ($1, $2, $3, $4, $5, NULL, pgp_sym_encrypt($6::text, $7::text), $8, 'pending', FALSE)`,
         [employeeId, amt, fee, netAmount, method, accountJson, encKey, String(contact_phone).trim()]
       );
     } else {
-      // Fallback (no key configured): legacy plaintext write so deploys never break.
       await pool.query(
         `INSERT INTO withdrawals
-           (employee_id, amount, fee, net_amount, method, account_details, contact_phone, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
+           (employee_id, amount, fee, net_amount, method, account_details, contact_phone, status, balance_deducted)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', FALSE)`,
         [employeeId, amt, fee, netAmount, method, accountJson, String(contact_phone).trim()]
       );
     }
@@ -164,12 +166,11 @@ router.post('/request', authMiddleware, async (req, res) => {
       net_amount: Number(w.net_amount) || 0,
     }));
 
-    const { rows: updatedEmpRows } = await pool.query('SELECT balance FROM employees WHERE id = $1', [employeeId]);
-
+    // Balance is NOT deducted at request time — it stays the same until admin approval.
     res.status(201).json({
       success: true,
       message: 'Withdrawal request submitted. Awaiting admin approval.',
-      new_balance: Number(updatedEmpRows[0]?.balance) || 0,
+      new_balance: availableBalance - amt,  // optimistic: shows what will be left after approval
       withdrawals,
     });
   } catch (err) {

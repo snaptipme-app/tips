@@ -21,6 +21,15 @@ router.get('/', authMiddleware, async (req, res) => {
     const { rows: tipStatsRows } = await pool.query('SELECT COALESCE(SUM(amount), 0) as total_tips, COUNT(*) as tip_count FROM tips WHERE employee_id = $1', [employeeId]);
     const tipStats = tipStatsRows[0] || { total_tips: 0, tip_count: 0 };
 
+    const { rows: withdrawalStatsRows } = await pool.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS total_withdrawn,
+         COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS total_pending
+       FROM withdrawals WHERE employee_id = $1`,
+      [employeeId]
+    );
+    const withdrawalStats = withdrawalStatsRows[0] || { total_withdrawn: 0, total_pending: 0 };
+
     // Rating stats from payments table
     const { rows: ratingRows } = await pool.query(
       `SELECT
@@ -90,6 +99,8 @@ router.get('/', authMiddleware, async (req, res) => {
       employee: emp,
       total_tips: Number(tipStats.total_tips) || 0,
       tip_count: Number(tipStats.tip_count) || 0,
+      total_withdrawn: Number(withdrawalStats.total_withdrawn) || 0,
+      total_pending_withdrawals: Number(withdrawalStats.total_pending) || 0,
       recent_tips: tipsOut,
       recent_withdrawals: wOut,
       rating_stats,

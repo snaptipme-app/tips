@@ -60,6 +60,7 @@ export default function Profile() {
   const balance = user?.balance ?? 0;
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [totalEarned, setTotalEarned] = useState(0);
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [localPhotoUri, setLocalPhotoUri] = useState('');
@@ -112,6 +113,7 @@ export default function Profile() {
       updateUser({ balance: fetchedBalance });
       setWithdrawals(data.recent_withdrawals || data.withdrawals || []);
       setTotalEarned(data.total_tips ?? 0);
+      setTotalWithdrawn(data.total_withdrawn ?? 0);
     } catch {} finally { setLoading(false); }
   }, [updateUser]);
 
@@ -315,7 +317,7 @@ export default function Profile() {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Withdrawn</Text>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{Math.max(0, totalEarned - balance).toFixed(2)} {user?.currency || 'MAD'}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalWithdrawn.toFixed(2)} {user?.currency || 'MAD'}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Available Balance</Text>

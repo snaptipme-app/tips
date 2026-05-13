@@ -508,7 +508,25 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
     if (withdrawal.status === 'paid') return res.status(400).json({ error: 'Already marked as paid.' });
 
-    await pool.query("UPDATE withdrawals SET status = 'paid' WHERE id = $1", [id]);
+    const amt = Number(withdrawal.amount) || 0;
+
+    // Only deduct balance now if it wasn't already deducted at request time.
+    // balance_deducted = FALSE  → new model: deduct here
+    // balance_deducted = TRUE   → legacy model: balance was already held at request, skip
+    if (withdrawal.balance_deducted === false) {
+      const { rowCount } = await pool.query(
+        'UPDATE employees SET balance = balance - $1 WHERE id = $2 AND balance >= $1',
+        [amt, withdrawal.employee_id]
+      );
+      if (rowCount === 0) {
+        return res.status(400).json({ error: 'Insufficient balance to approve this withdrawal.' });
+      }
+    }
+
+    await pool.query(
+      "UPDATE withdrawals SET status = 'paid', balance_deducted = TRUE WHERE id = $1",
+      [id]
+    );
 
     const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
     const employee = eRows[0];
@@ -520,7 +538,7 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
       action: 'withdrawal.paid',
       targetType: 'withdrawal',
       targetId: Number(id) || null,
-      metadata: { employee_id: withdrawal.employee_id, amount: Number(withdrawal.amount) || 0 },
+      metadata: { employee_id: withdrawal.employee_id, amount: amt },
     });
     res.json({ success: true, message: 'Withdrawal marked as paid. Email sent.' });
   } catch (err) {
@@ -540,9 +558,12 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
     const withdrawal = wRows[0];
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
 
-    // Refund balance
     await pool.query("UPDATE withdrawals SET status = 'rejected' WHERE id = $1", [id]);
-    await pool.query('UPDATE employees SET balance = balance + $1 WHERE id = $2', [Number(withdrawal.amount), withdrawal.employee_id]);
+    // Only refund if balance was already deducted at request time (legacy model).
+    // New-model withdrawals (balance_deducted = FALSE) never reduced the balance, so no refund.
+    if (withdrawal.balance_deducted !== false) {
+      await pool.query('UPDATE employees SET balance = balance + $1 WHERE id = $2', [Number(withdrawal.amount), withdrawal.employee_id]);
+    }
 
     const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
     const employee = eRows[0];
