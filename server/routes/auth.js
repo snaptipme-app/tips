@@ -452,46 +452,8 @@ router.post('/forgot-password', async (req, res) => {
       [codeHash, expiresAt, normalizedEmail]
     );
 
-    const { sendEmail } = require('../utils/sendEmail');
-    const htmlBody = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-</head>
-<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-
-    <div style="background:#080818;padding:32px;text-align:center;">
-      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
-      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
-    </div>
-
-    <div style="padding:40px 32px;">
-      <h2 style="color:#080818;font-size:24px;margin:0 0 16px;">Reset your password</h2>
-      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 28px;">
-        Enter this code in the app to reset your password.
-      </p>
-
-      <div style="background:#f0fdf9;border:2px solid #00C896;border-radius:14px;padding:28px;text-align:center;margin-bottom:24px;">
-        <span style="font-size:40px;font-weight:700;letter-spacing:12px;color:#00C896;">${code}</span>
-      </div>
-
-      <p style="color:#888;font-size:14px;margin:0 0 16px;text-align:center;">
-        Expires in <strong style="color:#080818;">15 minutes</strong>
-      </p>
-      <p style="color:#aaa;font-size:13px;margin:0;text-align:center;">
-        If you didn't request this, you can safely ignore this email.
-      </p>
-    </div>
-
-    <div style="background:#f5f5f7;padding:24px 32px;text-align:center;border-top:1px solid #e8e8ea;">
-      <p style="color:#888;font-size:13px;margin:0 0 8px;">Secure payments powered by SnapTip</p>
-      <p style="color:#aaa;font-size:12px;margin:0;">© 2026 SnapTip. All rights reserved.</p>
-    </div>
-
-  </div>
-</body>
-</html>`;
+    const { sendEmail, buildPasswordResetEmail } = require('../utils/sendEmail');
+    const htmlBody = buildPasswordResetEmail({ code });
 
     await sendEmail(normalizedEmail, 'SnapTip — Reset Your Password', htmlBody);
     console.log(`[forgot-password] Reset code sent to ${normalizedEmail}`);

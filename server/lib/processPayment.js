@@ -1,4 +1,9 @@
 const https = require('https');
+const {
+  sendEmail,
+  buildPaymentConfirmationEmail,
+  buildTipReceivedEmail,
+} = require('../utils/sendEmail');
 
 /**
  * Sends an Expo push notification without adding any npm dependency.
@@ -96,10 +101,13 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
     'ALTER TABLE tips ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)'
   ).catch(() => {});
 
-  // 4. Send push notification (fire-and-forget — never blocks payment flow)
+  // 4. Send push notification + emails (fire-and-forget — never blocks payment flow)
   try {
     const { rows: empRows } = await pool.query(
-      'SELECT push_token, currency FROM employees WHERE id = $1',
+      `SELECT e.push_token, e.currency, e.full_name, e.email, b.business_name
+       FROM employees e
+       LEFT JOIN businesses b ON b.id = e.business_id
+       WHERE e.id = $1`,
       [employeeId]
     );
     const emp = empRows[0];
@@ -114,6 +122,35 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       console.log(`[push] Notification queued for employee_id=${employeeId} amount=${amount} ${notifCurrency}`);
     } else {
       console.log(`[push] No push_token for employee_id=${employeeId} — skipping notification`);
+    }
+
+    // 4a. Email the employee that they received a tip.
+    if (emp?.email) {
+      sendEmail(
+        emp.email,
+        `You received a tip — ${Number(amount).toFixed(2)} ${currency}`,
+        buildTipReceivedEmail({
+          amount,
+          currency,
+          dashboardUrl: 'https://snaptip.me',
+        })
+      ).catch((err) => console.error('[email] Tip-received email failed:', err.message));
+    }
+
+    // 4b. Email the tourist a payment receipt (only if they provided an email).
+    if (touristEmail) {
+      sendEmail(
+        touristEmail,
+        `Your SnapTip receipt — ${Number(amount).toFixed(2)} ${currency}`,
+        buildPaymentConfirmationEmail({
+          amount,
+          currency,
+          employeeName: emp?.full_name || null,
+          businessName: emp?.business_name || null,
+          transactionId: transactionId || (payment?.id ? `SNAP-${payment.id}` : null),
+          date: payment?.created_at || new Date(),
+        })
+      ).catch((err) => console.error('[email] Payment-confirmation email failed:', err.message));
     }
   } catch (pushErr) {
     console.error('[push] Failed to send notification (payment still succeeded):', pushErr.message);
