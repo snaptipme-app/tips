@@ -43,7 +43,7 @@ export default function Home() {
   const [recentTips, setRecentTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
-  const [ratingVisible, setRatingVisible] = useState(true);
+  const [ratingVisible, setRatingVisible] = useState(false);
   const RATING_PREF_KEY = 'snaptip_show_rating';
   const prevBalanceRef = useRef<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -52,8 +52,8 @@ export default function Home() {
   const loadRatingPref = useCallback(async () => {
     try {
       const val = await AsyncStorage.getItem(RATING_PREF_KEY);
-      // Default true if not yet set
-      setRatingVisible(val === null ? true : val === 'true');
+      // Default false if not yet set — user must opt-in via profile settings
+      setRatingVisible(val === null ? false : val === 'true');
     } catch (_) {}
   }, []);
 
