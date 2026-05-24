@@ -10,8 +10,8 @@ const green = '#00C896';
 const accent = '#00ffcc';
 const transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 const appDownloadUrl = 'https://snaptip.me/#get-app';
-const playStoreUrl = 'https://github.com/snaptipme-app/tips/releases/latest/download/snaptip.apk';
-const appStoreUrl = '#get-app';
+const playStoreUrl = 'https://play.google.com/store/apps/details?id=me.snaptip.app';
+const appStoreUrl = 'https://apps.apple.com/search?term=SnapTip';
 
 const Icon = ({ name, size = 22 }) => {
   const props = {
@@ -89,7 +89,7 @@ const AppDownloadCard = ({ compact = false }) => (
       <p>Open this page on your phone and choose your store.</p>
       <div className="store-row">
         <StoreButton href={playStoreUrl} icon="play" eyebrow="Get it on" label="Google Play" />
-        <StoreButton href={appStoreUrl} icon="apple" eyebrow="Download on the" label="App Store" muted />
+        <StoreButton href={appStoreUrl} icon="apple" eyebrow="Download on the" label="App Store" />
       </div>
     </div>
   </div>
