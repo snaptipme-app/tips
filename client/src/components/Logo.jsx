@@ -1,5 +1,7 @@
 import React from 'react';
 
+const LOGO_SRC = '/snaptip_icon.png?v=black-20260524';
+
 const SIZES = {
   small: 24,
   medium: 32,
@@ -31,7 +33,7 @@ export default function Logo({
       }}
     >
       <img
-        src="/snaptip_icon.png"
+        src={LOGO_SRC}
         alt=""
         aria-hidden="true"
         style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}

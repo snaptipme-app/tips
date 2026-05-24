@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 const BRAND = {
   name: 'SnapTip',
   url: 'https://snaptip.me',
-  logoUrl: 'https://snaptip.me/snaptip_icon.png',
+  logoUrl: 'https://snaptip.me/snaptip_icon.png?v=black-20260524',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@snaptip.me',
 };
 
