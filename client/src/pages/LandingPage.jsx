@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import img3Screens from '../assets/images/screenshot_3images.png';
 import imgTourist from '../assets/images/screenshot_tourist_page.png';
 import imgEmployee from '../assets/images/screenshot_employee_page.png';
@@ -8,6 +9,9 @@ import imgSettings from '../assets/images/screenshot_employee_settings.png';
 const green = '#00C896';
 const accent = '#00ffcc';
 const transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+const appDownloadUrl = 'https://snaptip.me/#get-app';
+const playStoreUrl = 'https://github.com/snaptipme-app/tips/releases/latest/download/snaptip.apk';
+const appStoreUrl = '#get-app';
 
 const Icon = ({ name, size = 22 }) => {
   const props = {
@@ -26,6 +30,8 @@ const Icon = ({ name, size = 22 }) => {
     menu: <><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></>,
     close: <><path d="m6 6 12 12" /><path d="m18 6-12 12" /></>,
     arrow: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
+    play: <path d="m5 3 14 9-14 9V3Z" />,
+    apple: <><path d="M16.7 13.3c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.1-1.7-1.3-.1-2.5.8-3.2.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7 0-.1-2.5-1-2.5-3.5Z" /><path d="M14.7 6.8c.6-.7 1-1.7.9-2.8-.9 0-1.9.6-2.5 1.3-.6.7-1 1.7-.9 2.7.9.1 1.9-.5 2.5-1.2Z" /></>,
     check: <path d="m5 12 4 4L19 6" />,
     user: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></>,
     qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M18 14h3" /><path d="M14 18h1" /><path d="M18 18h3" /><path d="M18 20v-2" /></>,
@@ -63,6 +69,32 @@ const Button = ({ href, variant = 'primary', children, large = false }) => (
   </a>
 );
 
+const StoreButton = ({ href, icon, eyebrow, label, muted = false }) => (
+  <a className={`store-btn ${muted ? 'store-btn-muted' : ''}`} href={href} aria-label={`${label} ${eyebrow}`}>
+    <Icon name={icon} size={25} />
+    <span>
+      <small>{eyebrow}</small>
+      <strong>{label}</strong>
+    </span>
+  </a>
+);
+
+const AppDownloadCard = ({ compact = false }) => (
+  <div className={`app-download-card ${compact ? 'app-download-card-compact' : ''}`} id={compact ? undefined : 'get-app'}>
+    <div className="qr-box">
+      <QRCodeSVG value={appDownloadUrl} size={compact ? 112 : 148} bgColor="#ffffff" fgColor="#000000" level="M" includeMargin />
+    </div>
+    <div>
+      <span>SCAN TO GET SNAPTIP</span>
+      <p>Open this page on your phone and choose your store.</p>
+      <div className="store-row">
+        <StoreButton href={playStoreUrl} icon="play" eyebrow="Get it on" label="Google Play" />
+        <StoreButton href={appStoreUrl} icon="apple" eyebrow="Download on the" label="App Store" muted />
+      </div>
+    </div>
+  </div>
+);
+
 const stats = [
   ['10%', 'Commission only'],
   ['$0', 'Monthly fee'],
@@ -71,7 +103,7 @@ const stats = [
 ];
 
 const steps = [
-  ['01', 'user', 'Register Free', 'Create your free account, set up your profile, and get your unique QR code instantly.'],
+  ['01', 'user', 'Download the App', 'Install SnapTip on your phone, create your profile, and get your unique QR code instantly.'],
   ['02', 'qr', 'Guest Scans', 'Tourists scan your QR code with any smartphone camera. No app download required.'],
   ['03', 'bolt', 'Tip Sent Instantly', 'The tip goes directly to your account in real time. Cash out whenever you want.'],
 ];
@@ -144,8 +176,8 @@ export default function LandingPage() {
         <div className="nav-inner">
           <Logo />
           <div className={`nav-actions ${menuOpen ? 'nav-actions-open' : ''}`}>
-            <Button href="/login" variant="ghost">Login</Button>
-            <Button href="/register">Get Started Free</Button>
+            <Button href="#get-app" variant="ghost">Scan QR Code</Button>
+            <Button href="#get-app">Get the App</Button>
           </div>
           <button className="menu-btn" type="button" aria-label="Toggle menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
             <Icon name={menuOpen ? 'close' : 'menu'} />
@@ -153,8 +185,8 @@ export default function LandingPage() {
         </div>
         {menuOpen && (
           <div className="mobile-menu">
-            <a href="/login" onClick={closeMenu}>Login</a>
-            <a href="/register" onClick={closeMenu}>Get Started Free</a>
+            <a href="#get-app" onClick={closeMenu}>Scan QR Code</a>
+            <a href="#get-app" onClick={closeMenu}>Get the App</a>
           </div>
         )}
       </nav>
@@ -165,9 +197,10 @@ export default function LandingPage() {
           <h1>Your Guests Want to Tip.<span>Make It Effortless.</span></h1>
           <p>No cash needed. Tourists scan a QR code and tip your staff in seconds. Free to join - SnapTip only takes 10% when you earn.</p>
           <div className="cta-row">
-            <Button href="/register" large>Start Free Today <Icon name="arrow" size={19} /></Button>
-            <Button href="#how-it-works" variant="ghost" large>Watch Demo</Button>
+            <Button href="#get-app" large>Get the Mobile App <Icon name="arrow" size={19} /></Button>
+            <Button href="#get-app" variant="ghost" large>Scan QR Code</Button>
           </div>
+          <AppDownloadCard compact />
           <ul className="trust-row" aria-label="SnapTip trust points">
             <Check>Free to join</Check>
             <Check>No monthly fees</Check>
@@ -298,7 +331,7 @@ export default function LandingPage() {
               'Priority support',
             ].map((item) => <Check key={item}>{item}</Check>)}
           </ul>
-          <Button href="/register" large>Get Started Free <Icon name="arrow" size={19} /></Button>
+          <AppDownloadCard />
           <small>Join today. Start earning in minutes.</small>
         </article>
       </section>
@@ -308,7 +341,7 @@ export default function LandingPage() {
         <div>
           <h2>Ready to Earn More Tips?</h2>
           <p>Join hospitality professionals already using SnapTip. Free forever - we only earn when you do.</p>
-          <Button href="/register" variant="light" large>Get Started Free <Icon name="arrow" size={19} /></Button>
+          <Button href="#get-app" variant="light" large>Get the App <Icon name="arrow" size={19} /></Button>
           <span>No credit card required · Setup in 2 minutes · Cancel anytime</span>
         </div>
       </section>
@@ -497,6 +530,84 @@ export default function LandingPage() {
           color: #000;
           background: ${accent};
         }
+        .app-download-card {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 22px;
+          align-items: center;
+          text-align: left;
+          margin: 34px auto 0;
+          padding: 18px;
+          max-width: 560px;
+          border-radius: 16px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 22px 70px rgba(0,255,204,0.08);
+        }
+        .hero-copy .app-download-card { margin-left: 0; margin-right: 0; }
+        .app-download-card-compact {
+          grid-template-columns: auto 1fr;
+          max-width: 530px;
+          padding: 14px;
+        }
+        .qr-box {
+          padding: 10px;
+          border-radius: 14px;
+          background: #fff;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+        }
+        .qr-box svg { display: block; border-radius: 8px; }
+        .app-download-card span {
+          display: block;
+          color: ${accent};
+          font-size: 12px;
+          font-weight: 900;
+          margin-bottom: 8px;
+        }
+        .app-download-card p {
+          color: #a0a0a0;
+          font-size: 14px;
+          line-height: 1.5;
+          margin: 0 0 14px;
+        }
+        .store-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .store-btn {
+          min-height: 58px;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          color: #fff;
+          text-decoration: none;
+          background: #111;
+          border: 1px solid rgba(255,255,255,0.12);
+          transition: ${transition};
+        }
+        .store-btn:hover {
+          transform: translateY(-2px);
+          border-color: rgba(0,255,204,0.36);
+          box-shadow: 0 16px 40px rgba(0,255,204,0.10);
+        }
+        .store-btn-muted { opacity: 0.72; }
+        .store-btn span { color: inherit; margin: 0; }
+        .store-btn small {
+          display: block;
+          color: #a0a0a0;
+          font-size: 10px;
+          line-height: 1.1;
+          margin-bottom: 3px;
+        }
+        .store-btn strong {
+          display: block;
+          color: #fff;
+          font-size: 14px;
+          line-height: 1.1;
+        }
         .hero-visual { min-height: 540px; display: grid; place-items: center; }
         .hero-glow {
           position: absolute;
@@ -646,6 +757,7 @@ export default function LandingPage() {
           .hero { grid-template-columns: 1fr; text-align: center; padding-top: 76px; }
           .hero-copy, .hero p, .hero h1 { margin-left: auto; margin-right: auto; }
           .badge, .cta-row, .trust-row { justify-content: center; }
+          .hero-copy .app-download-card { margin-left: auto; margin-right: auto; }
           .hero-visual { min-height: auto; }
           .hero-visual img { max-width: 640px; }
           .showcase-row, .showcase-row.reverse { grid-template-columns: 1fr; gap: 34px; text-align: center; }
@@ -682,6 +794,9 @@ export default function LandingPage() {
           .hero p { font-size: 16px; }
           .cta-row { flex-direction: column; align-items: stretch; }
           .btn-large { width: 100%; }
+          .app-download-card, .app-download-card-compact { grid-template-columns: 1fr; text-align: center; }
+          .qr-box { width: fit-content; margin: 0 auto; }
+          .store-row { grid-template-columns: 1fr; }
           .stats-bar { grid-template-columns: repeat(2, 1fr); }
           .stat { min-height: 112px; border-bottom: 1px solid rgba(255,255,255,0.06); }
           .stat:nth-child(2n) { border-right: 0; }

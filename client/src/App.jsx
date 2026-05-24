@@ -4,8 +4,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LandingPage from './pages/LandingPage';
 import TipPage from './pages/TipPage';
-import Login from './pages/Login';
-import RegisterMultiStep from './pages/RegisterMultiStep';
 import DashboardLayout from './pages/dashboard/DashboardLayout';
 import Home from './pages/dashboard/Home';
 import Tips from './pages/dashboard/Tips';
@@ -25,8 +23,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
 
           {/* ── Web auth (kept for backwards compat / deep links) ── */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<RegisterMultiStep />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/register" element={<Navigate to="/" replace />} />
 
           {/* ── Admin panel (self-managed auth) ── */}
           <Route path="/admin/oh" element={<AdminPage />} />
