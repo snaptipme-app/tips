@@ -1,19 +1,28 @@
 const nodemailer = require('nodemailer');
 
-const FROM = () => `SnapTip <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
+const BRAND = {
+  name: 'SnapTip',
+  url: 'https://snaptip.me',
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@snaptip.me',
+};
 
 const COLORS = {
+  background: '#f5f7f9',
+  container: '#ffffff',
   primary: '#00C896',
-  primaryDark: '#00A57A',
-  bg: '#f8fafc',
-  card: '#ffffff',
-  text: '#0f172a',
-  muted: '#475569',
-  faint: '#94a3b8',
-  border: '#e2e8f0',
-  divider: '#f1f5f9',
-  highlight: '#f0fdf4',
+  primaryDark: '#00a97f',
+  text: '#111111',
+  secondary: '#666666',
+  tertiary: '#8a8a8a',
+  border: '#eaeaea',
+  soft: '#f8faf9',
+  successSoft: '#edfdf7',
+  warningSoft: '#fff8e8',
 };
+
+const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif";
+
+const FROM = () => `SnapTip <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -27,58 +36,217 @@ function createTransporter() {
   });
 }
 
-/* ─────────────────────────── shared shell ─────────────────────────── */
+function escapeHtml(value) {
+  if (value == null) return '';
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+}
 
-function wrapEmail({ preheader = '', heading, intro = '', body = '' }) {
-  return `<!DOCTYPE html>
+function absoluteUrl(url) {
+  if (!url) return BRAND.url;
+  return String(url);
+}
+
+function formatMoney(amount, currency = 'MAD') {
+  const numeric = Number(amount || 0);
+  return `${numeric.toFixed(2)} ${escapeHtml(currency)}`;
+}
+
+function formatDate(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return escapeHtml(value);
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function firstName(name) {
+  const clean = String(name || '').trim();
+  return clean ? clean.split(/\s+/)[0] : '';
+}
+
+function stripHtml(html) {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<\/td>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function hiddenPreheader(text) {
+  if (!text) return '';
+  return `
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">
+      ${escapeHtml(text)}
+    </div>`;
+}
+
+function paragraph(content, options = {}) {
+  const color = options.color || COLORS.secondary;
+  const align = options.align || 'left';
+  const margin = options.margin || '0 0 18px';
+  return `<p style="margin:${margin};font-size:15px;line-height:1.65;color:${color};text-align:${align};">${content}</p>`;
+}
+
+function badge(label, tone = 'success') {
+  const bg = tone === 'warning' ? COLORS.warningSoft : COLORS.successSoft;
+  const color = tone === 'warning' ? '#946200' : COLORS.primaryDark;
+  return `
+    <div style="margin:0 0 22px;">
+      <span style="display:inline-block;padding:7px 11px;border-radius:999px;background:${bg};color:${color};font-size:12px;line-height:1;font-weight:700;border:1px solid rgba(0,0,0,0.04);">
+        ${escapeHtml(label)}
+      </span>
+    </div>`;
+}
+
+function ctaButton(url, label) {
+  const href = escapeHtml(absoluteUrl(url));
+  const text = escapeHtml(label);
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 24px;">
+      <tr>
+        <td align="center" bgcolor="${COLORS.primary}" style="border-radius:12px;background:${COLORS.primary};mso-padding-alt:15px 22px;">
+          <a href="${href}" target="_blank" style="display:inline-block;min-width:176px;padding:15px 22px;border-radius:12px;color:#ffffff;background:${COLORS.primary};font-family:${FONT_STACK};font-size:15px;line-height:18px;font-weight:700;text-align:center;text-decoration:none;">
+            ${text}
+          </a>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function fallbackLink(url, label = 'If the button does not work, copy and paste this link into your browser:') {
+  const href = escapeHtml(absoluteUrl(url));
+  return `
+    <div style="margin:24px 0 0;padding:16px;border-radius:12px;background:${COLORS.soft};border:1px solid ${COLORS.border};">
+      <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:${COLORS.tertiary};">${escapeHtml(label)}</p>
+      <a href="${href}" target="_blank" style="word-break:break-all;color:${COLORS.primaryDark};font-size:12px;line-height:1.5;text-decoration:none;">${href}</a>
+    </div>`;
+}
+
+function codeBlock(code, label = 'Verification code') {
+  if (!code) return '';
+  return `
+    <div style="margin:24px 0;padding:18px 20px;border-radius:14px;background:${COLORS.soft};border:1px solid ${COLORS.border};text-align:center;">
+      <div style="margin:0 0 8px;color:${COLORS.tertiary};font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;">${escapeHtml(label)}</div>
+      <div style="color:${COLORS.text};font-size:30px;line-height:1.1;font-weight:750;letter-spacing:6px;font-family:'SF Mono',Consolas,Menlo,monospace;">${escapeHtml(code)}</div>
+    </div>`;
+}
+
+function summaryCard(rows, options = {}) {
+  const title = options.title ? `
+    <tr>
+      <td colspan="2" style="padding:0 0 12px;color:${COLORS.text};font-size:14px;line-height:1.3;font-weight:750;">
+        ${escapeHtml(options.title)}
+      </td>
+    </tr>` : '';
+
+  const body = rows
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .map(([label, value], index, filteredRows) => {
+      const border = index === filteredRows.length - 1 ? 'none' : `1px solid ${COLORS.border}`;
+      return `
+        <tr>
+          <td style="padding:13px 0;border-bottom:${border};color:${COLORS.secondary};font-size:13px;line-height:1.35;text-align:left;vertical-align:top;">${escapeHtml(label)}</td>
+          <td style="padding:13px 0;border-bottom:${border};color:${COLORS.text};font-size:13px;line-height:1.35;font-weight:650;text-align:right;vertical-align:top;">${value}</td>
+        </tr>`;
+    }).join('');
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;padding:18px 20px;background:${COLORS.soft};border:1px solid ${COLORS.border};border-radius:16px;">
+      ${title}
+      ${body}
+    </table>`;
+}
+
+function amountHero(amount, currency, label = 'Amount') {
+  return `
+    <div style="margin:26px 0;padding:24px 20px;border-radius:18px;background:${COLORS.successSoft};border:1px solid rgba(0,200,150,0.16);text-align:center;">
+      <div style="margin:0 0 8px;color:${COLORS.primaryDark};font-size:12px;line-height:1;text-transform:uppercase;letter-spacing:1.2px;font-weight:750;">${escapeHtml(label)}</div>
+      <div style="color:${COLORS.text};font-size:34px;line-height:1.1;font-weight:760;letter-spacing:-0.4px;">${formatMoney(amount, currency)}</div>
+    </div>`;
+}
+
+function benefits(items) {
+  const rows = items.map(item => `
+    <tr>
+      <td style="padding:6px 0;width:24px;vertical-align:top;color:${COLORS.primary};font-size:15px;line-height:20px;font-weight:700;">✓</td>
+      <td style="padding:6px 0;color:${COLORS.secondary};font-size:14px;line-height:1.55;">${escapeHtml(item)}</td>
+    </tr>`).join('');
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+      ${rows}
+    </table>`;
+}
+
+function renderLayout({ preheader, title, eyebrow, children }) {
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
-  <title>SnapTip</title>
+  <title>${escapeHtml(title || BRAND.name)}</title>
+  <style>
+    @media only screen and (max-width: 620px) {
+      .email-pad { padding: 24px 18px !important; }
+      .email-card { border-radius: 18px !important; }
+      .email-content { padding: 30px 22px 28px !important; }
+      .email-heading { font-size: 24px !important; line-height: 1.16 !important; }
+      .email-footer { padding: 22px !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background-color:${COLORS.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-  ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>` : ''}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.bg};padding:40px 16px;">
+<body style="margin:0;padding:0;background:${COLORS.background};font-family:${FONT_STACK};-webkit-font-smoothing:antialiased;text-size-adjust:100%;">
+  ${hiddenPreheader(preheader)}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:${COLORS.background};">
     <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${COLORS.card};border-radius:16px;border:1px solid ${COLORS.border};box-shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);overflow:hidden;">
-          
-          <!-- Top Accent Line -->
+      <td align="center" class="email-pad" style="padding:44px 18px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:560px;background:${COLORS.container};border:1px solid ${COLORS.border};border-radius:24px;overflow:hidden;">
           <tr>
-            <td height="4" style="background-color:${COLORS.primary};line-height:4px;font-size:4px;">&nbsp;</td>
-          </tr>
-
-          <!-- Header / Brand -->
-          <tr>
-            <td style="padding:32px 40px 24px;text-align:center;">
-              <div style="font-size:24px;font-weight:800;color:${COLORS.text};letter-spacing:-0.5px;">
+            <td class="email-content" style="padding:38px 42px 34px;">
+              <div style="margin:0 0 34px;color:${COLORS.text};font-size:18px;line-height:1.2;font-weight:760;">
                 <span style="color:${COLORS.primary};">⚡</span> SnapTip
               </div>
+              ${eyebrow ? `<div style="margin:0 0 13px;color:${COLORS.primaryDark};font-size:13px;line-height:1.2;font-weight:750;">${escapeHtml(eyebrow)}</div>` : ''}
+              <h1 class="email-heading" style="margin:0 0 16px;color:${COLORS.text};font-size:28px;line-height:1.18;font-weight:760;letter-spacing:-0.35px;">${escapeHtml(title)}</h1>
+              ${children}
             </td>
           </tr>
-
-          <!-- Main Content -->
           <tr>
-            <td style="padding:0 40px 32px;">
-              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.4;font-weight:700;color:${COLORS.text};letter-spacing:-0.3px;text-align:center;">${heading}</h1>
-              ${intro ? `<p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:${COLORS.muted};text-align:center;">${intro}</p>` : ''}
-              
-              <!-- Content Body -->
-              ${body}
+            <td class="email-footer" style="padding:26px 42px 32px;border-top:1px solid ${COLORS.border};background:#fbfbfb;">
+              <p style="margin:0 0 12px;color:${COLORS.secondary};font-size:13px;line-height:1.55;">
+                Questions? Contact SnapTip support at <a href="mailto:${escapeHtml(BRAND.supportEmail)}" style="color:${COLORS.text};text-decoration:none;">${escapeHtml(BRAND.supportEmail)}</a>.
+              </p>
+              <p style="margin:0;color:${COLORS.tertiary};font-size:12px;line-height:1.55;">
+                This transactional email was sent by SnapTip. Please keep it for your records if it contains payment or account information.
+              </p>
+              <div style="height:1px;background:${COLORS.border};line-height:1px;font-size:1px;margin:18px 0;">&nbsp;</div>
+              <p style="margin:0;color:${COLORS.tertiary};font-size:12px;line-height:1.55;">© 2026 SnapTip. All rights reserved.</p>
             </td>
           </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:32px 40px;background-color:#fafafa;border-top:1px solid ${COLORS.border};text-align:center;">
-              <p style="margin:0 0 8px;font-size:12px;color:${COLORS.faint};">Secure digital tipping platform</p>
-              <p style="margin:0;font-size:12px;color:${COLORS.faint};">&copy; 2026 SnapTip. All rights reserved.</p>
-            </td>
-          </tr>
-
         </table>
       </td>
     </tr>
@@ -87,167 +255,152 @@ function wrapEmail({ preheader = '', heading, intro = '', body = '' }) {
 </html>`;
 }
 
-function button(href, label) {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px auto;width:100%;max-width:240px;">
-    <tr>
-      <td align="center" style="background-color:${COLORS.primary};border-radius:10px;">
-        <a href="${href}" target="_blank" style="display:block;padding:14px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;">${label}</a>
-      </td>
-    </tr>
-  </table>`;
-}
-
-function codeBlock(code) {
-  return `<div style="background-color:${COLORS.highlight};border:1px solid rgba(0,200,150,0.2);border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
-    <div style="font-size:13px;color:${COLORS.muted};text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:8px;">Verification Code</div>
-    <div style="font-size:32px;font-weight:800;letter-spacing:8px;color:${COLORS.primary};font-family:'SF Mono',SFMono-Regular,Consolas,monospace;text-indent:8px;">${code}</div>
-  </div>`;
-}
-
-function dataTable(rows) {
-  const trs = rows.map(([label, value]) => `
-    <tr>
-      <td style="padding:14px 0;font-size:13px;color:${COLORS.muted};border-bottom:1px solid ${COLORS.divider};text-align:left;">${label}</td>
-      <td style="padding:14px 0;font-size:14px;color:${COLORS.text};font-weight:600;border-bottom:1px solid ${COLORS.divider};text-align:right;">${value}</td>
-    </tr>`).join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fcfcfd;border-radius:12px;border:1px solid ${COLORS.border};padding:8px 20px;margin:24px 0;">
-    ${trs}
-  </table>`;
-}
-
-function amountBadge(amount, currency) {
-  return `<div style="text-align:center;margin:8px 0 24px;">
-    <div style="display:inline-block;background-color:${COLORS.highlight};border:1px solid rgba(0,200,150,0.15);border-radius:14px;padding:18px 32px;">
-      <div style="font-size:12px;color:${COLORS.muted};margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Tip Amount</div>
-      <div style="font-size:32px;font-weight:800;color:${COLORS.primary};letter-spacing:-0.5px;">${Number(amount).toFixed(2)} ${currency}</div>
-    </div>
-  </div>`;
-}
-
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-}
-
-function formatDate(d) {
-  const dt = d ? new Date(d) : new Date();
-  return dt.toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-}
-
-/* ─────────────────────────── builders ─────────────────────────── */
-
-function buildOTPEmail(code) {
-  return wrapEmail({
-    preheader: 'Welcome to SnapTip! Confirm your email address.',
-    heading: 'Verify your email address',
-    intro: 'Welcome to SnapTip! We are excited to help you get started. Please verify your email address to active your account.',
-    body: `
-      ${codeBlock(escapeHtml(code))}
-      ${button('https://snaptip.me', 'Verify Email')}
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${COLORS.muted};text-align:center;">
-        This code expires in <strong style="color:${COLORS.text};">5 minutes</strong>. Never share this code with anyone.
-      </p>
+function buildOTPEmail(code, options = {}) {
+  const verificationUrl = absoluteUrl(options.verificationUrl || BRAND.url);
+  return renderLayout({
+    preheader: 'Welcome to SnapTip. Verify your email to finish setting up your account.',
+    eyebrow: 'Welcome to SnapTip',
+    title: 'Verify your email address',
+    children: `
+      ${paragraph('Thanks for joining SnapTip. Please verify your email address so we can keep your account secure and send important tipping updates.')}
+      ${codeBlock(code)}
+      ${ctaButton(verificationUrl, 'Verify Email')}
+      ${paragraph('This verification expires in 5 minutes. For your security, never share this code or link with anyone.', { color: COLORS.secondary, margin: '0 0 12px' })}
+      ${fallbackLink(verificationUrl)}
     `,
   });
 }
 
-function buildPasswordResetEmail({ code, resetUrl } = {}) {
-  const targetUrl = resetUrl || 'https://snaptip.me/reset-password';
-  return wrapEmail({
-    preheader: 'Reset your SnapTip password',
-    heading: 'Reset your password',
-    intro: 'We received a request to reset your password. Use the verification code below in the app or click the button below to complete the reset.',
-    body: `
-      ${code ? codeBlock(escapeHtml(code)) : ''}
-      ${button(targetUrl, 'Reset Password')}
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${COLORS.muted};text-align:center;">
-        This request expires in <strong style="color:${COLORS.text};">15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.
-      </p>
+function buildPasswordResetEmail({ code, resetUrl, requestedAt } = {}) {
+  const targetUrl = absoluteUrl(resetUrl || `${BRAND.url}/reset-password`);
+  const timestamp = requestedAt ? formatDate(requestedAt) : formatDate(new Date());
+
+  return renderLayout({
+    preheader: 'Use this secure link or code to reset your SnapTip password.',
+    eyebrow: 'Account security',
+    title: 'Reset your password',
+    children: `
+      ${paragraph('We received a request to reset the password for your SnapTip account. Use the button below or enter the code in the app to continue.')}
+      ${codeBlock(code, 'Reset code')}
+      ${ctaButton(targetUrl, 'Reset Password')}
+      ${summaryCard([
+        ['Requested at', escapeHtml(timestamp)],
+        ['Expires in', '15 minutes'],
+      ], { title: 'Security details' })}
+      ${paragraph('If this was not you, do not click the button or share the code. Your current password will stay active, and you should contact support if you are concerned.', { color: COLORS.secondary })}
+      ${fallbackLink(targetUrl)}
     `,
   });
 }
 
-function buildPaymentConfirmationEmail({ amount, currency = 'MAD', employeeName, businessName, transactionId, date } = {}) {
-  return wrapEmail({
-    preheader: `Thank you! Your tip of ${Number(amount || 0).toFixed(2)} ${currency} was sent.`,
-    heading: 'Thank you for tipping!',
-    intro: `Your tip has been successfully delivered${employeeName ? ` to <strong style="color:${COLORS.text};">${escapeHtml(employeeName)}</strong>` : ''}. Here is your official receipt.`,
-    body: `
-      ${amountBadge(amount || 0, escapeHtml(currency))}
-      ${dataTable([
-        ...(employeeName ? [['Recipient', escapeHtml(employeeName)]] : []),
-        ...(businessName ? [['Business Name', escapeHtml(businessName)]] : []),
-        ...(transactionId ? [['Transaction ID', `<span style="font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:${COLORS.muted};font-weight:500;">${escapeHtml(transactionId)}</span>`]] : []),
-        ['Date & Time', formatDate(date)],
+function buildPaymentConfirmationEmail({
+  amount,
+  currency = 'MAD',
+  employeeName,
+  businessName,
+  transactionId,
+  date,
+  paymentMethod,
+  receiptUrl,
+} = {}) {
+  const safeEmployee = employeeName ? escapeHtml(employeeName) : 'your service professional';
+  const targetUrl = absoluteUrl(receiptUrl || BRAND.url);
+
+  return renderLayout({
+    preheader: `Your ${formatMoney(amount, currency)} SnapTip payment was successful.`,
+    eyebrow: 'Payment successful',
+    title: 'Your tip was sent',
+    children: `
+      ${badge('Payment confirmed')}
+      ${paragraph(`Your tip to <strong style="color:${COLORS.text};">${safeEmployee}</strong> was processed successfully. Here is a copy of your receipt.`)}
+      ${amountHero(amount, currency, 'Tip amount')}
+      ${summaryCard([
+        ['Employee', safeEmployee],
+        ['Business', businessName ? escapeHtml(businessName) : 'SnapTip partner'],
+        ['Transaction ID', transactionId ? `<span style="font-family:'SF Mono',Consolas,Menlo,monospace;font-size:12px;">${escapeHtml(transactionId)}</span>` : 'Pending'],
+        ['Payment date', escapeHtml(formatDate(date))],
+        ['Payment method', paymentMethod ? escapeHtml(paymentMethod) : 'Card or wallet'],
+      ], { title: 'Receipt summary' })}
+      ${ctaButton(targetUrl, 'View Receipt')}
+      ${paragraph('Thank you for recognizing great service. SnapTip helps hospitality teams receive tips securely without cash.', { margin: '0' })}
+    `,
+  });
+}
+
+function buildTipReceivedEmail({
+  amount,
+  currency = 'MAD',
+  senderName,
+  dashboardUrl = BRAND.url,
+  businessName,
+  date,
+} = {}) {
+  const senderFirstName = firstName(senderName);
+  const senderCopy = senderFirstName ? `${escapeHtml(senderFirstName)} sent you a tip.` : 'A guest sent you a tip.';
+
+  return renderLayout({
+    preheader: `You received ${formatMoney(amount, currency)} on SnapTip.`,
+    eyebrow: 'New tip received',
+    title: 'A tip just arrived',
+    children: `
+      ${badge('Balance updated')}
+      ${paragraph(`${senderCopy} Nice work. Your balance has been updated and the details are available in your dashboard.`)}
+      ${amountHero(amount, currency, 'Amount received')}
+      ${summaryCard([
+        ['From', senderFirstName ? escapeHtml(senderFirstName) : 'Guest'],
+        ['Business', businessName ? escapeHtml(businessName) : 'Your workplace'],
+        ['Received', escapeHtml(formatDate(date))],
+      ], { title: 'Quick summary' })}
+      ${ctaButton(dashboardUrl, 'View Dashboard')}
+      ${paragraph('Keep delivering the kind of service guests remember. We will keep your tips organized and easy to track.', { margin: '0' })}
+    `,
+  });
+}
+
+function buildStaffInvitationEmail({ businessName, managerName, inviteUrl, expiresIn = '7 days' } = {}) {
+  const company = businessName || 'your team';
+  const targetUrl = absoluteUrl(inviteUrl || BRAND.url);
+
+  return renderLayout({
+    preheader: `${company} invited you to join SnapTip.`,
+    eyebrow: 'Staff invitation',
+    title: `Join ${company} on SnapTip`,
+    children: `
+      ${paragraph(`${managerName ? `<strong style="color:${COLORS.text};">${escapeHtml(managerName)}</strong>` : 'A manager'} invited you to join <strong style="color:${COLORS.text};">${escapeHtml(company)}</strong> on SnapTip, a cashless tipping platform for hospitality teams.`)}
+      ${benefits([
+        'Receive tips through your personal QR code',
+        'Track your balance, ratings, and tip history',
+        'Cash out securely from the mobile app',
       ])}
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${COLORS.muted};text-align:center;">
-        Your generous support helps service industry staff everywhere. Thank you for using SnapTip!
-      </p>
+      ${ctaButton(targetUrl, 'Accept Invitation')}
+      ${paragraph(`This invitation expires in ${escapeHtml(expiresIn)}. If you were not expecting this invite, you can safely ignore this email.`, { color: COLORS.secondary, margin: '0 0 12px' })}
+      ${fallbackLink(targetUrl)}
     `,
   });
 }
-
-function buildTipReceivedEmail({ amount, currency = 'MAD', senderName, dashboardUrl = 'https://snaptip.me' } = {}) {
-  return wrapEmail({
-    preheader: `Congratulations! You received a tip of ${Number(amount || 0).toFixed(2)} ${currency}.`,
-    heading: 'You received a tip!',
-    intro: senderName
-      ? `<strong style="color:${COLORS.text};">${escapeHtml(senderName)}</strong> just sent you a tip for your excellent service. Keep up the amazing work!`
-      : 'A customer just sent you a tip for your excellent service. Keep up the amazing work!',
-    body: `
-      ${amountBadge(amount || 0, escapeHtml(currency))}
-      ${button(dashboardUrl, 'View Dashboard')}
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${COLORS.muted};text-align:center;">
-        Your balance has been updated instantly. You can request a withdrawal to your bank account anytime via the mobile app.
-      </p>
-    `,
-  });
-}
-
-function buildStaffInvitationEmail({ businessName, managerName, inviteUrl } = {}) {
-  return wrapEmail({
-    preheader: `Join ${businessName || 'our business'} team on SnapTip.`,
-    heading: `Join ${escapeHtml(businessName || 'our business')}`,
-    intro: managerName
-      ? `<strong style="color:${COLORS.text};">${escapeHtml(managerName)}</strong> has invited you to join <strong style="color:${COLORS.text};">${escapeHtml(businessName || 'their team')}</strong> on SnapTip so you can start receiving contactless, digital tips directly from customers.`
-      : `You've been invited to join the team at <strong style="color:${COLORS.text};">${escapeHtml(businessName || 'a business')}</strong> on SnapTip and start receiving digital tips directly from customers.`,
-    body: `
-      ${dataTable([
-        ['Business Name', escapeHtml(businessName || '—')],
-        ...(managerName ? [['Invited By', escapeHtml(managerName)]] : []),
-      ])}
-      ${inviteUrl ? button(inviteUrl, 'Accept Invitation') : ''}
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${COLORS.muted};text-align:center;">
-        Ready to start earning tips? Click the button above to accept your invitation and create your account.
-      </p>
-    `,
-  });
-}
-
-/* ─────────────────────────── public senders ─────────────────────────── */
 
 /**
  * Send a 6-digit OTP to verify a user's email.
  * @param {string} email Recipient
- * @param {string} code  Plain-text 6-digit code (never stored; caller hashes)
+ * @param {string} code Plain-text 6-digit code (never stored; caller hashes)
  */
 async function sendOTPEmail(email, code) {
+  const html = buildOTPEmail(code);
   const transporter = createTransporter();
   await transporter.sendMail({
     from: FROM(),
     to: email,
-    subject: 'SnapTip — Verify your email',
-    text: `Your SnapTip verification code is: ${code}\n\nThis code expires in 5 minutes. Never share it with anyone.`,
-    html: buildOTPEmail(code),
+    subject: 'SnapTip - Verify your email',
+    text: stripHtml(html),
+    html,
   });
 }
 
 /**
- * Generic HTML sender — kept for backwards compatibility with existing call
- * sites in business.js, employee.js, auth.js, support.js.
- * @param {string} to       Recipient
- * @param {string} subject  Subject line
- * @param {string} html     Full HTML body (use builders above)
+ * Generic HTML sender kept for backwards compatibility with existing call sites.
+ * @param {string} to Recipient
+ * @param {string} subject Subject line
+ * @param {string} html Full HTML body
  */
 async function sendEmail(to, subject, html) {
   const transporter = createTransporter();
@@ -255,6 +408,7 @@ async function sendEmail(to, subject, html) {
     from: FROM(),
     to,
     subject,
+    text: stripHtml(html),
     html,
   });
 }
@@ -262,7 +416,6 @@ async function sendEmail(to, subject, html) {
 module.exports = {
   sendEmail,
   sendOTPEmail,
-  // template builders (callers compose subject + html, then send via sendEmail)
   buildOTPEmail,
   buildPasswordResetEmail,
   buildPaymentConfirmationEmail,
