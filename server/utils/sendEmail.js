@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const BRAND = {
   name: 'SnapTip',
   url: 'https://snaptip.me',
+  logoUrl: 'https://snaptip.me/snaptip_icon.png',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@snaptip.me',
 };
 
@@ -11,11 +12,11 @@ const COLORS = {
   container: '#ffffff',
   primary: '#00C896',
   primaryDark: '#00a97f',
-  text: '#111111',
-  secondary: '#666666',
-  tertiary: '#8a8a8a',
-  border: '#eaeaea',
-  soft: '#f8faf9',
+  text: '#111827',
+  secondary: '#6b7280',
+  tertiary: '#9ca3af',
+  border: '#e5e7eb',
+  soft: '#f9fafb',
   successSoft: '#edfdf7',
   warningSoft: '#fff8e8',
 };
@@ -147,9 +148,18 @@ function fallbackLink(url, label = 'If the button does not work, copy and paste 
 function codeBlock(code, label = 'Verification code') {
   if (!code) return '';
   return `
-    <div style="margin:24px 0;padding:18px 20px;border-radius:14px;background:${COLORS.soft};border:1px solid ${COLORS.border};text-align:center;">
+    <div style="margin:22px 0;padding:16px 18px;border-radius:12px;background:${COLORS.soft};border:1px solid ${COLORS.border};text-align:center;">
       <div style="margin:0 0 8px;color:${COLORS.tertiary};font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;">${escapeHtml(label)}</div>
-      <div style="color:${COLORS.text};font-size:30px;line-height:1.1;font-weight:750;letter-spacing:6px;font-family:'SF Mono',Consolas,Menlo,monospace;">${escapeHtml(code)}</div>
+      <div style="color:${COLORS.text};font-size:26px;line-height:1.12;font-weight:750;letter-spacing:4px;font-family:'SF Mono',Consolas,Menlo,monospace;">${escapeHtml(code)}</div>
+    </div>`;
+}
+
+function secureCodeBox(value, label = 'Secure code') {
+  if (!value) return '';
+  return `
+    <div style="margin:22px 0;padding:16px 18px;border-radius:12px;background:${COLORS.soft};border:1px solid ${COLORS.border};text-align:center;">
+      <div style="margin:0 0 8px;color:${COLORS.tertiary};font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;">${escapeHtml(label)}</div>
+      <div style="display:inline-block;padding:8px 10px;border-radius:8px;background:#ffffff;border:1px solid ${COLORS.border};color:${COLORS.text};font-size:19px;line-height:1.2;font-weight:700;letter-spacing:2px;font-family:'SF Mono',Consolas,Menlo,monospace;">${escapeHtml(value)}</div>
     </div>`;
 }
 
@@ -211,10 +221,11 @@ function renderLayout({ preheader, title, eyebrow, children }) {
   <title>${escapeHtml(title || BRAND.name)}</title>
   <style>
     @media only screen and (max-width: 620px) {
-      .email-pad { padding: 24px 18px !important; }
+      .email-pad { padding: 22px 14px !important; }
       .email-card { border-radius: 18px !important; }
-      .email-content { padding: 30px 22px 28px !important; }
-      .email-heading { font-size: 24px !important; line-height: 1.16 !important; }
+      .email-header { padding: 22px 22px 14px !important; }
+      .email-content { padding: 18px 22px 28px !important; }
+      .email-heading { font-size: 23px !important; line-height: 1.18 !important; }
       .email-footer { padding: 22px !important; }
     }
   </style>
@@ -224,19 +235,23 @@ function renderLayout({ preheader, title, eyebrow, children }) {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:${COLORS.background};">
     <tr>
       <td align="center" class="email-pad" style="padding:44px 18px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:560px;background:${COLORS.container};border:1px solid ${COLORS.border};border-radius:24px;overflow:hidden;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:560px;background:${COLORS.container};border:1px solid ${COLORS.border};border-radius:18px;overflow:hidden;">
           <tr>
-            <td class="email-content" style="padding:38px 42px 34px;">
-              <div style="margin:0 0 34px;color:${COLORS.text};font-size:18px;line-height:1.2;font-weight:760;">
-                <span style="color:${COLORS.primary};">⚡</span> SnapTip
-              </div>
+            <td class="email-header" style="padding:26px 42px 14px;text-align:center;">
+              <img src="${escapeHtml(BRAND.logoUrl)}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
+              <div style="margin:0;color:${COLORS.text};font-size:17px;line-height:1.2;font-weight:760;">SnapTip</div>
+              <div style="margin:4px 0 0;color:${COLORS.tertiary};font-size:12px;line-height:1.4;">Digital tipping made effortless</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="email-content" style="padding:18px 42px 34px;">
               ${eyebrow ? `<div style="margin:0 0 13px;color:${COLORS.primaryDark};font-size:13px;line-height:1.2;font-weight:750;">${escapeHtml(eyebrow)}</div>` : ''}
-              <h1 class="email-heading" style="margin:0 0 16px;color:${COLORS.text};font-size:28px;line-height:1.18;font-weight:760;letter-spacing:-0.35px;">${escapeHtml(title)}</h1>
+              <h1 class="email-heading" style="margin:0 0 14px;color:${COLORS.text};font-size:26px;line-height:1.2;font-weight:760;letter-spacing:-0.25px;">${escapeHtml(title)}</h1>
               ${children}
             </td>
           </tr>
           <tr>
-            <td class="email-footer" style="padding:26px 42px 32px;border-top:1px solid ${COLORS.border};background:#fbfbfb;">
+            <td class="email-footer" style="padding:24px 42px 28px;border-top:1px solid ${COLORS.border};background:#fbfbfb;">
               <p style="margin:0 0 12px;color:${COLORS.secondary};font-size:13px;line-height:1.55;">
                 Questions? Contact SnapTip support at <a href="mailto:${escapeHtml(BRAND.supportEmail)}" style="color:${COLORS.text};text-decoration:none;">${escapeHtml(BRAND.supportEmail)}</a>.
               </p>
@@ -379,6 +394,29 @@ function buildStaffInvitationEmail({ businessName, managerName, inviteUrl, expir
   });
 }
 
+function buildAdminPasswordResetEmail({ temporaryPassword, userName, loginUrl = BRAND.url, requestedAt } = {}) {
+  const displayName = userName ? firstName(userName) : '';
+  const timestamp = requestedAt ? formatDate(requestedAt) : formatDate(new Date());
+  const targetUrl = absoluteUrl(loginUrl);
+
+  return renderLayout({
+    preheader: 'Your SnapTip password was reset. Use the temporary password to sign in.',
+    eyebrow: 'Account security',
+    title: 'Your password was reset',
+    children: `
+      ${paragraph(`${displayName ? `Hi ${escapeHtml(displayName)}, ` : ''}An administrator reset the password for your SnapTip account. Use the temporary password below to log in, then change it from your profile settings.`)}
+      ${secureCodeBox(temporaryPassword, 'Temporary password')}
+      ${summaryCard([
+        ['Reset time', escapeHtml(timestamp)],
+        ['Next step', 'Log in and choose a new password'],
+      ], { title: 'Security details' })}
+      ${ctaButton(targetUrl, 'Log in to SnapTip')}
+      ${paragraph('If you did not request this, contact support immediately. Do not share this temporary password with anyone.', { color: COLORS.secondary, margin: '0 0 12px' })}
+      ${fallbackLink(targetUrl, 'If the login button does not work, copy and paste this link into your browser:')}
+    `,
+  });
+}
+
 /**
  * Send a 6-digit OTP to verify a user's email.
  * @param {string} email Recipient
@@ -421,4 +459,5 @@ module.exports = {
   buildPaymentConfirmationEmail,
   buildTipReceivedEmail,
   buildStaffInvitationEmail,
+  buildAdminPasswordResetEmail,
 };

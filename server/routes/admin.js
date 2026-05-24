@@ -8,6 +8,7 @@ const adminAuth = require('../middleware/adminAuth');
 const { ADMIN_COOKIE } = require('../middleware/adminAuth');
 const { getEncryptionKey, decryptedAccountDetailsExpr } = require('../lib/cryptoFields');
 const { logFromReq } = require('../lib/audit');
+const { buildAdminPasswordResetEmail } = require('../utils/sendEmail');
 
 const ADMIN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -62,9 +63,10 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
 <body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
-    <div style="background:#080818;padding:32px;text-align:center;">
-      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
-      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
+    <div style="padding:26px 32px 18px;text-align:center;border-bottom:1px solid #e5e7eb;">
+      <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;">
+      <p style="color:#111827;font-size:17px;line-height:1.2;font-weight:700;margin:0;">SnapTip</p>
+      <p style="color:#9ca3af;font-size:12px;line-height:1.4;margin:4px 0 0;">Digital tipping made effortless</p>
     </div>
 
     <div style="background:#00C896;padding:16px 32px;text-align:center;">
@@ -135,9 +137,10 @@ function buildWithdrawalRejectedEmail(employee, withdrawal, reason) {
 <body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
-    <div style="background:#080818;padding:32px;text-align:center;">
-      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
-      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
+    <div style="padding:26px 32px 18px;text-align:center;border-bottom:1px solid #e5e7eb;">
+      <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;">
+      <p style="color:#111827;font-size:17px;line-height:1.2;font-weight:700;margin:0;">SnapTip</p>
+      <p style="color:#9ca3af;font-size:12px;line-height:1.4;margin:4px 0 0;">Digital tipping made effortless</p>
     </div>
 
     <div style="padding:40px 32px;">
@@ -414,48 +417,12 @@ router.post('/users/:id/reset-password', adminAuth, async (req, res) => {
     });
 
     await sendEmail(user.email, {
-      subject: 'SnapTip — Your password has been reset',
-      html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-</head>
-<body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-
-    <div style="background:#080818;padding:32px;text-align:center;">
-      <div style="display:inline-block; background:#00FF66; color:#080818; font-weight:900; padding:10px 20px; border-radius:12px; font-size:22px; letter-spacing:1px; font-family:sans-serif;">SNAPTIP</div>
-      <h1 style="color:white;font-size:22px;margin:12px 0 0;">SnapTip</h1>
-    </div>
-
-    <div style="padding:40px 32px;">
-      <h2 style="color:#080818;font-size:24px;margin:0 0 16px;">Your password has been reset</h2>
-      <p style="color:#666;font-size:15px;line-height:1.6;margin:0 0 28px;">
-        Hi ${user.first_name || user.full_name || 'there'}, an admin has reset your SnapTip password. Use the temporary password below to log in, then change it immediately.
-      </p>
-
-      <div style="background:#f0fdf9;border:2px solid #00C896;border-radius:14px;padding:28px;text-align:center;margin-bottom:24px;">
-        <p style="color:#666;font-size:13px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px;">Your temporary password</p>
-        <span style="font-size:28px;font-weight:700;letter-spacing:6px;color:#00C896;font-family:monospace;">${tempPw}</span>
-      </div>
-
-      <p style="color:#888;font-size:14px;margin:0 0 24px;text-align:center;">
-        Please login and change your password immediately.
-      </p>
-
-      <div style="text-align:center;">
-        <a href="https://snaptip.me" style="display:inline-block;background:#080818;color:white;text-decoration:none;padding:14px 32px;border-radius:50px;font-size:15px;font-weight:600;">Login to SnapTip</a>
-      </div>
-    </div>
-
-    <div style="background:#f5f5f7;padding:24px 32px;text-align:center;border-top:1px solid #e8e8ea;">
-      <p style="color:#888;font-size:13px;margin:0 0 8px;">Secure payments powered by SnapTip</p>
-      <p style="color:#aaa;font-size:12px;margin:0;">© 2026 SnapTip. All rights reserved.</p>
-    </div>
-
-  </div>
-</body>
-</html>`,
+      subject: 'SnapTip - Your password was reset',
+      html: buildAdminPasswordResetEmail({
+        temporaryPassword: tempPw,
+        userName: user.first_name || user.full_name || user.username,
+        loginUrl: 'https://snaptip.me',
+      }),
     });
 
     res.json({ success: true, message: `Password reset. Email sent to ${user.email}.` });
