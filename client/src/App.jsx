@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import AppLanding from './pages/AppLanding';
+import LandingPage from './pages/LandingPage';
 import TipPage from './pages/TipPage';
 import Login from './pages/Login';
 import RegisterMultiStep from './pages/RegisterMultiStep';
@@ -22,7 +22,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* ── Root: App Landing Page ── */}
-          <Route path="/" element={<AppLanding />} />
+          <Route path="/" element={<LandingPage />} />
 
           {/* ── Web auth (kept for backwards compat / deep links) ── */}
           <Route path="/login" element={<Login />} />
@@ -75,4 +75,3 @@ function App() {
 }
 
 export default App;
-
