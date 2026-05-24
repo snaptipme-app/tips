@@ -24,6 +24,8 @@ const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
 const RED = '#ef4444';
+const RATING_PREF_KEY = 'snaptip_show_rating';
+const DEFAULT_SHOW_RATING = false;
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const COUNTRY_FLAG_IMAGES: Record<string, any> = {
@@ -82,12 +84,11 @@ export default function Profile() {
   const [showLangModal, setShowLangModal] = useState(false);
 
   // Rating visibility preference
-  const RATING_PREF_KEY = 'snaptip_show_rating';
   const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(RATING_PREF_KEY).then(val => {
-      setShowRating(val === null ? false : val === 'true');
+      setShowRating(val === null ? DEFAULT_SHOW_RATING : val === 'true');
     }).catch(() => {});
   }, []);
 

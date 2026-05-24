@@ -18,6 +18,8 @@ const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const RATING_PREF_KEY = 'snaptip_show_rating';
+const DEFAULT_SHOW_RATING = false;
 
 interface Tip {
   id: number;
@@ -44,7 +46,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [ratingStats, setRatingStats] = useState<RatingStats | null>(null);
   const [ratingVisible, setRatingVisible] = useState(false);
-  const RATING_PREF_KEY = 'snaptip_show_rating';
   const prevBalanceRef = useRef<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -53,7 +54,7 @@ export default function Home() {
     try {
       const val = await AsyncStorage.getItem(RATING_PREF_KEY);
       // Default false if not yet set — user must opt-in via profile settings
-      setRatingVisible(val === null ? false : val === 'true');
+      setRatingVisible(val === null ? DEFAULT_SHOW_RATING : val === 'true');
     } catch (_) {}
   }, []);
 
