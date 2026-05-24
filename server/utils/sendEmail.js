@@ -238,7 +238,9 @@ function renderLayout({ preheader, title, eyebrow, children }) {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="email-card" style="width:100%;max-width:560px;background:${COLORS.container};border:1px solid ${COLORS.border};border-radius:18px;overflow:hidden;">
           <tr>
             <td class="email-header" style="padding:26px 42px 14px;text-align:center;">
-              <img src="${escapeHtml(BRAND.logoUrl)}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
+              <div style="width:36px;height:36px;border-radius:9px;background:#000000;margin:0 auto 10px;overflow:hidden;">
+                <img src="${escapeHtml(BRAND.logoUrl)}" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;border:0;outline:none;text-decoration:none;">
+              </div>
               <div style="margin:0;color:${COLORS.text};font-size:17px;line-height:1.2;font-weight:760;">SnapTip</div>
               <div style="margin:4px 0 0;color:${COLORS.tertiary};font-size:12px;line-height:1.4;">Digital tipping made effortless</div>
             </td>

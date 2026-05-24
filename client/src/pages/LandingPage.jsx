@@ -4,6 +4,7 @@ import img3Screens from '../assets/images/screenshot_3images.png';
 import imgTourist from '../assets/images/screenshot_tourist_page.png';
 import imgEmployee from '../assets/images/screenshot_employee_page.png';
 import imgBusiness from '../assets/images/screenshot_business_dashboard.png';
+import Logo from '../components/Logo';
 
 const green = '#00C896';
 const accent = '#00ffcc';
@@ -37,13 +38,6 @@ const Icon = ({ name, size = 20 }) => {
   };
   return <svg {...props}>{paths[name]}</svg>;
 };
-
-const Logo = () => (
-  <a className="logo" href="/" aria-label="SnapTip home">
-    <span><Icon name="bolt" size={17} /></span>
-    SnapTip
-  </a>
-);
 
 const Button = ({ href, children, variant = 'primary' }) => (
   <a className={`button button-${variant}`} href={href}>
@@ -117,7 +111,7 @@ export default function LandingPage() {
     <main className="landing">
       <nav className={`nav ${scrolled ? 'nav-scrolled' : ''}`} aria-label="Main navigation">
         <div className="nav-inner">
-          <Logo />
+          <Logo href="/" showText size={32} className="logo" textColor="#ffffff" />
           <div className="nav-actions">
             <a className="nav-link" href="#get-app">Login</a>
             <Button href="#get-app">Get Started</Button>
@@ -244,7 +238,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="footer">
-        <Logo />
+        <Logo href="/" showText size={28} className="logo" textColor="#ffffff" />
         <span>© 2026 SnapTip by Hitte Technologies LLC.</span>
         <div>
           <a href="/privacy">Privacy</a>
@@ -286,22 +280,15 @@ export default function LandingPage() {
           justify-content: space-between;
         }
         .logo {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          color: #fff;
-          text-decoration: none;
           font-size: 18px;
           font-weight: 760;
         }
-        .logo span {
-          width: 28px;
-          height: 28px;
-          display: grid;
-          place-items: center;
-          border-radius: 8px;
-          color: #02110d;
-          background: ${accent};
+        .logo .snaptip-logo-icon {
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        }
+        .logo .snaptip-logo-wordmark {
+          color: #fff;
         }
         .nav-actions { display: flex; align-items: center; gap: 18px; }
         .nav-link {

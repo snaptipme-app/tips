@@ -64,7 +64,9 @@ function buildWithdrawalPaidEmail(employee, withdrawal) {
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
     <div style="padding:26px 32px 18px;text-align:center;border-bottom:1px solid #e5e7eb;">
-      <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;">
+      <div style="width:36px;height:36px;border-radius:9px;background:#000000;margin:0 auto 10px;overflow:hidden;">
+        <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;border:0;">
+      </div>
       <p style="color:#111827;font-size:17px;line-height:1.2;font-weight:700;margin:0;">SnapTip</p>
       <p style="color:#9ca3af;font-size:12px;line-height:1.4;margin:4px 0 0;">Digital tipping made effortless</p>
     </div>
@@ -138,7 +140,9 @@ function buildWithdrawalRejectedEmail(employee, withdrawal, reason) {
   <div style="max-width:560px;margin:40px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
 
     <div style="padding:26px 32px 18px;text-align:center;border-bottom:1px solid #e5e7eb;">
-      <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;margin:0 auto 10px;border:0;">
+      <div style="width:36px;height:36px;border-radius:9px;background:#000000;margin:0 auto 10px;overflow:hidden;">
+        <img src="https://snaptip.me/snaptip_icon.png" width="36" height="36" alt="" style="display:block;width:36px;height:36px;border-radius:9px;border:0;">
+      </div>
       <p style="color:#111827;font-size:17px;line-height:1.2;font-weight:700;margin:0;">SnapTip</p>
       <p style="color:#9ca3af;font-size:12px;line-height:1.4;margin:4px 0 0;">Digital tipping made effortless</p>
     </div>
