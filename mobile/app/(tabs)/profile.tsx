@@ -83,11 +83,11 @@ export default function Profile() {
 
   // Rating visibility preference
   const RATING_PREF_KEY = 'snaptip_show_rating';
-  const [showRating, setShowRating] = useState(true);
+  const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(RATING_PREF_KEY).then(val => {
-      setShowRating(val === null ? true : val === 'true');
+      setShowRating(val === null ? false : val === 'true');
     }).catch(() => {});
   }, []);
 
