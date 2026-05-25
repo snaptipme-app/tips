@@ -63,22 +63,22 @@ export default function MemberQR() {
         custom_message: customMessage.trim() || null,
         show_photo_on_card: showPhoto,
       });
-      showToast('Card settings saved!', 'success');
+      showToast(t('card_settings_saved'), 'success');
     } catch {
-      showToast('Failed to save settings.', 'error');
+      showToast(t('failed_save_settings'), 'error');
     } finally {
       setSavingSettings(false);
     }
   };
 
   const handleDownload = async () => {
-    if (!tipUrl) { showToast('Cannot generate QR — username not set up yet.', 'error'); return; }
+    if (!tipUrl) { showToast(t('cannot_generate_qr'), 'error'); return; }
     setCapturing(true);
     await downloadAndShareQRCard(
       employee,
       business,
-      () => showToast('QR Card ready!', 'success'),
-      () => showToast('Failed to generate card.', 'error'),
+      () => showToast(t('qr_card_ready'), 'success'),
+      () => showToast(t('failed_generate_card'), 'error'),
       customMessage,
       showPhoto,
     );
@@ -86,9 +86,9 @@ export default function MemberQR() {
   };
 
   const handlePreview = () => {
-    if (!tipUrl) { showToast('Username not set up yet.', 'error'); return; }
+    if (!tipUrl) { showToast(t('username_not_setup'), 'error'); return; }
     Linking.openURL(tipUrl).catch(() =>
-      showToast('Could not open browser.', 'error')
+      showToast(t('could_not_open_browser'), 'error')
     );
   };
 
@@ -145,10 +145,10 @@ export default function MemberQR() {
             <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
               <Ionicons name="qr-code-outline" size={56} color="rgba(255,255,255,0.12)" />
               <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-                QR code not available yet
+                {t('qr_code_not_available')}
               </Text>
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 20 }}>
-                Your username has not been set up.{'\n'}Contact support or complete your profile.
+                {t('username_not_setup_desc')}
               </Text>
             </View>
           )}
@@ -161,12 +161,12 @@ export default function MemberQR() {
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <Ionicons name="color-palette-outline" size={18} color={ACCENT} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Customize Your Card</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('customize_your_card')}</Text>
           </View>
 
           {/* Custom message */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
-            Custom Message
+            {t('custom_message')}
           </Text>
           <TextInput
             style={{
@@ -174,7 +174,7 @@ export default function MemberQR() {
               borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
               color: '#fff', fontSize: 14, paddingHorizontal: 14, marginBottom: 16,
             }}
-            placeholder="Leave a tip!  (default)"
+            placeholder={t('leave_tip_default')}
             placeholderTextColor="rgba(255,255,255,0.2)"
             value={customMessage}
             onChangeText={setCustomMessage}
@@ -184,8 +184,8 @@ export default function MemberQR() {
           {/* Show photo toggle */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Show Profile Photo</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display your photo on the card</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('show_profile_photo')}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{t('show_profile_photo_desc')}</Text>
             </View>
             <Switch
               value={showPhoto}
@@ -209,7 +209,7 @@ export default function MemberQR() {
             }}
           >
             <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>
-              {savingSettings ? 'Saving...' : 'Apply Changes'}
+              {savingSettings ? t('saving') : t('apply_changes')}
             </Text>
           </TouchableOpacity>
         </View>

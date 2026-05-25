@@ -58,7 +58,7 @@ export default function TabLayout() {
         options={
           isBusiness
             ? {
-                title: 'Dashboard',
+                title: t('dashboard'),
                 tabBarIcon: ({ color, focused }) => (
                   <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
                 ),

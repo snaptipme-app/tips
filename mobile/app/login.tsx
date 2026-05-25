@@ -50,7 +50,7 @@ export default function Login() {
 
   const handleLogin = useCallback(async () => {
     if (!identifier.trim() || !password) {
-      showToast('All fields are required.', 'error');
+      showToast(t('all_fields_required'), 'error');
       return;
     }
     setLoading(true);
@@ -62,11 +62,11 @@ export default function Login() {
       await login(data.token, data.employee);
       router.replace('/(tabs)/home');
     } catch (err: any) {
-      showToast(err.response?.data?.error || err.message || 'Invalid credentials.', 'error');
+      showToast(err.response?.data?.error || err.message || t('invalid_credentials'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [identifier, password, login, router, showToast]);
+  }, [identifier, password, login, router, showToast, t]);
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>

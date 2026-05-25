@@ -59,6 +59,13 @@ export default function Profile() {
   const { language, changeLanguage, t, languageLabel, LANG_INFO } = useLanguage();
   const router = useRouter();
   const { toast, showToast } = useToast();
+  const tx = useCallback((key: string, vars: Record<string, string | number> = {}) => {
+    let value = t(key);
+    Object.entries(vars).forEach(([name, replacement]) => {
+      value = value.replace(`{${name}}`, String(replacement));
+    });
+    return value;
+  }, [t]);
   const balance = user?.balance ?? 0;
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [totalEarned, setTotalEarned] = useState(0);
@@ -156,14 +163,14 @@ export default function Profile() {
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Camera access is required. Please enable it in your device Settings.');
+          Alert.alert(t('permission_required'), t('camera_permission_required'));
           return;
         }
         result = await ImagePicker.launchCameraAsync(options);
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Photo library access is required. Please enable it in your device Settings.');
+          Alert.alert(t('permission_required'), t('photo_library_permission_required'));
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync(options);
@@ -175,7 +182,7 @@ export default function Profile() {
       setLocalPhotoUri(uri);
       await uploadPhoto(uri);
     } catch (err: any) {
-      showToast(err.message || 'Could not process image.', 'error');
+      showToast(err.message || t('could_not_process_image'), 'error');
       console.error('[profile] pickImage error:', err);
     }
   };
@@ -205,7 +212,7 @@ export default function Profile() {
 
       if (uploadResult.status !== 200) {
         setLocalPhotoUri('');
-        showToast(data.error || `Server error (${uploadResult.status})`, 'error');
+        showToast(data.error || `${t('server_error')} (${uploadResult.status})`, 'error');
         return;
       }
 
@@ -218,16 +225,16 @@ export default function Profile() {
         setDisplayPhoto(freshUrl);
         // Spread full employee so balance, job_title, etc. stay in sync too
         updateUser({ ...(data.employee || {}), photo_url: photoUrl });
-        showToast('Photo updated!', 'success');
+        showToast(t('photo_updated'), 'success');
       } else {
         setLocalPhotoUri('');
         console.error('[profile] No photo_url in response:', uploadResult.body);
-        showToast(data.error || 'No photo URL in server response', 'error');
+        showToast(data.error || t('no_photo_url'), 'error');
       }
     } catch (err: any) {
-      const msg = err?.message || 'Unknown error';
+      const msg = err?.message || t('unknown_error');
       console.error('[profile] Upload error:', msg, err);
-      showToast(`Could not save your photo. ${msg}`, 'error');
+      showToast(tx('could_not_save_photo', { message: msg }), 'error');
       setLocalPhotoUri('');
     } finally {
       setUploading(false);
@@ -236,22 +243,22 @@ export default function Profile() {
 
   // ── Edit Profile ──
   const handleSaveProfile = async () => {
-    if (!editName.trim()) { showToast('Name is required.', 'error'); return; }
+    if (!editName.trim()) { showToast(t('name_required'), 'error'); return; }
     setEditSaving(true);
     try {
       await api.patch('/employee/profile', { full_name: editName.trim() });
       updateUser({ full_name: editName.trim() });
       setShowEditModal(false);
-      showToast('Profile updated!', 'success');
+      showToast(t('profile_updated'), 'success');
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed to update.', 'error');
+      showToast(e.response?.data?.error || t('failed_update'), 'error');
     } finally { setEditSaving(false); }
   };
 
 
 
   const handleLogout = () => {
-    Alert.alert(t('logout'), 'Are you sure?', [
+    Alert.alert(t('logout'), t('are_you_sure'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('logout'), style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
     ]);
@@ -313,15 +320,15 @@ export default function Profile() {
           {user?.account_type !== 'business' && (
             <View style={{ width: '100%', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Earned</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{t('total_earned')}</Text>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalEarned.toFixed(2)} {user?.currency || 'MAD'}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Total Withdrawn</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{t('total_withdrawn')}</Text>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{totalWithdrawn.toFixed(2)} {user?.currency || 'MAD'}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>Available Balance</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.5)' }}>{t('available_balance')}</Text>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
               </View>
             </View>
@@ -339,8 +346,8 @@ export default function Profile() {
                 <Ionicons name="cash-outline" size={18} color={GREEN} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds') || 'Withdraw Funds'}</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Cash out your earnings</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('withdraw_funds')}</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{t('cash_out_earnings')}</Text>
               </View>
               <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN, marginRight: 6 }}>{balance.toFixed(2)} {user?.currency || 'MAD'}</Text>
               <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
@@ -401,7 +408,7 @@ export default function Profile() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Country</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('country')}</Text>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{user?.country || 'Morocco'} · {user?.currency || 'MAD'}</Text>
             </View>
           </View>
@@ -413,8 +420,8 @@ export default function Profile() {
                 <Ionicons name="star-outline" size={18} color="#f59e0b" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Show my rating</Text>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>Display your rating on your dashboard</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('show_my_rating')}</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{t('show_my_rating_desc')}</Text>
               </View>
               <Switch
                 value={showRating}
@@ -432,8 +439,8 @@ export default function Profile() {
               <Ionicons name="help-circle-outline" size={18} color={ACCENT} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Contact Support</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Get help from our team</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('contact_support')}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{t('contact_support_desc')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
           </TouchableOpacity>
@@ -453,7 +460,7 @@ export default function Profile() {
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{w.method || 'N/A'}</Text>
                 </View>
                 <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 50, backgroundColor: `${statusColor(w.status)}15` }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor(w.status), textTransform: 'capitalize' }}>{w.status}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor(w.status), textTransform: 'capitalize' }}>{t(w.status)}</Text>
                 </View>
               </View>
             ))}
@@ -536,18 +543,18 @@ export default function Profile() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>Edit Profile</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{t('edit_profile')}</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 <Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>Full Name</Text>
-            <TextInput style={{ height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 1, borderColor: BORDER, color: '#fff', fontSize: 15, paddingHorizontal: 14, marginBottom: 20 }} placeholder="Your full name" placeholderTextColor="rgba(255,255,255,0.2)" value={editName} onChangeText={setEditName} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('full_name')}</Text>
+            <TextInput style={{ height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 1, borderColor: BORDER, color: '#fff', fontSize: 15, paddingHorizontal: 14, marginBottom: 20 }} placeholder={t('your_full_name')} placeholderTextColor="rgba(255,255,255,0.2)" value={editName} onChangeText={setEditName} />
             <TouchableOpacity onPress={handleSaveProfile} disabled={editSaving} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.5 : 1, marginBottom: 10 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{editSaving ? 'Saving...' : 'Save Changes'}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{editSaving ? t('saving') : t('save_changes')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowEditModal(false)} activeOpacity={0.8} style={{ height: 44, justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Cancel</Text>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>

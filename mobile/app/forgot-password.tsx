@@ -52,20 +52,20 @@ export default function ForgotPassword() {
 
   const handleSendCode = useCallback(async () => {
     if (!email.trim() || !email.includes('@')) {
-      showToast('Enter a valid email address.', 'error');
+      showToast(t('valid_email_required'), 'error');
       return;
     }
     setLoading(true);
     try {
       await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
-      showToast('Reset code sent to your email.', 'success');
+      showToast(t('reset_code_sent'), 'success');
       setStep(2);
     } catch (err: any) {
-      showToast(err.response?.data?.error || 'Failed to send reset code.', 'error');
+      showToast(err.response?.data?.error || t('failed_send_reset_code'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [email, showToast]);
+  }, [email, showToast, t]);
 
   const handleOtpChange = useCallback((text: string, idx: number) => {
     const digit = text.replace(/\D/g, '').slice(-1);
@@ -94,15 +94,15 @@ export default function ForgotPassword() {
   const handleResetPassword = useCallback(async () => {
     const code = otp.join('');
     if (code.length < 6) {
-      showToast('Enter the full 6-digit code.', 'error');
+      showToast(t('enter_full_code'), 'error');
       return;
     }
     if (newPassword.length < 6) {
-      showToast('Password must be at least 6 characters.', 'error');
+      showToast(t('password_min_error'), 'error');
       return;
     }
     if (newPassword !== confirmPw) {
-      showToast('Passwords do not match.', 'error');
+      showToast(t('passwords_do_not_match'), 'error');
       return;
     }
     setLoading(true);
@@ -112,14 +112,14 @@ export default function ForgotPassword() {
         code,
         newPassword,
       });
-      showToast('Password reset successfully!', 'success');
+      showToast(t('password_reset_success'), 'success');
       setStep(3);
     } catch (err: any) {
-      showToast(err.response?.data?.error || 'Failed to reset password.', 'error');
+      showToast(err.response?.data?.error || t('failed_reset_password'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [otp, newPassword, confirmPw, email, showToast]);
+  }, [otp, newPassword, confirmPw, email, showToast, t]);
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>

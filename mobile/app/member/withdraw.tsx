@@ -19,7 +19,7 @@ import { CountryFlag } from '../../components/CountryFlag';
 import { COUNTRY_CODE_MAP } from '../../lib/countryData';
 import { getPayoutConfig } from '../../lib/payoutConfig';
 
-/* ── Design tokens ── */
+/* -- Design tokens -- */
 const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
 const SHEET_BG = '#1a1a1a';
@@ -30,9 +30,9 @@ const YELLOW = '#f59e0b';
 const RED = '#ef4444';
 
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    METHOD DEFINITIONS
-   ══════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 interface FieldDef {
   key: string;
   label: string;
@@ -141,9 +141,9 @@ const MOROCCAN_METHODS: MainMethod[] = [
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    COUNTRY-SPECIFIC PAYOUT METHODS (via Wise Business)
-   ══════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 const EWALLET_NAMES: Record<string, string> = {
   Philippines: 'GCash',
   Indonesia: 'GoPay / OVO / DANA',
@@ -157,7 +157,7 @@ const EWALLET_PLACEHOLDERS: Record<string, string> = {
 };
 
 const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
-  // Europe + UAE → IBAN only
+  // Europe + UAE -> IBAN only
   if (['France', 'Spain', 'Germany', 'Italy', 'UAE'].includes(country)) {
     const ph = country === 'UAE'
       ? 'AE07 0331 2345 6789 0123 456'
@@ -172,7 +172,7 @@ const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
       ],
     };
   }
-  // USA → ACH (Routing Number + Account Number)
+  // USA -> ACH (Routing Number + Account Number)
   if (country === 'United States') {
     return {
       id: 'us_ach', label: 'US Bank Transfer (ACH)', sublabel: 'via Wise Business',
@@ -185,7 +185,7 @@ const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
       ],
     };
   }
-  // Asia → E-Wallet
+  // Asia -> E-Wallet
   if (EWALLET_NAMES[country]) {
     const walletName = EWALLET_NAMES[country];
     const phonePh = EWALLET_PLACEHOLDERS[country] || '+XX XXX XXX XXXX';
@@ -199,7 +199,7 @@ const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
       ],
     };
   }
-  // Fallback → full international wire
+  // Fallback -> full international wire
   return {
     id: 'international_wire', label: 'International Bank Transfer', sublabel: 'via Wise Business',
     fee: 0, min: minAmount, processingTime: '1-3 business days',
@@ -213,32 +213,44 @@ const getPayoutMethod = (country: string, minAmount: number): SubMethod => {
   };
 };
 
-/* ── Status styles ── */
+/* -- Status styles -- */
 const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
-  pending: { color: YELLOW, bg: 'rgba(245,158,11,0.12)', label: 'Pending' },
-  paid: { color: GREEN, bg: 'rgba(0,200,150,0.12)', label: 'Paid' },
-  failed: { color: RED, bg: 'rgba(239,68,68,0.12)', label: 'Rejected' },
+  pending: { color: YELLOW, bg: 'rgba(245,158,11,0.12)', label: 'pending' },
+  paid: { color: GREEN, bg: 'rgba(0,200,150,0.12)', label: 'paid' },
+  failed: { color: RED, bg: 'rgba(239,68,68,0.12)', label: 'rejected' },
 };
 
 interface Withdrawal { id: number; amount: number; fee: number; net_amount: number; method: string; status: string; created_at: string; }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    MAIN COMPONENT
-   ══════════════════════════════════════════════════════════════════════ */
+   ====================================================================== */
 export default function MemberWithdraw() {
-  // Screen contains bank/account details — block screenshots & screen recording
+  // Screen contains bank/account details - block screenshots & screen recording
   // for the lifetime of this screen (auto-released on unmount).
   useScreenCaptureProtection();
 
   const router = useRouter();
   const { user, updateUser } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast, showToast } = useToast();
+  const tx = useCallback((key: string, vars: Record<string, string | number> = {}) => {
+    let value = t(key);
+    Object.entries(vars).forEach(([name, replacement]) => {
+      value = value.replace(`{${name}}`, String(replacement));
+    });
+    return value;
+  }, [t]);
+  const fieldText = useCallback((prefix: string, key: string, fallback: string) => {
+    const translated = t(`${prefix}_${key}`);
+    return translated === `${prefix}_${key}` ? fallback : translated;
+  }, [t]);
 
   const userCountry = user?.country || 'Morocco';
   const cur = user?.currency || 'MAD';
   const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
   const isMorocco = userCountry === 'Morocco';
+  const locale = language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US';
   const payoutCfg = getPayoutConfig(countryCode);
   const minWithdrawal = payoutCfg.minAmount;
   const payoutMethod = useMemo(() => getPayoutMethod(userCountry, minWithdrawal), [userCountry, minWithdrawal]);
@@ -267,7 +279,7 @@ export default function MemberWithdraw() {
     amount: number; fee: number; net: number; method: string; currency: string; processingTime: string;
   } | null>(null);
 
-  /* ── Data ── */
+  /* -- Data -- */
   const fetchData = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard');
@@ -278,11 +290,12 @@ export default function MemberWithdraw() {
   }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  /* ── Handlers ── */
+  /* -- Handlers -- */
   const onMainMethodTap = (m: MainMethod) => {
-    if (balance <= 0) { showToast('No funds to withdraw.', 'error'); return; }
-    if (balance < m.directMethod?.min || 0) {
-      showToast(`Minimum withdrawal is ${m.directMethod?.min} ${cur}.`, 'error'); return;
+    const min = m.directMethod?.min || 0;
+    if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }
+    if (balance < min) {
+      showToast(tx('minimum_withdrawal_is', { amount: min, currency: cur }), 'error'); return;
     }
     if (m.subMethods) { setSubPickerMethod(m); setShowSubPicker(true); }
     else if (m.directMethod) openForm(m.directMethod);
@@ -298,9 +311,9 @@ export default function MemberWithdraw() {
   };
 
   const openInternational = () => {
-    if (balance <= 0) { showToast('No funds to withdraw.', 'error'); return; }
+    if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }
     if (balance < minWithdrawal) {
-      showToast(`Minimum withdrawal is ${minWithdrawal.toLocaleString()} ${cur}. Your balance is ${balance.toFixed(2)} ${cur}.`, 'error');
+      showToast(tx('minimum_withdrawal_balance', { amount: minWithdrawal.toLocaleString(locale), balance: balance.toFixed(2), currency: cur }), 'error');
       return;
     }
     openForm(payoutMethod);
@@ -311,42 +324,42 @@ export default function MemberWithdraw() {
     if (fieldErrors[key]) setFieldErrors(prev => ({ ...prev, [key]: '' }));
   };
 
-  /* ── Wise fee calc ── */
+  /* -- Wise fee calc -- */
   const wiseFee = !isMorocco && parseFloat(amount) > 0 ? parseFloat(amount) * 0.005 : 0;
   const effectiveFee = isMorocco ? (activeMethod?.fee ?? 0) : wiseFee;
 
-  /* ── Validation ── */
+  /* -- Validation -- */
   const validate = (): boolean => {
     if (!activeMethod) return false;
     const errors: Record<string, string> = {};
     const amt = parseFloat(amount);
-    if (!amount || isNaN(amt) || amt <= 0) { showToast('Enter a valid amount.', 'error'); return false; }
-    if (amt < activeMethod.min) { showToast(`Minimum is ${activeMethod.min} ${cur} for ${activeMethod.label}.`, 'error'); return false; }
-    if (amt > balance) { showToast('Insufficient balance.', 'error'); return false; }
+    if (!amount || isNaN(amt) || amt <= 0) { showToast(t('enter_valid_amount'), 'error'); return false; }
+    if (amt < activeMethod.min) { showToast(tx('minimum_is_for_method', { amount: activeMethod.min, currency: cur, method: activeMethod.label }), 'error'); return false; }
+    if (amt > balance) { showToast(t('insufficient_balance'), 'error'); return false; }
 
     for (const f of activeMethod.fields) {
       const val = (fieldValues[f.key] || '').trim();
-      if (!val) { errors[f.key] = `${f.label} is required.`; continue; }
-      if (f.exactLen && val.length !== f.exactLen) errors[f.key] = `Must be exactly ${f.exactLen} digits.`;
+      if (!val) { errors[f.key] = tx('field_required', { field: fieldText('withdraw_field', f.key, f.label) }); continue; }
+      if (f.exactLen && val.length !== f.exactLen) errors[f.key] = tx('must_be_exact_digits', { count: f.exactLen });
       if (f.phoneValidation && isMorocco) {
         const cleaned = val.replace(/\s/g, '');
-        if (!/^0[67]\d{8}$/.test(cleaned)) errors[f.key] = 'Must start with 06 or 07 and be 10 digits.';
+        if (!/^0[67]\d{8}$/.test(cleaned)) errors[f.key] = t('morocco_phone_error');
       }
       if (f.ibanValidation) {
         const cleaned = val.replace(/\s/g, '');
-        if (!/^[A-Za-z]{2}/.test(cleaned) || cleaned.length < 15) errors[f.key] = 'IBAN must start with 2 letters, min 15 characters.';
+        if (!/^[A-Za-z]{2}/.test(cleaned) || cleaned.length < 15) errors[f.key] = t('iban_error');
       }
       if (f.swiftValidation) {
         const cleaned = val.replace(/\s/g, '');
-        if (cleaned.length !== 8 && cleaned.length !== 11) errors[f.key] = 'SWIFT/BIC must be 8 or 11 characters.';
+        if (cleaned.length !== 8 && cleaned.length !== 11) errors[f.key] = t('swift_error');
       }
     }
 
-    if (Object.keys(errors).length > 0) { setFieldErrors(errors); showToast('Please fix the errors below.', 'error'); return false; }
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); showToast(t('fix_errors_below'), 'error'); return false; }
     return true;
   };
 
-  /* ── Submit ── */
+  /* -- Submit -- */
   const handleSubmit = async () => {
     if (!validate() || !activeMethod) return;
     setSubmitting(true);
@@ -381,20 +394,20 @@ export default function MemberWithdraw() {
       setShowForm(false);
       setShowSuccess(true);
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed to submit.', 'error');
+      showToast(e.response?.data?.error || t('failed_submit'), 'error');
     } finally { setSubmitting(false); }
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatDate = (d: string) => new Date(d).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 
-  /* ══════════════════════════════════════════════════════════════════════
+  /* ======================================================================
      RENDER
-     ══════════════════════════════════════════════════════════════════════ */
+     ====================================================================== */
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor={ACCENT} />}>
 
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <LinearGradient colors={['#0d0d30', '#1a1a1a']} style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center' }}>
@@ -402,9 +415,9 @@ export default function MemberWithdraw() {
             </TouchableOpacity>
             <SnapTipLogo size={36} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Withdraw Earnings</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>{t('withdraw_title')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Balance deducted immediately on request</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{t('balance_deducted_on_request')}</Text>
               </View>
             </View>
             <View style={{ backgroundColor: 'rgba(0,200,150,0.12)', borderRadius: 50, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
@@ -412,27 +425,27 @@ export default function MemberWithdraw() {
             </View>
           </View>
 
-          {/* Country info row — display only, not a selector */}
+          {/* Country info row - display only, not a selector */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             {countryCode && <CountryFlag code={countryCode} width={20} height={14} style={{ borderRadius: 2 }} />}
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }}>{userCountry} · {cur}</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '500' }}>{userCountry}  -  {cur}</Text>
           </View>
 
           {/* Balance card */}
           <LinearGradient colors={['#0a2a20', '#0d3328']} style={{ borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <Ionicons name="wallet" size={16} color={GREEN} />
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>Available Balance</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('available_balance')}</Text>
             </View>
             <Text style={{ fontSize: 44, fontWeight: '800', color: GREEN, letterSpacing: -2, marginBottom: 4 }}>{balance.toFixed(2)}</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>{cur} · Available to withdraw</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>{cur}  -  {t('available_to_withdraw')}</Text>
           </LinearGradient>
         </LinearGradient>
 
         <View style={{ paddingHorizontal: 20 }}>
 
-          {/* ═══ Payment Methods ═══ */}
-          <Text style={sectionTitle}>{isMorocco ? 'Select Payment Method' : 'Transfer Method'}</Text>
+          {/* === Payment Methods === */}
+          <Text style={sectionTitle}>{isMorocco ? t('select_payment_method') : t('transfer_method')}</Text>
 
           {isMorocco ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
@@ -442,20 +455,20 @@ export default function MemberWithdraw() {
                   {m.logo ? <Image source={m.logo} style={{ width: 48, height: 48, borderRadius: 12 }} resizeMode="contain" />
                   : <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(148,163,184,0.1)', justifyContent: 'center', alignItems: 'center' }}><Ionicons name="business-outline" size={24} color="#94a3b8" /></View>}
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>{m.label}</Text>
-                  {m.subMethods && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Tap to choose option</Text>}
+                  {m.subMethods && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{t('tap_to_choose_option')}</Text>}
                   {m.directMethod && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ backgroundColor: m.directMethod.fee > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(0,200,150,0.1)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: m.directMethod.fee > 0 ? YELLOW : GREEN }}>{m.directMethod.fee > 0 ? `Fee ${m.directMethod.fee} MAD` : 'No Fee'}</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: m.directMethod.fee > 0 ? YELLOW : GREEN }}>{m.directMethod.fee > 0 ? `${t('fee')} ${m.directMethod.fee} MAD` : t('no_fee')}</Text>
                       </View>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>Min {m.directMethod.min} MAD</Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('min')} {m.directMethod.min} MAD</Text>
                     </View>
                   )}
                 </TouchableOpacity>
               ))}
             </View>
           ) : (
-            /* ── International (dynamic per country) ── */
+            /* -- International (dynamic per country) -- */
             <View style={{ marginBottom: 28 }}>
               {/* Info Card */}
               <View style={{ backgroundColor: 'rgba(0,255,204,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,255,204,0.15)', marginBottom: 14 }}>
@@ -496,20 +509,20 @@ export default function MemberWithdraw() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{payoutMethod.label}</Text>
-                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{payoutMethod.sublabel} · Min {payoutMethod.min} {cur}</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{payoutMethod.sublabel}  -  {t('min')} {payoutMethod.min} {cur}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
             </View>
           )}
 
-          {/* ═══ Withdrawal History ═══ */}
-          <Text style={sectionTitle}>{t('withdrawal_history') || 'Withdrawal History'}</Text>
+          {/* === Withdrawal History === */}
+          <Text style={sectionTitle}>{t('withdrawal_history')}</Text>
           {loading ? <View style={{ marginTop: 20 }}><SkeletonLoader.TeamList /></View>
           : withdrawals.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 48, backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER }}>
               <Ionicons name="receipt-outline" size={44} color="rgba(255,255,255,0.1)" />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>No withdrawals yet</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.25)', marginTop: 16 }}>{t('no_withdrawals')}</Text>
             </View>
           ) : (
             <View style={{ backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' }}>
@@ -523,13 +536,13 @@ export default function MemberWithdraw() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{w.method}</Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(w.created_at)}</Text>
-                      {Number(w.fee) > 0 && <Text style={{ fontSize: 11, color: YELLOW, marginTop: 1 }}>Fee: {Number(w.fee).toFixed(2)} {cur}</Text>}
+                      {Number(w.fee) > 0 && <Text style={{ fontSize: 11, color: YELLOW, marginTop: 1 }}>{t('fee')}: {Number(w.fee).toFixed(2)} {cur}</Text>}
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>-{Number(w.amount).toFixed(2)} {cur}</Text>
-                      {Number(w.net_amount) > 0 && Number(w.net_amount) !== Number(w.amount) && <Text style={{ fontSize: 11, color: GREEN }}>→ {Number(w.net_amount).toFixed(2)} {cur}</Text>}
+                      {Number(w.net_amount) > 0 && Number(w.net_amount) !== Number(w.amount) && <Text style={{ fontSize: 11, color: GREEN }}>{'->'} {Number(w.net_amount).toFixed(2)} {cur}</Text>}
                       <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 50, backgroundColor: s.bg }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: s.color }}>{s.label}</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: s.color }}>{t(s.label)}</Text>
                       </View>
                     </View>
                   </View>
@@ -540,7 +553,7 @@ export default function MemberWithdraw() {
         </View>
       </ScrollView>
 
-      {/* ═══ Sub-Method Picker ═══ */}
+      {/* === Sub-Method Picker === */}
       <Modal visible={showSubPicker} animationType="slide" transparent>
         <TouchableOpacity activeOpacity={1} onPress={() => setShowSubPicker(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 40 }}>
@@ -551,7 +564,7 @@ export default function MemberWithdraw() {
                   {subPickerMethod.logo && <Image source={subPickerMethod.logo} style={{ width: 44, height: 44, borderRadius: 12 }} resizeMode="contain" />}
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff' }}>{subPickerMethod.label}</Text>
-                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>Choose how to receive your funds</Text>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{t('choose_receive_funds')}</Text>
                   </View>
                   <TouchableOpacity onPress={() => setShowSubPicker(false)}><Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" /></TouchableOpacity>
                 </View>
@@ -567,9 +580,9 @@ export default function MemberWithdraw() {
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <View style={{ backgroundColor: sm.fee > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(0,200,150,0.12)', borderRadius: 50, paddingHorizontal: 10, paddingVertical: 3 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: sm.fee > 0 ? YELLOW : GREEN }}>{sm.fee > 0 ? `${sm.fee} MAD` : 'No Fee'}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: sm.fee > 0 ? YELLOW : GREEN }}>{sm.fee > 0 ? `${sm.fee} MAD` : t('no_fee')}</Text>
                       </View>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>Min {sm.min} MAD</Text>
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('min')} {sm.min} MAD</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -579,7 +592,7 @@ export default function MemberWithdraw() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ═══ Withdrawal Form Sheet ═══ */}
+      {/* === Withdrawal Form Sheet === */}
       <Modal visible={showForm} animationType="slide" transparent statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <TouchableOpacity activeOpacity={1} onPress={() => {
@@ -604,57 +617,57 @@ export default function MemberWithdraw() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff' }}>{activeMethod.label}</Text>
                       <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-                        Available: <Text style={{ color: GREEN, fontWeight: '700' }}>{balance.toFixed(2)} {cur}</Text>
-                        {'  ·  Min: '}<Text style={{ color: 'rgba(255,255,255,0.5)' }}>{activeMethod.min} {cur}</Text>
+                        {t('available')} <Text style={{ color: GREEN, fontWeight: '700' }}>{balance.toFixed(2)} {cur}</Text>
+                        {'  -  '}{t('min')}: <Text style={{ color: 'rgba(255,255,255,0.5)' }}>{activeMethod.min} {cur}</Text>
                       </Text>
                     </View>
                     <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" /></TouchableOpacity>
                   </View>
 
                   {/* Amount */}
-                  <Text style={fieldLabelStyle}>Amount ({cur})</Text>
+                  <Text style={fieldLabelStyle}>{tx('amount_currency', { currency: cur })}</Text>
                   <View style={inputWrapperStyle}>
                     <Text style={{ fontSize: 18, fontWeight: '700', color: GREEN, marginRight: 8 }}>{cur}</Text>
                     <TextInput style={{ flex: 1, color: '#fff', fontSize: 20, fontWeight: '700' }} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="rgba(255,255,255,0.2)" value={amount} onChangeText={setAmount} />
-                    <TouchableOpacity onPress={() => setAmount(String(Math.floor(balance)))}><Text style={{ fontSize: 12, color: ACCENT, fontWeight: '700' }}>MAX</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setAmount(String(Math.floor(balance)))}><Text style={{ fontSize: 12, color: ACCENT, fontWeight: '700' }}>{t('max')}</Text></TouchableOpacity>
                   </View>
 
-                  {/* ── Summary Card ── */}
+                  {/* -- Summary Card -- */}
                   {parseFloat(amount) > 0 && (
                     <View style={{ backgroundColor: 'rgba(0,200,150,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,200,150,0.15)', marginBottom: 20 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={summaryLabelStyle}>Requested</Text>
+                        <Text style={summaryLabelStyle}>{t('requested')}</Text>
                         <Text style={summaryValueStyle}>{parseFloat(amount || '0').toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={summaryLabelStyle}>{isMorocco ? 'Processing Fee' : 'Wise Fee (~0.5%)'}</Text>
+                        <Text style={summaryLabelStyle}>{isMorocco ? t('processing_fee') : t('wise_fee')}</Text>
                         <Text style={[summaryValueStyle, { color: effectiveFee > 0 ? YELLOW : GREEN }]}>
-                          {effectiveFee > 0 ? `-${effectiveFee.toFixed(2)} ${cur}` : 'Free'}
+                          {effectiveFee > 0 ? `-${effectiveFee.toFixed(2)} ${cur}` : t('free')}
                         </Text>
                       </View>
                       <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10 }} />
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{isMorocco ? 'You will receive' : 'Estimated received'}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{isMorocco ? t('you_will_receive') : t('estimated_received')}</Text>
                         <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>{Math.max(0, parseFloat(amount || '0') - effectiveFee).toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text style={summaryLabelStyle}>Payment Method</Text>
+                        <Text style={summaryLabelStyle}>{t('payment_method_label')}</Text>
                         <Text style={{ fontSize: 12, color: ACCENT, fontWeight: '600' }}>{activeMethod.label}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text style={summaryLabelStyle}>Processing Time</Text>
+                        <Text style={summaryLabelStyle}>{t('processing_time')}</Text>
                         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>{activeMethod.processingTime}</Text>
                       </View>
-                      {!isMorocco && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center', fontStyle: 'italic' }}>Note: Actual Wise fees may vary slightly</Text>}
+                      {!isMorocco && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center', fontStyle: 'italic' }}>{t('wise_fee_note')}</Text>}
                     </View>
                   )}
 
-                  {/* ── Dynamic Fields ── */}
+                  {/* -- Dynamic Fields -- */}
                   {activeMethod.fields.map(f => (
                     <View key={f.key} style={{ marginBottom: 14 }}>
-                      <Text style={[fieldLabelStyle, fieldErrors[f.key] ? { color: RED } : {}]}>{f.label}</Text>
+                      <Text style={[fieldLabelStyle, fieldErrors[f.key] ? { color: RED } : {}]}>{fieldText('withdraw_field', f.key, f.label)}</Text>
                       <View style={[inputRowStyle, fieldErrors[f.key] ? { borderColor: 'rgba(239,68,68,0.5)' } : {}]}>
-                        <TextInput style={{ flex: 1, color: '#fff', fontSize: 15 }} placeholder={f.placeholder} placeholderTextColor="rgba(255,255,255,0.2)" value={fieldValues[f.key] || ''} onChangeText={val => setField(f.key, val)} keyboardType={f.keyboard} />
+                        <TextInput style={{ flex: 1, color: '#fff', fontSize: 15 }} placeholder={fieldText('withdraw_placeholder', f.key, f.placeholder)} placeholderTextColor="rgba(255,255,255,0.2)" value={fieldValues[f.key] || ''} onChangeText={val => setField(f.key, val)} keyboardType={f.keyboard} />
                       </View>
                       {fieldErrors[f.key] ? <Text style={{ fontSize: 11, color: RED, marginTop: 4, paddingLeft: 4 }}>{fieldErrors[f.key]}</Text> : null}
                     </View>
@@ -665,7 +678,7 @@ export default function MemberWithdraw() {
                     <LinearGradient colors={['#4facfe', '#00ffcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={{ height: 56, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting ? 0.6 : 1 }}>
                       <Ionicons name={submitting ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? 'Submitting...' : 'Request Withdrawal'}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? t('submitting') : t('request_withdrawal')}</Text>
                     </LinearGradient>
                   </HapticButton>
                 </>)}
@@ -675,7 +688,7 @@ export default function MemberWithdraw() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ═══ Success Modal ═══ */}
+      {/* === Success Modal === */}
       <Modal visible={showSuccess} animationType="fade" transparent>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)', padding: 24 }}>
           <View style={{ backgroundColor: CARD, borderRadius: 28, padding: 32, width: '100%', maxWidth: 360, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
@@ -685,31 +698,29 @@ export default function MemberWithdraw() {
                 <SvgPath d="M22 40 L34 52 L58 28" stroke="#00C896" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' }}>Withdrawal Requested!</Text>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' }}>{t('withdrawal_requested')}</Text>
             {lastResult && (
               <>
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 20, lineHeight: 20 }}>
-                  Your request for {lastResult.amount.toFixed(2)} {lastResult.currency} has been submitted.
-                  {'\n'}We'll process it within {lastResult.processingTime}.
-                  {'\n'}You'll receive an email confirmation.
+                  {tx('withdrawal_success_body', { amount: lastResult.amount.toFixed(2), currency: lastResult.currency, time: lastResult.processingTime })}
                 </Text>
                 <View style={{ backgroundColor: 'rgba(0,200,150,0.06)', borderRadius: 16, padding: 20, width: '100%', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,200,150,0.15)' }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={summaryLabelStyle}>Requested</Text><Text style={summaryValueStyle}>{lastResult.amount.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={summaryLabelStyle}>{t('requested')}</Text><Text style={summaryValueStyle}>{lastResult.amount.toFixed(2)} {lastResult.currency}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={summaryLabelStyle}>Fee</Text><Text style={[summaryValueStyle, { color: YELLOW }]}>{lastResult.fee.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={summaryLabelStyle}>{t('fee')}</Text><Text style={[summaryValueStyle, { color: YELLOW }]}>{lastResult.fee.toFixed(2)} {lastResult.currency}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>You receive</Text><Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{lastResult.net.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{t('you_receive')}</Text><Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{lastResult.net.toFixed(2)} {lastResult.currency}</Text>
                   </View>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 12, textAlign: 'center' }}>via {lastResult.method}</Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 12, textAlign: 'center' }}>{tx('via_method', { method: lastResult.method })}</Text>
                 </View>
               </>
             )}
             <TouchableOpacity onPress={() => { setShowSuccess(false); setLastResult(null); fetchData(); router.back(); }} activeOpacity={0.8}
               style={{ width: '100%', height: 52, borderRadius: 50, backgroundColor: 'rgba(0,200,150,0.12)', borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: GREEN }}>Done</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: GREEN }}>{t('done')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -720,7 +731,7 @@ export default function MemberWithdraw() {
   );
 }
 
-/* ── Shared styles ── */
+/* -- Shared styles -- */
 const sectionTitle = { fontSize: 13 as const, fontWeight: '700' as const, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 14, marginTop: 8 };
 const fieldLabelStyle = { fontSize: 12 as const, fontWeight: '600' as const, color: 'rgba(255,255,255,0.5)' as const, marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.4 };
 const inputWrapperStyle = { flexDirection: 'row' as const, alignItems: 'center' as const, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14, height: 56, paddingHorizontal: 16, borderWidth: 1, borderColor: BORDER, marginBottom: 16 };

@@ -12,6 +12,7 @@ import { Toast, useToast } from '../../components/Toast';
 import { playTipSound } from '../../lib/tipSound';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
+import { useLanguage } from '../../lib/LanguageContext';
 
 const BG = '#1a1a1a';
 const CARD = 'rgba(255,255,255,0.05)';
@@ -39,6 +40,7 @@ export default function Home() {
   const { user, updateUser } = useAuth();
   const router = useRouter();
   const { toast, showToast } = useToast();
+  const { t, language, isRTL } = useLanguage();
   const [balance, setBalance] = useState(user?.balance ?? 0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [tipCount, setTipCount] = useState(0);
@@ -113,7 +115,12 @@ export default function Home() {
       if (prevBalanceRef.current !== null && b > prevBalanceRef.current) {
         const diff = b - prevBalanceRef.current;
         playTipSound();
-        showToast(`+${diff.toFixed(2)} ${cur} tip received!`, 'success');
+        showToast(
+          t('tip_received_toast')
+            .replace('{amount}', diff.toFixed(2))
+            .replace('{currency}', cur),
+          'success'
+        );
       }
       prevBalanceRef.current = b;
 
@@ -131,7 +138,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [cur, showToast, updateUser]);
+  }, [cur, showToast, t, updateUser]);
 
   // ── Fetch on mount + 15-second polling ──
   useEffect(() => {
@@ -172,25 +179,28 @@ export default function Home() {
     return <BusinessDashboard />;
   }
 
+  const locale = language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US';
   const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    new Date(d).toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const rowDirection = isRTL ? 'row-reverse' : 'row';
+  const textAlign = isRTL ? 'right' : 'left';
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 56, paddingBottom: 40 }}>
 
         {/* ── Header ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <View style={{ flexDirection: rowDirection, justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 6 }}>
               <SnapTipLogo size={36} />
               <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>SnapTip</Text>
               <View style={{ backgroundColor: 'rgba(0,255,204,0.12)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 2 }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>Member</Text>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>{t('member')}</Text>
               </View>
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 }}>
-              {user?.full_name || 'Welcome'}
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2, textAlign }}>
+              {user?.full_name || t('welcome')}
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.8}>
@@ -215,14 +225,14 @@ export default function Home() {
               end={{ x: 1, y: 1 }}
               style={{ borderRadius: 20, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="wallet" size={18} color={GREEN} />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', flex: 1 }}>Available Balance</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)', flex: 1, textAlign }}>{t('available_balance')}</Text>
+                <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 4 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
-                  <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>Live</Text>
+                  <Text style={{ fontSize: 10, color: GREEN, fontWeight: '600' }}>{t('live')}</Text>
                 </View>
               </View>
 
@@ -230,30 +240,30 @@ export default function Home() {
                 {balance.toFixed(2)} {cur}
               </Text>
 
-              <View style={{ flexDirection: 'row', gap: 20, marginBottom: 20 }}>
+              <View style={{ flexDirection: rowDirection, gap: 20, marginBottom: 20 }}>
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
-                  This Month: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{monthlyEarned.toFixed(2)} {cur}</Text>
+                  {t('this_month')}: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{monthlyEarned.toFixed(2)} {cur}</Text>
                 </Text>
                 <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.15)' }} />
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
-                  Tips: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{tipCount}</Text>
+                  {t('tips_count_label')}: <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{tipCount}</Text>
                 </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flexDirection: rowDirection, gap: 12 }}>
                 <HapticButton
                   onPress={() => router.push('/member/withdraw')}
-                  style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
+                  style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: rowDirection, gap: 8 }}
                 >
                   <Ionicons name="arrow-up-circle" size={20} color="#1a1a1a" />
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#1a1a1a' }}>Cash Out</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#1a1a1a' }}>{t('cash_out')}</Text>
                 </HapticButton>
                 <HapticButton
                   onPress={() => router.push('/member/qr')}
-                  style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
+                  style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: 'transparent', borderWidth: 2, borderColor: '#00C896', justifyContent: 'center', alignItems: 'center', flexDirection: rowDirection, gap: 8 }}
                 >
                   <Ionicons name="qr-code-outline" size={20} color="#00C896" />
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#00C896' }}>My QR</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#00C896' }}>{t('my_qr')}</Text>
                 </HapticButton>
               </View>
             </LinearGradient>
@@ -264,17 +274,17 @@ export default function Home() {
                 backgroundColor: CARD, borderRadius: 20, padding: 20,
                 marginBottom: 20, borderWidth: 1, borderColor: BORDER,
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                     <Ionicons name="star" size={18} color="#f59e0b" />
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>My Rating</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>{t('my_rating')}</Text>
                 </View>
 
                 {ratingStats.average_rating !== null && ratingStats.total_ratings > 0 ? (
                   <>
                     {/* Large average display */}
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
+                    <View style={{ flexDirection: rowDirection, alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
                       <Text style={{ fontSize: 48, fontWeight: '800', color: '#f59e0b', letterSpacing: -2, lineHeight: 52 }}>
                         {Number(ratingStats.average_rating).toFixed(1)}
                       </Text>
@@ -288,8 +298,8 @@ export default function Home() {
                             />
                           ))}
                         </View>
-                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-                          {ratingStats.total_ratings} rating{ratingStats.total_ratings !== 1 ? 's' : ''}
+                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign }}>
+                          {ratingStats.total_ratings} {ratingStats.total_ratings === 1 ? t('rating_singular') : t('rating_plural')}
                         </Text>
                       </View>
                     </View>
@@ -300,7 +310,7 @@ export default function Home() {
                         const count = ratingStats.rating_breakdown?.[star] || 0;
                         const pct = ratingStats.total_ratings > 0 ? (count / ratingStats.total_ratings) * 100 : 0;
                         return (
-                          <View key={star} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View key={star} style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
                             <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 14, textAlign: 'right' }}>{star}</Text>
                             <Ionicons name="star" size={10} color="#f59e0b" />
                             <View style={{ flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
@@ -316,7 +326,7 @@ export default function Home() {
                   <View style={{ alignItems: 'center', paddingVertical: 12 }}>
                     <Ionicons name="star-outline" size={28} color="rgba(255,255,255,0.15)" />
                     <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 8, textAlign: 'center' }}>
-                      No ratings yet{`\n`}Receive tips to collect star ratings
+                      {t('no_ratings_yet')}{`\n`}{t('receive_tips_collect_ratings')}
                     </Text>
                   </View>
                 )}
@@ -325,10 +335,10 @@ export default function Home() {
 
             {/* ── Recent Tips ── */}
             <View style={{ marginBottom: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Recent Tips</Text>
+              <View style={{ flexDirection: rowDirection, justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('recent_tips')}</Text>
                 <TouchableOpacity onPress={() => router.push('/(tabs)/tips')} activeOpacity={0.8}>
-                  <Text style={{ fontSize: 13, color: ACCENT, fontWeight: '600' }}>View All</Text>
+                  <Text style={{ fontSize: 13, color: ACCENT, fontWeight: '600' }}>{t('view_all')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -336,7 +346,7 @@ export default function Home() {
                 <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 32, borderWidth: 1, borderColor: BORDER, alignItems: 'center' }}>
                   <Ionicons name="wallet-outline" size={36} color="rgba(255,255,255,0.12)" />
                   <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', marginTop: 12, textAlign: 'center', lineHeight: 20 }}>
-                    No tips yet. Share your QR to start receiving tips!
+                    {t('share_qr_tips')}
                   </Text>
                 </View>
               ) : (
@@ -345,14 +355,14 @@ export default function Home() {
                   return (
                     <View
                       key={tip.id}
-                      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}
+                      style={{ flexDirection: rowDirection, alignItems: 'center', backgroundColor: CARD, borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: BORDER }}
                     >
                       <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: isSplit ? 'rgba(0,255,204,0.1)' : 'rgba(0,200,150,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
                         <Ionicons name={isSplit ? 'people' : 'arrow-down-outline'} size={18} color={isSplit ? ACCENT : GREEN} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
-                          {isSplit ? `Received from ${tip.sender_name || 'Colleague'}` : 'Tip received'}
+                          {isSplit ? `${t('received_from')} ${tip.sender_name || t('colleague')}` : t('tip_received')}
                         </Text>
                         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{formatDate(tip.created_at)}</Text>
                       </View>
@@ -364,8 +374,8 @@ export default function Home() {
             </View>
 
             {/* ── Quick Actions ── */}
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Quick Actions</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 12, textAlign }}>{t('quick_actions')}</Text>
+            <View style={{ flexDirection: rowDirection, gap: 10 }}>
               <TouchableOpacity
                 onPress={() => router.push('/member/qr')}
                 activeOpacity={0.8}
@@ -374,7 +384,7 @@ export default function Home() {
                 <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="qr-code-outline" size={22} color={ACCENT} />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>My QR Code</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>{t('my_qr_code_action')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push('/member/split')}
@@ -384,7 +394,7 @@ export default function Home() {
                 <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="people-outline" size={22} color={ACCENT} />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Split Tip</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>{t('split_tip')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push('/member/withdraw')}
@@ -394,7 +404,7 @@ export default function Home() {
                 <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name="cash-outline" size={22} color={GREEN} />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Withdraw</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' }}>{t('withdraw')}</Text>
               </TouchableOpacity>
             </View>
           </>

@@ -291,6 +291,13 @@ export default function Register() {
   const { login, updateUser } = useAuth();
   const { language, changeLanguage, t } = useLanguage();
   const { toast, showToast } = useToast();
+  const tx = useCallback((key: string, vars: Record<string, string | number> = {}) => {
+    let value = t(key);
+    Object.entries(vars).forEach(([name, replacement]) => {
+      value = value.replace(`{${name}}`, String(replacement));
+    });
+    return value;
+  }, [t]);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -356,12 +363,12 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: email.trim().toLowerCase() });
-      showToast(`Code sent to ${email.trim().toLowerCase()}`, 'success');
+      showToast(tx('code_sent_to', { email: email.trim().toLowerCase() }), 'success');
       setStep(2);
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed to send code.', 'error');
+      showToast(e.response?.data?.error || t('failed_send_code'), 'error');
     } finally { setLoading(false); }
-  }, [firstName, lastName, email, showToast]);
+  }, [firstName, lastName, email, showToast, t, tx]);
 
   const emailRef = useRef(email);
   useEffect(() => { emailRef.current = email; }, [email]);
@@ -379,15 +386,15 @@ export default function Register() {
             const currentEmail = emailRef.current.trim().toLowerCase();
             if (!currentEmail) return;
             api.post('/auth/verify-otp', { email: currentEmail, otp: code })
-              .then(() => { showToast('Email verified!', 'success'); setStep(3); })
-              .catch((e: any) => { showToast(e.response?.data?.error || 'Verification failed.', 'error'); });
+              .then(() => { showToast(t('email_verified'), 'success'); setStep(3); })
+              .catch((e: any) => { showToast(e.response?.data?.error || t('verification_failed'), 'error'); });
           }, 200);
         }
       }
       return arr;
     });
     if (digit && idx < 5) otpRefs.current[idx + 1]?.focus();
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleOtpKey = useCallback((e: any, idx: number) => {
     if (e.nativeEvent.key === 'Backspace') {
@@ -408,29 +415,29 @@ export default function Register() {
     try {
       const trimmedEmail = emailRef.current.trim().toLowerCase();
       await api.post('/auth/verify-otp', { email: trimmedEmail, otp: code });
-      showToast('Email verified!', 'success');
+      showToast(t('email_verified'), 'success');
       setStep(3);
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Verification failed.', 'error');
+      showToast(e.response?.data?.error || t('verification_failed'), 'error');
     } finally { setLoading(false); }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleVerifyOtp = useCallback(async () => {
     const code = otp.join('');
-    if (code.length < 6) { showToast('Enter the full 6-digit code.', 'error'); return; }
+    if (code.length < 6) { showToast(t('enter_full_code'), 'error'); return; }
     await verifyOtpDirect(code);
-  }, [otp, verifyOtpDirect, showToast]);
+  }, [otp, verifyOtpDirect, showToast, t]);
 
   const handleResend = useCallback(async () => {
     setOtp(['', '', '', '', '', '']);
     setLoading(true);
     try {
       await api.post('/auth/send-otp', { email: emailRef.current.trim().toLowerCase() });
-      showToast('New code sent!', 'success');
+      showToast(t('new_code_sent'), 'success');
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed.', 'error');
+      showToast(e.response?.data?.error || t('failed_generic'), 'error');
     } finally { setLoading(false); }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleBackToStep1 = useCallback(() => { setStep(1); setOtp(['', '', '', '', '', '']); }, []);
 
@@ -465,12 +472,12 @@ export default function Register() {
       };
 
       await login(result.data.token, userData as any);
-      showToast('Account created!', 'success');
+      showToast(t('account_created'), 'success');
       setStep(4);
     } catch (e: any) {
-      showToast(e.response?.data?.error || e?.message || 'Registration failed.', 'error');
+      showToast(e.response?.data?.error || e?.message || t('registration_failed'), 'error');
     } finally { setLoading(false); }
-  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, login, showToast]);
+  }, [username, password, confirmPw, firstName, lastName, email, accountType, selectedCountry, login, showToast, t]);
 
   const handleBackToStep2 = useCallback(() => setStep(2), []);
 
@@ -491,14 +498,14 @@ export default function Register() {
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Camera access is required. Please enable it in your device Settings.');
+          Alert.alert(t('permission_required'), t('camera_permission_required'));
           return;
         }
         result = await ImagePicker.launchCameraAsync(options);
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Photo library access is required. Please enable it in your device Settings.');
+          Alert.alert(t('permission_required'), t('photo_library_permission_required'));
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync(options);
@@ -509,7 +516,7 @@ export default function Register() {
       setImageUri(uri);
       imageBase64Ref.current = uri;
     } catch (err: any) {
-      showToast(err.message || 'Could not process image.', 'error');
+      showToast(err.message || t('could_not_process_image'), 'error');
     }
   };
 
@@ -524,7 +531,7 @@ export default function Register() {
       if (photoUri) {
         const uploadResult = await uploadProfileImage(photoUri);
         if (!uploadResult.success || !uploadResult.employee) {
-          showToast(JSON.stringify(uploadResult.error || 'Photo upload failed'), 'error');
+          showToast(JSON.stringify(uploadResult.error || t('photo_upload_failed')), 'error');
           setLoading(false);
           return;
         }
@@ -533,18 +540,18 @@ export default function Register() {
           ? serverEmployee.photo_url + '?t=' + Date.now()
           : undefined;
         updateUser({ ...serverEmployee, photo_url: freshPhotoUrl });
-        showToast('Profile photo uploaded!', 'success');
+        showToast(t('profile_photo_uploaded'), 'success');
       }
 
-      showToast('Setup complete!', 'success');
+      showToast(t('setup_complete'), 'success');
       setTimeout(() => {
         if (accountType === 'business') router.replace('/business/setup');
         else router.replace('/(tabs)/home');
       }, 500);
     } catch (err: any) {
-      showToast(`Could not save your profile. ${err?.message || 'Unknown error'}`, 'error');
+      showToast(tx('could_not_save_profile', { message: err?.message || t('unknown_error') }), 'error');
     } finally { setLoading(false); }
-  }, [imageUri, jobTitle, accountType, router, showToast, updateUser]);
+  }, [imageUri, jobTitle, accountType, router, showToast, updateUser, t, tx]);
 
   const handleSkip = useCallback(() => {
     if (accountType === 'business') router.replace('/business/setup');

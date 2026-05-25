@@ -93,12 +93,12 @@ export default function MemberProfile() {
         const uploadResult = await uploadProfileImage(asset.uri);
         if (uploadResult.success && uploadResult.employee?.photo_url) {
           updateUser({ photo_url: uploadResult.employee.photo_url + '?t=' + Date.now() });
-          showToast('Profile photo uploaded!', 'success');
+          showToast(t('profile_photo_uploaded'), 'success');
         } else {
-          showToast(JSON.stringify(uploadResult.error || 'Unknown error'), 'error');
+          showToast(JSON.stringify(uploadResult.error || t('unknown_error')), 'error');
         }
       } catch (e: any) {
-        showToast(e?.message || 'Unknown upload error', 'error');
+        showToast(e?.message || t('unknown_error'), 'error');
       }
     }
   };
@@ -108,33 +108,33 @@ export default function MemberProfile() {
     try {
       await api.patch('/employee/profile', { full_name: fullName.trim(), job_title: jobTitle.trim() });
       updateUser({ full_name: fullName.trim(), job_title: jobTitle.trim() });
-      showToast('Profile updated!', 'success');
-    } catch { showToast('Failed to save profile.', 'error'); }
+      showToast(t('profile_updated'), 'success');
+    } catch { showToast(t('failed_save_profile'), 'error'); }
     finally { setSaving(false); }
   };
 
   const handleChangePassword = async () => {
-    if (newPw !== confirmPw) { showToast('Passwords do not match.', 'error'); return; }
-    if (newPw.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (newPw !== confirmPw) { showToast(t('passwords_do_not_match'), 'error'); return; }
+    if (newPw.length < 6) { showToast(t('password_min_error'), 'error'); return; }
     setChangingPw(true);
     try {
       await api.post('/auth/change-password', { current_password: currentPw, new_password: newPw });
-      showToast('Password changed!', 'success');
+      showToast(t('password_changed'), 'success');
       setShowPasswordSheet(false);
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
     } catch (e: any) {
-      showToast(e.response?.data?.error || 'Failed to change password.', 'error');
+      showToast(e.response?.data?.error || t('failed_change_password'), 'error');
     } finally { setChangingPw(false); }
   };
 
   const handleSaveWithdrawal = async () => {
-    if (!wMethod) { showToast('Select a method.', 'error'); return; }
+    if (!wMethod) { showToast(t('select_method'), 'error'); return; }
     setSavingWithdraw(true);
     try {
       await api.patch('/employee/withdrawal-method', { method: wMethod, account: wAccount });
-      showToast('Withdrawal settings saved!', 'success');
+      showToast(t('withdrawal_settings_saved'), 'success');
       setShowWithdrawSheet(false);
-    } catch { showToast('Failed to save.', 'error'); }
+    } catch { showToast(t('failed_save'), 'error'); }
     finally { setSavingWithdraw(false); }
   };
 

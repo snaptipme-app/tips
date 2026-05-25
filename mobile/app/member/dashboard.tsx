@@ -70,12 +70,12 @@ export default function MemberDashboard() {
         setBizName(bizRes.value.data.business?.business_name || '');
       }
     } catch (e: any) {
-      if (e.response?.status !== 401) showToast('Failed to load dashboard.', 'error');
+      if (e.response?.status !== 401) showToast(t('failed_load_dashboard'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [showToast, t]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -92,7 +92,12 @@ export default function MemberDashboard() {
         if (prevBalanceRef.current !== null && newBalance > prevBalanceRef.current) {
           const diff = newBalance - prevBalanceRef.current;
           playTipSound();
-          showToast(`You received a ${diff.toFixed(2)} ${user?.currency || 'MAD'} tip! 💸`, 'success');
+          showToast(
+            t('tip_received_toast')
+              .replace('{amount}', diff.toFixed(2))
+              .replace('{currency}', user?.currency || 'MAD'),
+            'success'
+          );
         }
         prevBalanceRef.current = newBalance;
 
@@ -105,7 +110,7 @@ export default function MemberDashboard() {
       } catch {}
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [showToast, t, user?.currency]);
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -118,7 +123,7 @@ export default function MemberDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor={ACCENT} />
         }
       >
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <LinearGradient colors={['#0d0d30', '#1a1a1a']} style={{ paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -145,7 +150,7 @@ export default function MemberDashboard() {
             </TouchableOpacity>
           </View>
 
-          {/* ── Balance Card ── */}
+          {/* â”€â”€ Balance Card â”€â”€ */}
           {loading ? (
             <View style={{ padding: 20 }}><SkeletonLoader.Dashboard /></View>
           ) : (
@@ -166,7 +171,7 @@ export default function MemberDashboard() {
               </Text>
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>
                 {t('total_earned')}: <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{(data?.total_tips ?? 0).toFixed(2)} {user?.currency || 'MAD'}</Text>
-                {'  '}·{'  '}
+                {'  '}Â·{'  '}
                 <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{data?.tip_count ?? 0}</Text> {t('tips')}
               </Text>
 
@@ -191,7 +196,7 @@ export default function MemberDashboard() {
         </LinearGradient>
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* ── Recent Tips ── */}
+          {/* â”€â”€ Recent Tips â”€â”€ */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
               {t('recent_tips')}
@@ -247,7 +252,7 @@ export default function MemberDashboard() {
             </View>
           )}
 
-          {/* ── Quick Nav ── */}
+          {/* â”€â”€ Quick Nav â”€â”€ */}
           <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.35)', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 28, marginBottom: 12 }}>
             {t('quick_actions')}
           </Text>
