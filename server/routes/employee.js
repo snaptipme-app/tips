@@ -5,7 +5,7 @@ const authMiddleware = require('../middleware/auth');
 const { upload, getImageUrl, multerErrorHandler } = require('../middleware/upload');
 const { saveBase64Image } = require('../lib/saveBase64Image');
 const crypto = require('crypto');
-const { sendEmail } = require('../utils/sendEmail');
+const { sendEmail, buildAccountDeletionEmail } = require('../utils/sendEmail');
 const { logFromReq } = require('../lib/audit');
 
 
@@ -249,15 +249,12 @@ router.post('/delete-account', authMiddleware, async (req, res) => {
     try {
       await sendEmail(
         rows[0].email,
-        'SnapTip — Account deletion requested',
-        `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;max-width:560px;margin:40px auto;padding:24px;background:#fff;border-radius:12px;">
-          <h2 style="color:#080818;">Your SnapTip account has been scheduled for deletion</h2>
-          <p>Hi ${rows[0].full_name || rows[0].username},</p>
-          <p>You requested deletion of your SnapTip account. It is now disabled and will be permanently removed in <strong>30 days</strong>.</p>
-          <p>Changed your mind? Use this recovery code on the recovery page to restore the account before it is purged:</p>
-          <div style="font-size:32px;letter-spacing:8px;font-weight:700;color:#00C896;background:#f0fdf9;padding:20px;text-align:center;border-radius:10px;margin:20px 0;">${recoveryCode}</div>
-          <p style="color:#666;font-size:13px;">If you did not request this, contact support immediately.</p>
-        </body></html>`
+        'SnapTip - Account deletion requested',
+        buildAccountDeletionEmail({
+          name: rows[0].full_name || rows[0].username,
+          recoveryCode,
+          recoveryUrl: 'https://snaptip.me',
+        })
       );
     } catch (mailErr) {
       console.error('[employee/delete-account] email failed:', mailErr.message);

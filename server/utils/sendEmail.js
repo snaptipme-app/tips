@@ -419,6 +419,40 @@ function buildAdminPasswordResetEmail({ temporaryPassword, userName, loginUrl = 
   });
 }
 
+function buildAccountDeletionEmail({ name, recoveryCode, recoveryUrl = BRAND.url } = {}) {
+  return renderLayout({
+    preheader: 'Your SnapTip account has been scheduled for deletion.',
+    eyebrow: 'Account notice',
+    title: 'Account deletion scheduled',
+    children: `
+      ${paragraph(`Hi ${escapeHtml(name || 'there')}, you requested deletion of your SnapTip account. It is now disabled and will be permanently removed in <strong style="color:${COLORS.text};">30 days</strong>.`)}
+      ${paragraph('Changed your mind? Use this recovery code before the grace period ends.')}
+      ${secureCodeBox(recoveryCode, 'Recovery code')}
+      ${ctaButton(recoveryUrl, 'Open SnapTip')}
+      ${paragraph('If you did not request this, contact support immediately.', { color: COLORS.secondary, margin: '0' })}
+    `,
+  });
+}
+
+function buildSupportRequestEmail({ name, email, subject, message } = {}) {
+  return renderLayout({
+    preheader: `New SnapTip support request from ${name || 'a user'}.`,
+    eyebrow: 'Support request',
+    title: 'New support message',
+    children: `
+      ${paragraph('A new support request was submitted through SnapTip.')}
+      ${summaryCard([
+        ['From', escapeHtml(name)],
+        ['Email', email ? `<a href="mailto:${escapeHtml(email)}" style="color:${COLORS.primaryDark};text-decoration:none;">${escapeHtml(email)}</a>` : 'Not provided'],
+        ['Subject', escapeHtml(subject)],
+      ], { title: 'Message details' })}
+      <div style="margin:24px 0 0;padding:18px;border-radius:14px;background:${COLORS.soft};border:1px solid ${COLORS.border};">
+        <p style="margin:0;color:${COLORS.text};font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(message)}</p>
+      </div>
+    `,
+  });
+}
+
 /**
  * Send a 6-digit OTP to verify a user's email.
  * @param {string} email Recipient
@@ -462,4 +496,6 @@ module.exports = {
   buildTipReceivedEmail,
   buildStaffInvitationEmail,
   buildAdminPasswordResetEmail,
+  buildAccountDeletionEmail,
+  buildSupportRequestEmail,
 };
