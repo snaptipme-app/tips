@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import img3Screens from '../assets/images/screenshot_3images.png';
 import imgTourist from '../assets/images/screenshot_tourist_page.png';
@@ -238,9 +238,11 @@ export default function LandingPage() {
       </section>
 
       <footer className="footer">
-        <Logo href="/" showText size={28} className="logo" textColor="#ffffff" />
-        <span>© 2026 SnapTip by Hitte Technologies LLC.</span>
-        <div>
+        <div className="footer-brand">
+          <Logo href="/" showText size={28} className="logo" textColor="#ffffff" />
+        </div>
+        <span className="footer-copy">© 2026 SnapTip by Hitte Technologies LLC.</span>
+        <div className="footer-links">
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
           <a href="mailto:support@snaptip.me">Contact</a>
@@ -550,13 +552,29 @@ export default function LandingPage() {
           min-height: 92px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
+          flex-wrap: wrap;
           gap: 18px;
           border-top: 1px solid rgba(255,255,255,0.08);
           color: #666;
           font-size: 13px;
+          text-align: center;
         }
-        .footer div { display: flex; gap: 18px; }
+        .footer-brand, .footer-links {
+          flex: 1 1 220px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 18px;
+          text-align: center;
+        }
+        .footer-copy {
+          flex: 2 1 320px;
+          display: block;
+          text-align: center;
+          margin-left: auto;
+          margin-right: auto;
+        }
         .footer a { color: #777; text-decoration: none; }
         .footer a:hover { color: #fff; }
         @keyframes float {
@@ -621,9 +639,11 @@ export default function LandingPage() {
           .segmented button { flex: 1; padding: 0 10px; }
           .product h2, .features h2, .proof h2, .pricing h2, .final h2 { font-size: 34px; }
           .feature-list article { grid-template-columns: 1fr; gap: 12px; }
-          .footer { flex-direction: column; align-items: flex-start; padding-top: 28px; padding-bottom: 28px; }
+          .footer { flex-direction: column; align-items: center; justify-content: center; padding-top: 28px; padding-bottom: 28px; text-align: center; }
+          .footer-brand, .footer-links, .footer-copy { flex: initial; width: 100%; justify-content: center; text-align: center; }
         }
       `}</style>
     </main>
   );
 }
+

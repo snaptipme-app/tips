@@ -253,15 +253,15 @@ function renderLayout({ preheader, title, eyebrow, children }) {
             </td>
           </tr>
           <tr>
-            <td class="email-footer" style="padding:24px 42px 28px;border-top:1px solid ${COLORS.border};background:#fbfbfb;">
-              <p style="margin:0 0 12px;color:${COLORS.secondary};font-size:13px;line-height:1.55;">
+            <td align="center" class="email-footer" style="padding:24px 42px 28px;border-top:1px solid ${COLORS.border};background:#fbfbfb;text-align:center;">
+              <p style="margin:0 auto 12px;color:${COLORS.secondary};font-size:13px;line-height:1.55;text-align:center;max-width:420px;">
                 Questions? Contact SnapTip support at <a href="mailto:${escapeHtml(BRAND.supportEmail)}" style="color:${COLORS.text};text-decoration:none;">${escapeHtml(BRAND.supportEmail)}</a>.
               </p>
-              <p style="margin:0;color:${COLORS.tertiary};font-size:12px;line-height:1.55;">
+              <p style="margin:0 auto;color:${COLORS.tertiary};font-size:12px;line-height:1.55;text-align:center;max-width:420px;">
                 This transactional email was sent by SnapTip. Please keep it for your records if it contains payment or account information.
               </p>
-              <div style="height:1px;background:${COLORS.border};line-height:1px;font-size:1px;margin:18px 0;">&nbsp;</div>
-              <p style="margin:0;color:${COLORS.tertiary};font-size:12px;line-height:1.55;">Â© 2026 SnapTip. All rights reserved.</p>
+              <div style="height:1px;background:${COLORS.border};line-height:1px;font-size:1px;margin:18px auto;width:100%;max-width:420px;">&nbsp;</div>
+              <p style="margin:0 auto;color:${COLORS.tertiary};font-size:12px;line-height:1.55;text-align:center;max-width:420px;">© 2026 SnapTip. All rights reserved.</p>
             </td>
           </tr>
         </table>
