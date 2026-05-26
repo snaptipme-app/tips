@@ -76,6 +76,17 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
 
   const safeRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
 
+  if (transactionId) {
+    const { rows: existingRows } = await pool.query(
+      'SELECT * FROM payments WHERE stripe_payment_id = $1 LIMIT 1',
+      [transactionId]
+    );
+    if (existingRows.length > 0) {
+      console.log(`[DEBUG processPayment] Duplicate transaction ignored: ${transactionId}`);
+      return existingRows[0];
+    }
+  }
+
   // 1. Insert payment record (with currency + rating for full traceability)
   const { rows: paymentRows } = await pool.query(
     `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency, rating)

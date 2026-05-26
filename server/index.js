@@ -19,6 +19,7 @@ const tipsRoutes = require('./routes/tips');
 const withdrawalRoutes = require('./routes/withdrawals');
 const analyticsRoutes = require('./routes/analytics');
 const businessRoutes = require('./routes/business');
+const paymentRoutes = require('./routes/payment');
 const paymentsRoutes = require('./routes/payments');
 const joinRoutes = require('./routes/join');
 const adminRoutes = require('./routes/admin');
@@ -49,6 +50,7 @@ app.use(security.cookieParser);
 // ── Body parsers ──
 // NOTE: 50mb is intentionally permissive for legacy base64 photo uploads.
 // Tighten in a later commit once payload sizes are confirmed in prod logs.
+app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -58,6 +60,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ── Rate limiting ──
 // Global fallback applies to every /api/* request; per-surface limiters layer on top.
 app.use('/api', globalLimiter);
+app.use('/api/payment', paymentLimiter);
 app.use('/api/auth', authLimiter);
 app.use('/api/payments', paymentLimiter);
 app.use('/api/tips', paymentLimiter);
@@ -73,6 +76,7 @@ app.use('/api/tips', tipsRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/business', businessRoutes);
+app.use('/api/payment', paymentRoutes);
 app.use('/api/payments', paymentsRoutes);
 // Admin panel uses cookie auth → CSRF defense via Origin/Referer check on
 // state-changing requests (SameSite=Strict cookie is the primary defence).

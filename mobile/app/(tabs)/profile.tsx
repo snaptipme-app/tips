@@ -14,6 +14,8 @@ import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
 import HapticButton from '../../components/HapticButton';
+import { CountryFlag } from '../../components/CountryFlag';
+import { COUNTRY_CODE_MAP } from '../../lib/countryData';
 
 const API_URL = 'https://snaptip.me';
 
@@ -26,16 +28,6 @@ const GREEN = '#00C896';
 const RED = '#ef4444';
 const RATING_PREF_KEY = 'snaptip_show_rating';
 const DEFAULT_SHOW_RATING = false;
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const COUNTRY_FLAG_IMAGES: Record<string, any> = {
-  'Morocco': require('../../assets/images/morocco_icon.png'),
-  'United States': require('../../assets/images/us_icon.png'),
-  'France': require('../../assets/images/france_icon.png'),
-  'Spain': require('../../assets/images/spain_icon.png'),
-  'UAE': require('../../assets/images/uae_icon.png'),
-};
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const LANG_IMAGES: Record<string, any> = {
@@ -107,6 +99,8 @@ export default function Profile() {
   }, []);
 
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();
+  const userCountry = user?.country || 'Morocco';
+  const userCountryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
 
   const photoSrc = displayPhoto
     ? { uri: displayPhoto }
@@ -401,15 +395,11 @@ export default function Profile() {
           {/* Country info row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
             <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(0,200,150,0.12)', justifyContent: 'center', alignItems: 'center' }}>
-              {COUNTRY_FLAG_IMAGES[user?.country || 'Morocco'] ? (
-                <Image source={COUNTRY_FLAG_IMAGES[user?.country || 'Morocco']} style={{ width: 24, height: 24, borderRadius: 4 }} resizeMode="contain" />
-              ) : (
-                <Ionicons name="flag-outline" size={18} color={GREEN} />
-              )}
+              <CountryFlag code={userCountryCode} width={24} height={18} style={{ borderRadius: 4 }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t('country')}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{user?.country || 'Morocco'} · {user?.currency || 'MAD'}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{userCountry} · {user?.currency || 'MAD'}</Text>
             </View>
           </View>
 

@@ -1,19 +1,40 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, PaymentRequestButtonElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
+
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+const stripeCountry = import.meta.env.VITE_STRIPE_COUNTRY || 'US';
 
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
   USD: [2,    5,     10,    20    ],
   EUR: [2,    5,     10,    20    ],
   GBP: [1,    2,     5,     10    ],
+  CAD: [2,    5,     10,    20    ],
+  AUD: [2,    5,     10,    20    ],
+  NZD: [2,    5,     10,    20    ],
+  SGD: [2,    5,     10,    20    ],
+  CHF: [2,    5,     10,    20    ],
+  DKK: [20,   50,    100,   200   ],
+  NOK: [20,   50,    100,   200   ],
+  SEK: [20,   50,    100,   200   ],
+  PLN: [10,   20,    50,    100   ],
+  MYR: [10,   20,    50,    100   ],
+  MXN: [20,   50,    100,   200   ],
   MAD: [20,   50,    100,   200   ],
   AED: [10,   20,    50,    100   ],
+  JPY: [200,  500,   1000,  2000  ],
+  HKD: [20,   50,    100,   200   ],
   PHP: [50,   100,   200,   500   ],
   THB: [50,   100,   200,   500   ],
   IDR: [20000, 50000, 100000, 200000],
 };
+
+const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'HKD']);
 
 /* ─── Premium tier icons (22px, stroke-based, clean minimal) ───────── */
 const TierIconHand = ({color='#fff'}) => (
@@ -62,6 +83,14 @@ function formatCurrency(amount, currency) {
   return `${amount} ${currency || 'MAD'}`;
 }
 
+function toStripeAmount(amount, currency) {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) return 0;
+  return ZERO_DECIMAL_CURRENCIES.has(String(currency || '').toUpperCase())
+    ? Math.round(numericAmount)
+    : Math.round(numericAmount * 100);
+}
+
 /* ─── Slider range — adapt to currency magnitude ──────────────────────── */
 function getSliderConfig(presets) {
   const [first, , , last] = presets;
@@ -89,20 +118,6 @@ const RestaurantIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
   </svg>
-);
-
-const VisaSmall = () => (
-  <span style={{ background: '#fff', borderRadius: 3, padding: '2px 5px', fontSize: 9, fontWeight: 800, color: '#1a1f71', fontStyle: 'italic', letterSpacing: '-0.02em', display: 'inline-block', lineHeight: 1 }}>VISA</span>
-);
-const MastercardSmall = () => (
-  <svg width="22" height="14" viewBox="0 0 28 18" fill="none">
-    <circle cx="10" cy="9" r="8" fill="#eb001b" />
-    <circle cx="18" cy="9" r="8" fill="#f79e1b" />
-    <path d="M14 1.46a8 8 0 0 1 0 15.08A8 8 0 0 1 14 1.46z" fill="#ff5f00" />
-  </svg>
-);
-const AmexSmall = () => (
-  <span style={{ background: '#016fd0', borderRadius: 3, padding: '2px 4px', fontSize: 7, fontWeight: 800, color: '#fff', display: 'inline-block', lineHeight: 1 }}>AMEX</span>
 );
 
 const StarIcon = ({ filled, size = 32 }) => (
@@ -138,12 +153,6 @@ function AvatarFallback({ name }) {
     </div>
   );
 }
-
-const PAYMENT_METHODS = [
-  { id: 'apple',  label: 'Apple Pay',     bg: '#000', logo: 'apple'  },
-  { id: 'google', label: 'Google Pay',    bg: '#fff', logo: 'google' },
-  { id: 'card',   label: 'Pay with Card', bg: 'rgba(255,255,255,0.05)', logo: 'card' },
-];
 
 /* ─── Coin SVG for rain effect ──────────────────────────────────────── */
 function CoinIcon({ size = 28, symbol = '$', color = '#00C896' }) {
@@ -304,6 +313,170 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
 }
 
 /* ─── Inline keyframes + slider styles ────────────────────────────────── */
+function StripeCheckoutForm({
+  amount,
+  amountMinor,
+  currency,
+  clientSecret,
+  onSuccess,
+  onError,
+  onProcessing,
+  sending,
+  t,
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [walletReady, setWalletReady] = useState(false);
+  const [paymentRequest, setPaymentRequest] = useState(null);
+
+  useEffect(() => {
+    if (!stripe || !clientSecret || amountMinor <= 0) return undefined;
+
+    const request = stripe.paymentRequest({
+      country: stripeCountry,
+      currency: String(currency || 'MAD').toLowerCase(),
+      total: {
+        label: 'SnapTip tip',
+        amount: amountMinor,
+      },
+      requestPayerEmail: false,
+      requestPayerName: false,
+    });
+
+    let mounted = true;
+    request.canMakePayment().then((result) => {
+      if (mounted && result) {
+        setPaymentRequest(request);
+        setWalletReady(true);
+      }
+    });
+
+    request.on('paymentmethod', async (event) => {
+      onProcessing(true);
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        { payment_method: event.paymentMethod.id },
+        { handleActions: false }
+      );
+
+      if (error) {
+        event.complete('fail');
+        onProcessing(false);
+        onError(error.message || 'Payment failed. Please try again.');
+        return;
+      }
+
+      event.complete('success');
+
+      if (paymentIntent.status === 'requires_action') {
+        const result = await stripe.confirmCardPayment(clientSecret);
+        onProcessing(false);
+        if (result.error) {
+          onError(result.error.message || 'Payment failed. Please try again.');
+          return;
+        }
+        onSuccess();
+        return;
+      }
+
+      onProcessing(false);
+      onSuccess();
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [amountMinor, clientSecret, currency, onError, onProcessing, onSuccess, stripe]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      onError('Payment form is still loading. Please try again.');
+      return;
+    }
+
+    onProcessing(true);
+    onError('');
+
+    const submitResult = await elements.submit();
+    if (submitResult.error) {
+      onProcessing(false);
+      onError(submitResult.error.message || 'Please check your payment details.');
+      return;
+    }
+
+    const result = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: {
+        return_url: window.location.href,
+      },
+      redirect: 'if_required',
+    });
+
+    onProcessing(false);
+
+    if (result.error) {
+      onError(result.error.message || 'Payment failed. Please try again.');
+      return;
+    }
+
+    onSuccess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{
+      background: '#1a1a1a',
+      borderRadius: 16,
+      padding: 16,
+      border: '1px solid rgba(255,255,255,0.08)',
+      marginBottom: 14,
+      animation: 'fadeIn 0.3s ease-out',
+    }}>
+      {walletReady && paymentRequest && (
+        <div style={{ marginBottom: 14 }}>
+          <PaymentRequestButtonElement options={{ paymentRequest }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
+            <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>or</span>
+            <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+        </div>
+      )}
+
+      <PaymentElement />
+
+      <button
+        type="submit"
+        disabled={sending || !stripe || !elements}
+        style={{
+          width: '100%', height: 56, borderRadius: 50,
+          background: sending ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+          boxShadow: sending ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
+          border: 'none',
+          color: sending ? 'rgba(255,255,255,0.35)' : '#1a1a1a',
+          fontSize: 16, fontWeight: 800,
+          opacity: sending ? 0.7 : 1,
+          cursor: sending ? 'not-allowed' : 'pointer',
+          transition: 'all 250ms ease',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          marginTop: 16,
+        }}
+      >
+        {sending ? (
+          <>
+            <div style={{ width: 18, height: 18, border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            Processing...
+          </>
+        ) : (
+          `${t.confirmPayment || 'Confirm payment'} ${formatCurrency(amount, currency)}`
+        )}
+      </button>
+    </form>
+  );
+}
+
 const inlineStyles = `
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -382,11 +555,12 @@ export default function TipPage() {
   const [amount, setAmount] = useState(0);          // single source of truth
   const [rating, setRating] = useState(0);          // 0 = not rated; 1-5 = stars
   const [hoverRating, setHoverRating] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('apple');
   const [sending, setSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const [stripeAmount, setStripeAmount] = useState(0);
 
   const t = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -443,22 +617,35 @@ export default function TipPage() {
     if (employee && amount === 0) setAmount(tipPresets[1]);
   }, [employee, tipPresets, amount]);
 
+  useEffect(() => {
+    setClientSecret('');
+    setStripeAmount(0);
+    setPaymentError('');
+  }, [amount, currency, rating]);
+
   const handlePay = async () => {
-    if (amount <= 0) return;
+    if (amount <= 0 || !employee?.id) return;
+    if (!stripePromise) {
+      setPaymentError('Stripe is not configured. Add VITE_STRIPE_PUBLISHABLE_KEY on the client.');
+      return;
+    }
+
     setSending(true);
     setPaymentError('');
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    setClientSecret('');
+
     try {
-      const response = await api.post('/payments/mock', {
-        employee_username: username,
+      const response = await api.post('/payment/create-intent', {
+        employee_id: employee.id,
         amount,
         currency,
-        payment_method: paymentMethod,
         rating: rating > 0 ? rating : null,
       });
-      if (response.data?.success) {
-        setTipAmount(amount);
-        setShowSuccess(true);
+
+      if (response.data?.success && response.data?.clientSecret) {
+        setTipAmount(Number(response.data.amount || amount));
+        setStripeAmount(toStripeAmount(response.data.amount || amount, response.data.currency || currency));
+        setClientSecret(response.data.clientSecret);
       } else {
         setPaymentError(response.data?.error || 'Payment failed. Please try again.');
       }
@@ -473,7 +660,16 @@ export default function TipPage() {
     setShowSuccess(false);
     setAmount(tipPresets[1]);
     setRating(0);
+    setClientSecret('');
+    setStripeAmount(0);
   };
+
+  const handleStripeSuccess = useCallback(() => {
+    setPaymentError('');
+    setClientSecret('');
+    setStripeAmount(0);
+    setShowSuccess(true);
+  }, []);
 
   const pageBg = {
     minHeight: '100dvh',
@@ -758,51 +954,37 @@ export default function TipPage() {
           <h3 style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1.2 }}>
             Payment
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 22, animation: 'slideUp 0.5s ease-out 0.25s both' }}>
-            {PAYMENT_METHODS.map((pm) => {
-              const isSelected = paymentMethod === pm.id;
-              const cardStyle = {
-                height: 64, borderRadius: 14,
-                background: pm.bg,
-                border: isSelected ? '2px solid #00C896' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: isSelected ? '0 0 10px rgba(0,200,150,0.15)' : 'none',
-                cursor: 'pointer', transition: 'all 250ms ease',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: 6,
-              };
-              return (
-                <button key={pm.id} onClick={() => setPaymentMethod(pm.id)} style={cardStyle}>
-                  {pm.logo === 'apple' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <svg width="14" height="16" viewBox="0 0 14 17" fill="#fff"><path d="M13.1 5.7c-.1.1-1.9 1.1-1.9 3.3 0 2.6 2.3 3.5 2.3 3.5 0 .1-.4 1.2-1.2 2.4-.7 1-1.5 2.1-2.6 2.1s-1.5-.6-2.8-.6c-1.4 0-1.8.7-2.9.7s-1.7-.9-2.5-2.1C.4 13.3 0 11.1 0 9 0 5.8 2 4.1 3.9 4.1c1 0 1.9.7 2.5.7.6 0 1.6-.7 2.8-.7.5 0 2.2.1 3.3 1.3l.6.3zm-3.8-1.3c.5-.6.9-1.5.9-2.3 0-.1 0-.3 0-.4-.8 0-1.8.6-2.4 1.2-.4.5-.9 1.4-.9 2.3 0 .1 0 .3 0 .4.1 0 .2 0 .3 0 .8 0 1.6-.5 2.1-1.2z" /></svg>
-                      <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>Pay</span>
-                    </div>
-                  )}
-                  {pm.logo === 'google' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                      </svg>
-                      <span style={{ color: '#3c4043', fontSize: 14, fontWeight: 500, fontFamily: "'Google Sans', 'Product Sans', Arial, sans-serif", letterSpacing: '0.25px' }}>Pay</span>
-                    </div>
-                  )}
-                  {pm.logo === 'card' && (
-                    <>
-                      <span style={{ fontSize: 11, color: '#fff', fontWeight: 700, lineHeight: 1 }}>Pay with Card</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                        <VisaSmall />
-                        <MastercardSmall />
-                        <AmexSmall />
-                      </div>
-                    </>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {clientSecret && stripePromise && (
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'night',
+                  variables: {
+                    colorPrimary: '#00C896',
+                    colorBackground: '#1a1a1a',
+                    colorText: '#ffffff',
+                    colorDanger: '#ef4444',
+                    borderRadius: '12px',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif',
+                  },
+                },
+              }}
+            >
+              <StripeCheckoutForm
+                amount={tipAmount || amount}
+                amountMinor={stripeAmount}
+                currency={currency}
+                clientSecret={clientSecret}
+                sending={sending}
+                t={t}
+                onProcessing={setSending}
+                onError={setPaymentError}
+                onSuccess={handleStripeSuccess}
+              />
+            </Elements>
+          )}
 
           {/* Payment error */}
           {paymentError && (
@@ -816,33 +998,35 @@ export default function TipPage() {
           )}
 
           {/* ── ⑥ Pay button ── */}
-          <button
-            onClick={handlePay}
-            disabled={payDisabled}
-            style={{
-              width: '100%', height: 60, borderRadius: 50,
-              background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
-              boxShadow: payDisabled ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
-              border: 'none',
-              color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
-              fontSize: 18, fontWeight: 800,
-              opacity: payDisabled ? 0.5 : 1,
-              cursor: payDisabled ? 'not-allowed' : 'pointer',
-              transition: 'all 250ms ease',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              animation: payDisabled ? 'slideUp 0.5s ease-out 0.3s both' : 'slideUp 0.5s ease-out 0.3s both, pulseGlow 2.4s ease-in-out 1.5s infinite',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {sending ? (
-              <>
-                <div style={{ width: 20, height: 20, border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
-                Processing...
-              </>
-            ) : (
-              `Pay ${amount} ${currency}`
-            )}
-          </button>
+          {!clientSecret && (
+            <button
+              onClick={handlePay}
+              disabled={payDisabled}
+              style={{
+                width: '100%', height: 60, borderRadius: 50,
+                background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+                boxShadow: payDisabled ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
+                border: 'none',
+                color: payDisabled ? 'rgba(255,255,255,0.3)' : '#1a1a1a',
+                fontSize: 18, fontWeight: 800,
+                opacity: payDisabled ? 0.5 : 1,
+                cursor: payDisabled ? 'not-allowed' : 'pointer',
+                transition: 'all 250ms ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                animation: payDisabled ? 'slideUp 0.5s ease-out 0.3s both' : 'slideUp 0.5s ease-out 0.3s both, pulseGlow 2.4s ease-in-out 1.5s infinite',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {sending ? (
+                <>
+                  <div style={{ width: 20, height: 20, border: '2px solid #1a1a1a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                  Processing...
+                </>
+              ) : (
+                `Pay ${amount} ${currency}`
+              )}
+            </button>
+          )}
 
           {/* ── ⑦ Footer ── */}
           <div style={{ textAlign: 'center', marginTop: 18, paddingBottom: 32, animation: 'slideUp 0.5s ease-out 0.4s both' }}>
