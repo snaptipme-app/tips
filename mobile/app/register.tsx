@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, Image, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Image, Modal, ScrollView } from 'react-native';
 import KeyboardAwareWrapper from '../components/KeyboardAwareWrapper';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -645,7 +645,10 @@ export default function Register() {
       {/* ═══ Language Bottom Sheet ═══ */}
       <Modal visible={showLangSheet} animationType="slide" transparent>
         <TouchableOpacity activeOpacity={1} onPress={() => setShowLangSheet(false)} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+          <View
+            onStartShouldSetResponder={() => true}
+            style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, maxHeight: '70%' }}
+          >
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
@@ -677,21 +680,28 @@ export default function Register() {
               <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 12 }}>{t('reg_select_country')}</Text>
-            {COUNTRY_DATA.map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                onPress={() => handleCountryChange(c.id)}
-                activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
-              >
-                <CountryFlag code={c.code} width={32} height={22} style={{ borderRadius: 4 }} />
-                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCountry === c.id ? '#fff' : 'rgba(255,255,255,0.5)', flex: 1 }}>{c.name}</Text>
-                <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(0,255,204,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: selectedCountry === c.id ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
-                </View>
-                {selectedCountry === c.id && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
-              </TouchableOpacity>
-            ))}
+            <ScrollView
+              style={{ maxHeight: '70%' }}
+              contentContainerStyle={{ paddingBottom: 8 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {COUNTRY_DATA.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => handleCountryChange(c.id)}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 24, paddingVertical: 14 }}
+                >
+                  <CountryFlag code={c.code} width={32} height={22} style={{ borderRadius: 4 }} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCountry === c.id ? '#fff' : 'rgba(255,255,255,0.5)', flex: 1 }}>{c.name}</Text>
+                  <View style={{ backgroundColor: selectedCountry === c.id ? 'rgba(0,255,204,0.2)' : 'rgba(255,255,255,0.06)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: selectedCountry === c.id ? ACCENT : 'rgba(255,255,255,0.3)' }}>{c.currency}</Text>
+                  </View>
+                  {selectedCountry === c.id && <Ionicons name="checkmark-circle" size={20} color={GREEN} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <TouchableOpacity onPress={() => setShowCountrySheet(false)} activeOpacity={0.8} style={{ marginTop: 8, marginHorizontal: 24, height: 48, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
             </TouchableOpacity>
