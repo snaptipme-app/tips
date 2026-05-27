@@ -321,7 +321,7 @@ function StripeCheckoutForm({
   const elements = useElements();
   const [paymentElementReady, setPaymentElementReady] = useState(false);
 
-  const handleSubmit = async (event) => {
+  const handleConfirmPayment = async (event) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
@@ -334,6 +334,13 @@ function StripeCheckoutForm({
     onError('');
 
     try {
+      const submitResult = await elements.submit();
+      if (submitResult.error) {
+        console.error('[TipPage payment] elements.submit error', submitResult.error);
+        onError(submitResult.error.message || 'Please check your payment details and try again.');
+        return;
+      }
+
       console.log('[TipPage payment] confirming PaymentIntent');
       const result = await stripe.confirmPayment({
         elements,
@@ -364,7 +371,7 @@ function StripeCheckoutForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{
+    <form onSubmit={handleConfirmPayment} style={{
       background: '#1a1a1a',
       borderRadius: 16,
       padding: 16,
@@ -394,7 +401,13 @@ function StripeCheckoutForm({
 
       <div>
         <PaymentElement
-          options={{ layout: 'tabs' }}
+          options={{
+            layout: {
+              type: 'tabs',
+              defaultCollapsed: false,
+            },
+            paymentMethodOrder: ['apple_pay', 'google_pay', 'card'],
+          }}
           onLoaderStart={() => {
             console.log('[TipPage payment] PaymentElement loader started');
           }}
