@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView, Image,
-  Modal, KeyboardAvoidingView, Platform, RefreshControl,
+  Modal, KeyboardAvoidingView, Platform, RefreshControl, AppState,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -283,6 +283,7 @@ export default function MemberWithdraw() {
   const [submitting, setSubmitting] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectStatus, setConnectStatus] = useState<StripeConnectStatus | null>(null);
+  const connectStatusCheckPending = useRef(false);
 
   // Success modal
   const [showSuccess, setShowSuccess] = useState(false);
@@ -334,23 +335,38 @@ export default function MemberWithdraw() {
 
   const startStripeConnect = useCallback(async () => {
     setConnectLoading(true);
+    connectStatusCheckPending.current = true;
     try {
       const { data } = await api.post('/onboarding/stripe-connect', { countryCode });
       if (!data?.url) throw new Error('Missing onboarding URL');
 
       await WebBrowser.openBrowserAsync(data.url);
       const status = await checkStripeConnectStatus();
+      connectStatusCheckPending.current = false;
 
       if (status?.detailsSubmitted || status?.payoutsEnabled) {
         showToast('Stripe payout setup connected.', 'success');
       }
     } catch (e: any) {
+      connectStatusCheckPending.current = false;
       const message = e.response?.data?.error || 'Could not start payout setup. Please try again.';
       showToast(message, 'error');
     } finally {
       setConnectLoading(false);
     }
   }, [checkStripeConnectStatus, countryCode, showToast]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && connectStatusCheckPending.current) {
+        checkStripeConnectStatus().finally(() => {
+          connectStatusCheckPending.current = false;
+          setConnectLoading(false);
+        });
+      }
+    });
+    return () => sub.remove();
+  }, [checkStripeConnectStatus]);
 
   const openManualPayout = () => {
     if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }

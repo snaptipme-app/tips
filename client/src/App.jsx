@@ -12,6 +12,7 @@ import AdminStats from './pages/AdminStats';
 import AdminPage from './pages/AdminPage';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import StripeOnboardingReturn from './pages/StripeOnboardingReturn';
 import CookieConsent from './components/CookieConsent';
 
 function App() {
@@ -62,6 +63,8 @@ function App() {
           {/* ── Legal pages (must be above /:username catch-all) ── */}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/onboarding/stripe/success" element={<StripeOnboardingReturn type="success" />} />
+          <Route path="/onboarding/stripe/refresh" element={<StripeOnboardingReturn type="refresh" />} />
 
           {/* ── Tourist tip page — catch-all MUST be last ── */}
           <Route path="/:username" element={<TipPage />} />
