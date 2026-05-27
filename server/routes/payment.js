@@ -34,8 +34,10 @@ function parseRating(value) {
 }
 
 router.post('/create-intent', async (req, res) => {
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
     if (!stripe) {
+      console.error(`[payment/create-intent:${requestId}] Stripe unavailable: ${stripeConfigError}`);
       return res.status(503).json({
         success: false,
         error: stripeConfigError,
@@ -52,7 +54,16 @@ router.post('/create-intent', async (req, res) => {
     } = req.body;
     const employeeId = employeeIdCamel || employeeIdSnake;
 
+    console.log(`[payment/create-intent:${requestId}] received`, {
+      employeeId,
+      amount,
+      requestedCurrency,
+      hasTouristEmail: Boolean(tourist_email),
+      rating,
+    });
+
     if (!employeeId || amount === undefined) {
+      console.warn(`[payment/create-intent:${requestId}] missing employeeId or amount`);
       return res.status(400).json({
         success: false,
         error: 'employeeId and amount are required.',
@@ -61,6 +72,7 @@ router.post('/create-intent', async (req, res) => {
 
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      console.warn(`[payment/create-intent:${requestId}] invalid amount`, { amount });
       return res.status(400).json({
         success: false,
         error: 'amount must be a positive number.',
@@ -76,6 +88,7 @@ router.post('/create-intent', async (req, res) => {
 
     const employee = rows[0];
     if (!employee) {
+      console.warn(`[payment/create-intent:${requestId}] employee not found`, { employeeId });
       return res.status(404).json({
         success: false,
         error: 'Employee not found.',
@@ -86,6 +99,11 @@ router.post('/create-intent', async (req, res) => {
     const stripeAmount = toStripeAmount(parsedAmount, currency);
 
     if (!stripeAmount || stripeAmount < 1) {
+      console.warn(`[payment/create-intent:${requestId}] amount too small`, {
+        parsedAmount,
+        currency,
+        stripeAmount,
+      });
       return res.status(400).json({
         success: false,
         error: 'amount is too small for this currency.',
@@ -93,6 +111,13 @@ router.post('/create-intent', async (req, res) => {
     }
 
     const safeRating = parseRating(rating);
+    console.log(`[payment/create-intent:${requestId}] creating Stripe PaymentIntent`, {
+      employeeId: employee.id,
+      stripeAmount,
+      currency,
+      safeRating,
+    });
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: stripeAmount,
       currency: currency.toLowerCase(),
@@ -108,6 +133,12 @@ router.post('/create-intent', async (req, res) => {
         tourist_email: tourist_email || '',
         rating: safeRating ? String(safeRating) : '',
       },
+    });
+
+    console.log(`[payment/create-intent:${requestId}] created Stripe PaymentIntent`, {
+      paymentIntentId: paymentIntent.id,
+      status: paymentIntent.status,
+      hasClientSecret: Boolean(paymentIntent.client_secret),
     });
 
     logFromReq(req, {
@@ -130,10 +161,25 @@ router.post('/create-intent', async (req, res) => {
       currency,
     });
   } catch (err) {
-    console.error('[payment/create-intent] ERROR:', err.message, err.stack);
-    return res.status(500).json({
+    const stripeMessage = err?.raw?.message || err?.message;
+    const statusCode = err?.statusCode && err.statusCode >= 400 && err.statusCode < 500
+      ? err.statusCode
+      : 500;
+
+    console.error(`[payment/create-intent:${requestId}] ERROR:`, {
+      message: stripeMessage,
+      type: err?.type,
+      code: err?.code,
+      declineCode: err?.decline_code,
+      statusCode,
+      stack: err?.stack,
+    });
+
+    return res.status(statusCode).json({
       success: false,
-      error: 'Server error creating payment intent.',
+      error: statusCode === 500
+        ? 'Server error creating payment intent.'
+        : stripeMessage || 'Stripe rejected the payment intent request.',
     });
   }
 });

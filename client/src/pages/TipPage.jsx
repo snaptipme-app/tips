@@ -9,6 +9,10 @@ const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 const hasUsableStripePublishableKey = /^pk_(test|live)_/.test(stripePublishableKey) && !stripePublishableKey.includes('...');
 const stripePromise = hasUsableStripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
+function logPaymentDebug(message, details = {}) {
+  console.log(`[TipPage payment] ${message}`, details);
+}
+
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
   USD: [2,    5,     10,    20    ],
@@ -321,6 +325,7 @@ function StripeCheckoutForm({
     event.preventDefault();
 
     if (!stripe || !elements) {
+      console.warn('[TipPage payment] confirm blocked: Stripe Elements is not ready');
       onError('Payment form is still loading. Please try again.');
       return;
     }
@@ -328,23 +333,34 @@ function StripeCheckoutForm({
     onProcessing(true);
     onError('');
 
-    const result = await stripe.confirmPayment({
-      elements,
-      clientSecret,
-      confirmParams: {
-        return_url: window.location.href,
-      },
-      redirect: 'if_required',
-    });
+    try {
+      console.log('[TipPage payment] confirming PaymentIntent');
+      const result = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      });
 
-    onProcessing(false);
+      if (result.error) {
+        console.error('[TipPage payment] confirmPayment error', result.error);
+        onError(result.error.message || 'Payment failed. Please try again.');
+        return;
+      }
 
-    if (result.error) {
-      onError(result.error.message || 'Payment failed. Please try again.');
-      return;
+      console.log('[TipPage payment] confirmPayment result', {
+        paymentIntentId: result.paymentIntent?.id,
+        status: result.paymentIntent?.status,
+      });
+      onSuccess();
+    } catch (err) {
+      console.error('[TipPage payment] confirmPayment exception', err);
+      onError(err?.message || 'Payment failed. Please try again.');
+    } finally {
+      onProcessing(false);
     }
-
-    onSuccess();
   };
 
   return (
@@ -379,9 +395,16 @@ function StripeCheckoutForm({
       <div>
         <PaymentElement
           options={{ layout: 'tabs' }}
-          onReady={() => setPaymentElementReady(true)}
+          onLoaderStart={() => {
+            console.log('[TipPage payment] PaymentElement loader started');
+          }}
+          onReady={() => {
+            console.log('[TipPage payment] PaymentElement ready');
+            setPaymentElementReady(true);
+          }}
           onLoadError={(event) => {
             setPaymentElementReady(false);
+            console.error('[TipPage payment] PaymentElement load error', event?.error);
             onError(event?.error?.message || 'Stripe payment form failed to load. Please refresh and try again.');
           }}
         />
@@ -527,7 +550,7 @@ export default function TipPage() {
             emp.rating_avg = ratingRes.data.average_rating;
             emp.rating_count = ratingRes.data.total_ratings;
             emp.rating_breakdown = ratingRes.data.rating_breakdown;
-          } catch (_) { /* keep whatever the employee endpoint returned */ }
+          } catch { /* keep whatever the employee endpoint returned */ }
           setEmployee(emp);
         } else {
           const status = empRes.reason?.response?.status;
@@ -562,8 +585,28 @@ export default function TipPage() {
   }, [amount, currency, rating]);
 
   const handlePay = async () => {
-    if (amount <= 0 || !employee?.id) return;
+    logPaymentDebug('Pay clicked', {
+      amount,
+      currency,
+      employeeId: employee?.id,
+      hasPublishableKey: Boolean(stripePublishableKey),
+      hasUsableStripePublishableKey,
+    });
+
+    if (amount <= 0 || !employee?.id) {
+      console.warn('[TipPage payment] Pay blocked: missing amount or employee id', {
+        amount,
+        employeeId: employee?.id,
+      });
+      setPaymentError('Choose a valid tip amount before paying.');
+      return;
+    }
+
     if (!hasUsableStripePublishableKey || !stripePromise) {
+      console.error('[TipPage payment] Stripe publishable key is missing or invalid. Expected pk_test_... or pk_live_...', {
+        hasValue: Boolean(stripePublishableKey),
+        prefix: stripePublishableKey ? stripePublishableKey.slice(0, 8) : '',
+      });
       setPaymentError('Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.');
       return;
     }
@@ -573,6 +616,13 @@ export default function TipPage() {
     setClientSecret('');
 
     try {
+      logPaymentDebug('Creating PaymentIntent', {
+        employeeId: employee.id,
+        amount,
+        currency,
+        rating: rating > 0 ? rating : null,
+      });
+
       const response = await api.post('/payment/create-intent', {
         employeeId: employee.id,
         amount,
@@ -580,14 +630,29 @@ export default function TipPage() {
         rating: rating > 0 ? rating : null,
       });
 
+      logPaymentDebug('PaymentIntent response received', {
+        status: response.status,
+        success: response.data?.success,
+        paymentIntentId: response.data?.paymentIntentId,
+        hasClientSecret: Boolean(response.data?.clientSecret),
+        amount: response.data?.amount,
+        currency: response.data?.currency,
+      });
+
       if (response.data?.success && response.data?.clientSecret) {
         setTipAmount(Number(response.data.amount || amount));
         setClientSecret(response.data.clientSecret);
       } else {
+        console.error('[TipPage payment] PaymentIntent response missing client secret', response.data);
         setPaymentError(response.data?.error || 'Payment failed. Please try again.');
       }
     } catch (err) {
-      setPaymentError(err?.response?.data?.error || 'Payment failed. Please try again.');
+      console.error('[TipPage payment] PaymentIntent request failed', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+      setPaymentError(err?.response?.data?.error || err?.message || 'Payment failed. Please try again.');
     } finally {
       setSending(false);
     }
@@ -891,6 +956,7 @@ export default function TipPage() {
           </h3>
           {clientSecret && stripePromise && (
             <Elements
+              key={clientSecret}
               stripe={stripePromise}
               options={{
                 clientSecret,

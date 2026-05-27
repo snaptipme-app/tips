@@ -35,11 +35,20 @@ const helmetConfig = helmet({
       defaultSrc: ["'self'"],
       // The static client bundle is served by nginx, not this API. Keep CSP
       // tight here — only inline assets the API itself returns (join pages).
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-      connectSrc: ["'self'", 'https://snaptip.me', 'https://api.snaptip.me'],
+      connectSrc: [
+        "'self'",
+        'https://snaptip.me',
+        'https://api.snaptip.me',
+        'https://api.stripe.com',
+        'https://r.stripe.com',
+        'https://m.stripe.network',
+        'https://q.stripe.com',
+      ],
+      frameSrc: ['https://js.stripe.com', 'https://hooks.stripe.com'],
       frameAncestors: ["'none'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -64,7 +73,7 @@ const helmetConfig = helmet({
 function permissionsPolicy(_req, res, next) {
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+    'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com"), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
   );
   next();
 }
