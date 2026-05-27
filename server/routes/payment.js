@@ -7,6 +7,7 @@ const { logFromReq } = require('../lib/audit');
 const router = express.Router();
 
 const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'HKD']);
+const LOCAL_TO_USD_RATE = 10;
 
 function normalizeCurrency(currency) {
   return String(currency || 'MAD').trim().toUpperCase();
@@ -95,13 +96,16 @@ router.post('/create-intent', async (req, res) => {
       });
     }
 
-    const currency = normalizeCurrency(employee.currency || requestedCurrency || 'MAD');
-    const stripeAmount = toStripeAmount(parsedAmount, currency);
+    const originalCurrency = normalizeCurrency(employee.currency || requestedCurrency || 'MAD');
+    const originalAmount = parsedAmount;
+    const usdAmount = originalAmount / LOCAL_TO_USD_RATE;
+    const stripeAmount = Math.round(usdAmount * 100);
 
     if (!stripeAmount || stripeAmount < 1) {
       console.warn(`[payment/create-intent:${requestId}] amount too small`, {
-        parsedAmount,
-        currency,
+        originalAmount,
+        originalCurrency,
+        usdAmount,
         stripeAmount,
       });
       return res.status(400).json({
@@ -114,13 +118,15 @@ router.post('/create-intent', async (req, res) => {
     console.log(`[payment/create-intent:${requestId}] creating Stripe PaymentIntent`, {
       employeeId: employee.id,
       stripeAmount,
-      currency,
+      stripeCurrency: 'USD',
+      originalAmount,
+      originalCurrency,
       safeRating,
     });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: stripeAmount,
-      currency: currency.toLowerCase(),
+      currency: 'usd',
       automatic_payment_methods: { enabled: true },
       description: `SnapTip for ${employee.full_name || employee.username || `employee ${employee.id}`}`,
       receipt_email: tourist_email || undefined,
@@ -128,8 +134,11 @@ router.post('/create-intent', async (req, res) => {
         employee_id: String(employee.id),
         employee_username: employee.username || '',
         employee_name: employee.full_name || '',
-        amount: String(parsedAmount),
-        currency,
+        original_amount: String(originalAmount),
+        original_currency: originalCurrency,
+        amount: String(originalAmount),
+        currency: originalCurrency,
+        stripe_amount_usd: usdAmount.toFixed(2),
         tourist_email: tourist_email || '',
         rating: safeRating ? String(safeRating) : '',
       },
@@ -147,8 +156,9 @@ router.post('/create-intent', async (req, res) => {
       targetType: 'employee',
       targetId: Number(employee.id),
       metadata: {
-        amount: parsedAmount,
-        currency,
+        amount: originalAmount,
+        currency: originalCurrency,
+        stripe_amount_usd: usdAmount,
         stripe_payment_intent: paymentIntent.id,
       },
     });
@@ -157,8 +167,9 @@ router.post('/create-intent', async (req, res) => {
       success: true,
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
-      amount: parsedAmount,
-      currency,
+      amount: originalAmount,
+      currency: originalCurrency,
+      stripeAmountUsd: usdAmount,
     });
   } catch (err) {
     const stripeMessage = err?.raw?.message || err?.message;
@@ -212,8 +223,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const paymentIntent = event.data.object;
       const metadata = paymentIntent.metadata || {};
       const employeeId = Number(metadata.employee_id);
-      const currency = normalizeCurrency(metadata.currency || paymentIntent.currency);
-      const amount = Number(metadata.amount) || fromStripeAmount(paymentIntent.amount_received || paymentIntent.amount, currency);
+      const currency = normalizeCurrency(metadata.original_currency || metadata.currency || paymentIntent.currency);
+      const amount = Number(metadata.original_amount || metadata.amount)
+        || fromStripeAmount(paymentIntent.amount_received || paymentIntent.amount, currency);
       const touristEmail = metadata.tourist_email || paymentIntent.receipt_email || null;
       const safeRating = parseRating(metadata.rating);
 
