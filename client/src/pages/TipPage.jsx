@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, PaymentRequestButtonElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
-const stripeCountry = import.meta.env.VITE_STRIPE_COUNTRY || 'US';
+const hasUsableStripePublishableKey = /^pk_(test|live)_/.test(stripePublishableKey) && !stripePublishableKey.includes('...');
+const stripePromise = hasUsableStripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
@@ -33,8 +33,6 @@ const SUGGESTED_TIPS = {
   THB: [50,   100,   200,   500   ],
   IDR: [20000, 50000, 100000, 200000],
 };
-
-const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'HKD']);
 
 /* ─── Premium tier icons (22px, stroke-based, clean minimal) ───────── */
 const TierIconHand = ({color='#fff'}) => (
@@ -81,14 +79,6 @@ function getTipPresets(currency) {
 function formatCurrency(amount, currency) {
   if (amount == null) return '';
   return `${amount} ${currency || 'MAD'}`;
-}
-
-function toStripeAmount(amount, currency) {
-  const numericAmount = Number(amount);
-  if (!Number.isFinite(numericAmount)) return 0;
-  return ZERO_DECIMAL_CURRENCIES.has(String(currency || '').toUpperCase())
-    ? Math.round(numericAmount)
-    : Math.round(numericAmount * 100);
 }
 
 /* ─── Slider range — adapt to currency magnitude ──────────────────────── */
@@ -315,7 +305,6 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
 /* ─── Inline keyframes + slider styles ────────────────────────────────── */
 function StripeCheckoutForm({
   amount,
-  amountMinor,
   currency,
   clientSecret,
   onSuccess,
@@ -326,67 +315,7 @@ function StripeCheckoutForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [walletReady, setWalletReady] = useState(false);
-  const [paymentRequest, setPaymentRequest] = useState(null);
-
-  useEffect(() => {
-    if (!stripe || !clientSecret || amountMinor <= 0) return undefined;
-
-    const request = stripe.paymentRequest({
-      country: stripeCountry,
-      currency: String(currency || 'MAD').toLowerCase(),
-      total: {
-        label: 'SnapTip tip',
-        amount: amountMinor,
-      },
-      requestPayerEmail: false,
-      requestPayerName: false,
-    });
-
-    let mounted = true;
-    request.canMakePayment().then((result) => {
-      if (mounted && result) {
-        setPaymentRequest(request);
-        setWalletReady(true);
-      }
-    });
-
-    request.on('paymentmethod', async (event) => {
-      onProcessing(true);
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        { payment_method: event.paymentMethod.id },
-        { handleActions: false }
-      );
-
-      if (error) {
-        event.complete('fail');
-        onProcessing(false);
-        onError(error.message || 'Payment failed. Please try again.');
-        return;
-      }
-
-      event.complete('success');
-
-      if (paymentIntent.status === 'requires_action') {
-        const result = await stripe.confirmCardPayment(clientSecret);
-        onProcessing(false);
-        if (result.error) {
-          onError(result.error.message || 'Payment failed. Please try again.');
-          return;
-        }
-        onSuccess();
-        return;
-      }
-
-      onProcessing(false);
-      onSuccess();
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [amountMinor, clientSecret, currency, onError, onProcessing, onSuccess, stripe]);
+  const [paymentElementReady, setPaymentElementReady] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -398,13 +327,6 @@ function StripeCheckoutForm({
 
     onProcessing(true);
     onError('');
-
-    const submitResult = await elements.submit();
-    if (submitResult.error) {
-      onProcessing(false);
-      onError(submitResult.error.message || 'Please check your payment details.');
-      return;
-    }
 
     const result = await stripe.confirmPayment({
       elements,
@@ -434,31 +356,49 @@ function StripeCheckoutForm({
       marginBottom: 14,
       animation: 'fadeIn 0.3s ease-out',
     }}>
-      {walletReady && paymentRequest && (
-        <div style={{ marginBottom: 14 }}>
-          <PaymentRequestButtonElement options={{ paymentRequest }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
-            <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.08)' }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>or</span>
-            <div style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.08)' }} />
-          </div>
+      {!paymentElementReady && (
+        <div style={{
+          minHeight: 92,
+          borderRadius: 12,
+          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(0,0,0,0.18)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          marginBottom: 14,
+          color: 'rgba(255,255,255,0.58)',
+          fontSize: 13,
+          fontWeight: 600,
+        }}>
+          <div style={{ width: 16, height: 16, border: '2px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+          Loading secure payment form...
         </div>
       )}
 
-      <PaymentElement />
+      <div>
+        <PaymentElement
+          options={{ layout: 'tabs' }}
+          onReady={() => setPaymentElementReady(true)}
+          onLoadError={(event) => {
+            setPaymentElementReady(false);
+            onError(event?.error?.message || 'Stripe payment form failed to load. Please refresh and try again.');
+          }}
+        />
+      </div>
 
       <button
         type="submit"
-        disabled={sending || !stripe || !elements}
+        disabled={sending || !stripe || !elements || !paymentElementReady}
         style={{
           width: '100%', height: 56, borderRadius: 50,
-          background: sending ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
-          boxShadow: sending ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
+          background: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00C896 0%, #00B4D8 100%)',
+          boxShadow: (sending || !paymentElementReady) ? 'none' : '0 6px 24px rgba(0,180,216,0.18)',
           border: 'none',
-          color: sending ? 'rgba(255,255,255,0.35)' : '#1a1a1a',
+          color: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.35)' : '#1a1a1a',
           fontSize: 16, fontWeight: 800,
-          opacity: sending ? 0.7 : 1,
-          cursor: sending ? 'not-allowed' : 'pointer',
+          opacity: (sending || !paymentElementReady) ? 0.7 : 1,
+          cursor: (sending || !paymentElementReady) ? 'not-allowed' : 'pointer',
           transition: 'all 250ms ease',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           marginTop: 16,
@@ -560,7 +500,6 @@ export default function TipPage() {
   const [tipAmount, setTipAmount] = useState(0);
   const [paymentError, setPaymentError] = useState('');
   const [clientSecret, setClientSecret] = useState('');
-  const [stripeAmount, setStripeAmount] = useState(0);
 
   const t = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -619,14 +558,13 @@ export default function TipPage() {
 
   useEffect(() => {
     setClientSecret('');
-    setStripeAmount(0);
     setPaymentError('');
   }, [amount, currency, rating]);
 
   const handlePay = async () => {
     if (amount <= 0 || !employee?.id) return;
-    if (!stripePromise) {
-      setPaymentError('Stripe is not configured. Add VITE_STRIPE_PUBLISHABLE_KEY on the client.');
+    if (!hasUsableStripePublishableKey || !stripePromise) {
+      setPaymentError('Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.');
       return;
     }
 
@@ -636,7 +574,7 @@ export default function TipPage() {
 
     try {
       const response = await api.post('/payment/create-intent', {
-        employee_id: employee.id,
+        employeeId: employee.id,
         amount,
         currency,
         rating: rating > 0 ? rating : null,
@@ -644,7 +582,6 @@ export default function TipPage() {
 
       if (response.data?.success && response.data?.clientSecret) {
         setTipAmount(Number(response.data.amount || amount));
-        setStripeAmount(toStripeAmount(response.data.amount || amount, response.data.currency || currency));
         setClientSecret(response.data.clientSecret);
       } else {
         setPaymentError(response.data?.error || 'Payment failed. Please try again.');
@@ -661,13 +598,11 @@ export default function TipPage() {
     setAmount(tipPresets[1]);
     setRating(0);
     setClientSecret('');
-    setStripeAmount(0);
   };
 
   const handleStripeSuccess = useCallback(() => {
     setPaymentError('');
     setClientSecret('');
-    setStripeAmount(0);
     setShowSuccess(true);
   }, []);
 
@@ -974,7 +909,6 @@ export default function TipPage() {
             >
               <StripeCheckoutForm
                 amount={tipAmount || amount}
-                amountMinor={stripeAmount}
                 currency={currency}
                 clientSecret={clientSecret}
                 sending={sending}

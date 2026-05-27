@@ -1,6 +1,6 @@
 const express = require('express');
 const { pool } = require('../db');
-const stripe = require('../lib/stripe');
+const { stripe, stripeConfigError } = require('../lib/stripe');
 const { processSuccessfulPayment } = require('../lib/processPayment');
 const { logFromReq } = require('../lib/audit');
 
@@ -38,22 +38,24 @@ router.post('/create-intent', async (req, res) => {
     if (!stripe) {
       return res.status(503).json({
         success: false,
-        error: 'Stripe is not configured. Add STRIPE_SECRET_KEY on the server.',
+        error: stripeConfigError,
       });
     }
 
     const {
       amount,
       currency: requestedCurrency,
-      employee_id,
+      employeeId: employeeIdCamel,
+      employee_id: employeeIdSnake,
       tourist_email = null,
       rating = null,
     } = req.body;
+    const employeeId = employeeIdCamel || employeeIdSnake;
 
-    if (!employee_id || amount === undefined) {
+    if (!employeeId || amount === undefined) {
       return res.status(400).json({
         success: false,
-        error: 'employee_id and amount are required.',
+        error: 'employeeId and amount are required.',
       });
     }
 
@@ -69,7 +71,7 @@ router.post('/create-intent', async (req, res) => {
       `SELECT id, username, full_name, currency
        FROM employees
        WHERE id = $1`,
-      [employee_id]
+      [employeeId]
     );
 
     const employee = rows[0];
@@ -138,7 +140,7 @@ router.post('/create-intent', async (req, res) => {
 
 router.post('/webhook', async (req, res) => {
   if (!stripe) {
-    return res.status(503).json({ received: false, error: 'Stripe is not configured.' });
+    return res.status(503).json({ received: false, error: stripeConfigError });
   }
 
   const signature = req.headers['stripe-signature'];
