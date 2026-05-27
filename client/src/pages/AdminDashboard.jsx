@@ -9,6 +9,10 @@ const COUNTRY_CODES={
   Morocco:'MA','United States':'US',France:'FR',Spain:'ES',Germany:'DE',Italy:'IT',
   'UAE':'AE','United Arab Emirates':'AE',
   Philippines:'PH',Indonesia:'ID',Thailand:'TH',
+  'United Kingdom':'GB',Netherlands:'NL',Portugal:'PT',Belgium:'BE',Austria:'AT',
+  Ireland:'IE',Poland:'PL',Sweden:'SE',Switzerland:'CH',Denmark:'DK',Norway:'NO',
+  Finland:'FI',Singapore:'SG',Japan:'JP','Hong Kong':'HK',Malaysia:'MY',
+  Canada:'CA',Mexico:'MX',Australia:'AU','New Zealand':'NZ',
 };
 
 // Country name → local currency (for display without currency conversion)
@@ -16,11 +20,21 @@ const COUNTRY_CURRENCY_MAP={
   Morocco:'MAD','United States':'USD',France:'EUR',Spain:'EUR',Germany:'EUR',Italy:'EUR',
   'UAE':'AED','United Arab Emirates':'AED',
   Philippines:'PHP',Indonesia:'IDR',Thailand:'THB',
+  'United Kingdom':'GBP',Netherlands:'EUR',Portugal:'EUR',Belgium:'EUR',Austria:'EUR',
+  Ireland:'EUR',Poland:'PLN',Sweden:'SEK',Switzerland:'CHF',Denmark:'DKK',Norway:'NOK',
+  Finland:'EUR',Singapore:'SGD',Japan:'JPY','Hong Kong':'HKD',Malaysia:'MYR',
+  Canada:'CAD',Mexico:'MXN',Australia:'AUD','New Zealand':'NZD',
 };
 function getCountryCurrency(country){return COUNTRY_CURRENCY_MAP[country]||'USD';}
 // ISO code → country name (reverse lookup for flag rendering)
 const ISO_TO_COUNTRY=Object.fromEntries(Object.entries(COUNTRY_CODES).map(([k,v])=>[v,k]));
-const CURRENCY_COLORS={MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#a78bfa',GBP:'#06b6d4',PHP:'#f97316',THB:'#ec4899',IDR:'#fb7185'};
+const CURRENCY_COLORS={
+  MAD:'#f59e0b',EUR:'#00ffcc',USD:'#00C896',AED:'#a78bfa',GBP:'#06b6d4',
+  PHP:'#f97316',THB:'#ec4899',IDR:'#fb7185',PLN:'#38bdf8',SEK:'#60a5fa',
+  CHF:'#ef4444',DKK:'#f43f5e',NOK:'#22c55e',SGD:'#14b8a6',JPY:'#f87171',
+  HKD:'#fb7185',MYR:'#84cc16',CAD:'#dc2626',MXN:'#16a34a',AUD:'#0ea5e9',
+  NZD:'#0284c7',
+};
 function getCurrencyColor(c){return CURRENCY_COLORS[c]||'rgba(255,255,255,.5)'}
 // Auth is sent automatically via httpOnly admin cookie. No Authorization header.
 function api(){return axios.create({baseURL:'/api/admin',withCredentials:true})}
@@ -33,6 +47,20 @@ const CURRENCIES=[
   {code:'EUR',label:'EUR — Euro',           sym:'€',  pre:true },
   {code:'MAD',label:'MAD — Moroccan Dirham',sym:'MAD',pre:false},
   {code:'AED',label:'AED — UAE Dirham',     sym:'AED',pre:false},
+  {code:'GBP',label:'GBP - British Pound',  sym:'GBP',pre:false},
+  {code:'PLN',label:'PLN - Polish Zloty',   sym:'PLN',pre:false},
+  {code:'SEK',label:'SEK - Swedish Krona',  sym:'SEK',pre:false},
+  {code:'CHF',label:'CHF - Swiss Franc',    sym:'CHF',pre:false},
+  {code:'DKK',label:'DKK - Danish Krone',   sym:'DKK',pre:false},
+  {code:'NOK',label:'NOK - Norwegian Krone',sym:'NOK',pre:false},
+  {code:'SGD',label:'SGD - Singapore Dollar',sym:'SGD',pre:false},
+  {code:'JPY',label:'JPY - Japanese Yen',   sym:'JPY',pre:false},
+  {code:'HKD',label:'HKD - Hong Kong Dollar',sym:'HKD',pre:false},
+  {code:'MYR',label:'MYR - Malaysian Ringgit',sym:'MYR',pre:false},
+  {code:'CAD',label:'CAD - Canadian Dollar',sym:'CAD',pre:false},
+  {code:'MXN',label:'MXN - Mexican Peso',   sym:'MXN',pre:false},
+  {code:'AUD',label:'AUD - Australian Dollar',sym:'AUD',pre:false},
+  {code:'NZD',label:'NZD - New Zealand Dollar',sym:'NZD',pre:false},
   {code:'PHP',label:'PHP — Philippine Peso',sym:'PHP',pre:false},
   {code:'THB',label:'THB — Thai Baht',      sym:'THB',pre:false},
   {code:'IDR',label:'IDR — Indonesian Rupiah',sym:'IDR',pre:false},
