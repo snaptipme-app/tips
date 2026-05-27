@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView, Image,
-  Modal, KeyboardAvoidingView, Platform, RefreshControl, Linking,
+  Modal, KeyboardAvoidingView, Platform, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../lib/api';
@@ -20,9 +21,9 @@ import { COUNTRY_CODE_MAP } from '../../lib/countryData';
 import { getPayoutConfig } from '../../lib/payoutConfig';
 
 /* -- Design tokens -- */
-const BG = '#1a1a1a';
-const CARD = '#1a1a1a';
-const SHEET_BG = '#1a1a1a';
+const BG = '#080818';
+const CARD = '#080818';
+const SHEET_BG = '#080818';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
@@ -222,6 +223,14 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }
 
 interface Withdrawal { id: number; amount: number; fee: number; net_amount: number; method: string; status: string; created_at: string; }
 
+interface StripeConnectStatus {
+  connected: boolean;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  requirementsCurrentlyDue: string[];
+}
+
 /* ======================================================================
    MAIN COMPONENT
    ====================================================================== */
@@ -249,7 +258,7 @@ export default function MemberWithdraw() {
   const userCountry = user?.country || 'Morocco';
   const cur = user?.currency || 'MAD';
   const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
-  const isMorocco = userCountry === 'Morocco';
+  const isMorocco = countryCode === 'MA';
   const locale = language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US';
   const payoutCfg = getPayoutConfig(countryCode);
   const minWithdrawal = payoutCfg.minAmount;
@@ -272,6 +281,8 @@ export default function MemberWithdraw() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<StripeConnectStatus | null>(null);
 
   // Success modal
   const [showSuccess, setShowSuccess] = useState(false);
@@ -310,13 +321,56 @@ export default function MemberWithdraw() {
     setShowForm(true);
   };
 
-  const openInternational = () => {
+  const checkStripeConnectStatus = useCallback(async () => {
+    try {
+      const { data } = await api.get('/onboarding/stripe-connect/status');
+      setConnectStatus(data);
+      return data as StripeConnectStatus;
+    } catch {
+      showToast('Could not check payout setup. Please try again.', 'error');
+      return null;
+    }
+  }, [showToast]);
+
+  const startStripeConnect = useCallback(async () => {
+    setConnectLoading(true);
+    try {
+      const { data } = await api.post('/onboarding/stripe-connect', { countryCode });
+      if (!data?.url) throw new Error('Missing onboarding URL');
+
+      await WebBrowser.openBrowserAsync(data.url);
+      const status = await checkStripeConnectStatus();
+
+      if (status?.detailsSubmitted || status?.payoutsEnabled) {
+        showToast('Stripe payout setup connected.', 'success');
+      }
+    } catch (e: any) {
+      const message = e.response?.data?.error || 'Could not start payout setup. Please try again.';
+      showToast(message, 'error');
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [checkStripeConnectStatus, countryCode, showToast]);
+
+  const openManualPayout = () => {
     if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }
     if (balance < minWithdrawal) {
       showToast(tx('minimum_withdrawal_balance', { amount: minWithdrawal.toLocaleString(locale), balance: balance.toFixed(2), currency: cur }), 'error');
       return;
     }
     openForm(payoutMethod);
+  };
+
+  const openInternational = () => {
+    if (payoutCfg.payoutMethod === 'stripe_connect') {
+      startStripeConnect();
+      return;
+    }
+    if (payoutCfg.payoutMethod === 'review_needed') {
+      showToast('Automatic payouts are not available for this country yet. You can continue with manual payout review.', 'info');
+      return;
+    }
+    openManualPayout();
   };
 
   const setField = (key: string, val: string) => {
@@ -399,6 +453,14 @@ export default function MemberWithdraw() {
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const connectReady = Boolean(connectStatus?.detailsSubmitted || connectStatus?.payoutsEnabled);
+  const connectButtonLabel = connectLoading
+    ? 'Opening Stripe...'
+    : connectReady
+      ? 'Payout setup connected'
+      : connectStatus
+        ? 'Continue setup'
+        : 'Set up automatic payouts';
 
   /* ======================================================================
      RENDER
@@ -467,45 +529,76 @@ export default function MemberWithdraw() {
                 </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            /* -- International (dynamic per country) -- */
+          ) : payoutCfg.payoutMethod === 'stripe_connect' ? (
             <View style={{ marginBottom: 28 }}>
-              {/* Info Card */}
+              <View style={{ backgroundColor: 'rgba(0,255,204,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,255,204,0.15)', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Ionicons name="flash-outline" size={16} color={ACCENT} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>Automatic payouts</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
+                  Connect a Stripe Express account for payouts in {userCountry}. You can return here to continue setup any time.
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={startStripeConnect} disabled={connectLoading} activeOpacity={0.85}
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: connectReady ? 'rgba(0,200,150,0.35)' : BORDER, flexDirection: 'row', alignItems: 'center', gap: 16, opacity: connectLoading ? 0.75 : 1 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: connectReady ? 'rgba(0,200,150,0.12)' : 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name={connectReady ? 'checkmark-circle-outline' : 'card-outline'} size={26} color={connectReady ? GREEN : ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Stripe Express</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                    {connectButtonLabel}
+                  </Text>
+                </View>
+                <Ionicons name={connectLoading ? 'hourglass-outline' : 'chevron-forward'} size={18} color="rgba(255,255,255,0.3)" />
+              </TouchableOpacity>
+            </View>
+          ) : payoutCfg.payoutMethod === 'review_needed' ? (
+            <View style={{ marginBottom: 28 }}>
+              <View style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Ionicons name="time-outline" size={16} color={YELLOW} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: YELLOW }}>Payouts under review</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18 }}>
+                  Automatic payouts are not available for this country yet. You can continue with manual payout review.
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={openManualPayout} activeOpacity={0.85}
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(245,158,11,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="document-text-outline" size={26} color={YELLOW} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Manual payout review</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{payoutMethod.label}  -  {t('min')} {payoutMethod.min} {cur}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ marginBottom: 28 }}>
               <View style={{ backgroundColor: 'rgba(0,255,204,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,255,204,0.15)', marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Ionicons name={isEWallet ? 'phone-portrait-outline' : 'bulb-outline'} size={16} color={ACCENT} />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>
-                    {isEWallet
-                      ? `E-Wallet Transfer (${EWALLET_NAMES[userCountry]})`
-                      : payoutMethod.id === 'us_ach'
-                        ? 'ACH Bank Transfer'
-                        : payoutMethod.id === 'iban_transfer'
-                          ? 'IBAN Bank Transfer'
-                          : 'International Transfer'}
+                    {isEWallet ? `E-Wallet Transfer (${EWALLET_NAMES[userCountry]})` : 'Manual bank transfer'}
                   </Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
                   {isEWallet
                     ? `Funds sent directly to your ${EWALLET_NAMES[userCountry]} wallet via Wise Business. Processing: ${payoutMethod.processingTime}.`
-                    : payoutMethod.id === 'us_ach'
-                      ? `Transfers via ACH to your US bank account through Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`
-                      : `Transfers processed via Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`}
+                    : `Transfers processed via Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`}
                 </Text>
               </View>
 
-              {/* Method Card */}
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                  {isEWallet ? (
-                    <Ionicons name="phone-portrait-outline" size={26} color={ACCENT} />
-                  ) : payoutMethod.id === 'us_ach' ? (
-                    <Ionicons name="card-outline" size={26} color={ACCENT} />
-                  ) : (
-                    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                      <SvgPath d="M3 21h18v-2H3v2zm0-4h2v-4H3v4zm4 0h2v-4H7v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zm4 0h2v-4h-2v4zM1 11l11-7 11 7H1z" fill={ACCENT} />
-                    </Svg>
-                  )}
+                  {isEWallet ? <Ionicons name="phone-portrait-outline" size={26} color={ACCENT} /> : <Ionicons name="business-outline" size={26} color={ACCENT} />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{payoutMethod.label}</Text>

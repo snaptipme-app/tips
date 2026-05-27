@@ -175,6 +175,10 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS show_photo_on_card INTEGER DEFAULT 1",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code TEXT",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reset_code_expires BIGINT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS stripe_account_id TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_method TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_country TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_onboarding_status TEXT",
       // Phase 6.1 — GDPR soft-delete. NULL = active. Set to NOW() on delete-account;
       // hard-purged after 30 days by scripts/purge-deleted-accounts.js.
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
