@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 // Behind Cloudflare → trust proxy is set in index.js.
 // rateLimit will pick up the real client IP from req.ip after that.
@@ -26,7 +26,7 @@ const globalLimiter = rateLimit({
     if (req.cookies && req.cookies.admin_token) {
       return req.cookies.admin_token;
     }
-    return req.ip;
+    return ipKeyGenerator(req);
   },
   standardHeaders: true,
   legacyHeaders: false,
