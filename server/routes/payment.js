@@ -184,7 +184,9 @@ router.post('/create-intent', async (req, res) => {
   }
 });
 
-router.post('/webhook', async (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('[webhook] received event');
+
   if (!stripe) {
     return res.status(503).json({ received: false, error: stripeConfigError });
   }
@@ -199,6 +201,7 @@ router.post('/webhook', async (req, res) => {
   let event;
   try {
     event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+    console.log('[payment/webhook] Signature verified:', event.type);
   } catch (err) {
     console.error('[payment/webhook] Signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -235,6 +238,19 @@ router.post('/webhook', async (req, res) => {
           currency,
           safeRating
         );
+
+        const { rows: balanceRows } = await pool.query(
+          'SELECT balance, total_tips FROM employees WHERE id = $1',
+          [employeeId]
+        );
+        console.log('[payment/webhook] Employee balance updated', {
+          employeeId,
+          amount,
+          currency,
+          balance: balanceRows[0]?.balance,
+          totalTips: balanceRows[0]?.total_tips,
+          stripePaymentIntent: paymentIntent.id,
+        });
       } else {
         console.log(`[payment/webhook] Duplicate Stripe event ignored for ${paymentIntent.id}`);
       }
