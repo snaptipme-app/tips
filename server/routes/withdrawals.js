@@ -244,9 +244,9 @@ router.post('/request', authMiddleware, async (req, res) => {
            idempotency_key, currency, account_details, account_details_enc, contact_phone, status, balance_deducted
          )
          VALUES (
-           $1, $2, $2, $3, $3, $5,
-           $4, $4, $6, $7, $8, $9,
-           $5, $10, NULL,
+           $1, $2::real, $2::numeric, $3::real, $3::numeric, $5::numeric,
+           $4::real, $4::numeric, $6, $7, $8, $9,
+           $5::numeric, $10, NULL,
            NULL, $11, NULL, pgp_sym_encrypt($12::text, $13::text), $14, 'pending', TRUE
          ) RETURNING id, created_at`,
         [
@@ -267,9 +267,9 @@ router.post('/request', authMiddleware, async (req, res) => {
            idempotency_key, currency, account_details, contact_phone, status, balance_deducted
          )
          VALUES (
-           $1, $2, $2, $3, $3, $5,
-           $4, $4, $6, $7, $8, $9,
-           $5, $10, NULL,
+           $1, $2::real, $2::numeric, $3::real, $3::numeric, $5::numeric,
+           $4::real, $4::numeric, $6, $7, $8, $9,
+           $5::numeric, $10, NULL,
            NULL, $11, $12, $13, 'pending', TRUE
          ) RETURNING id, created_at`,
         [
@@ -515,7 +515,11 @@ router.post('/request', authMiddleware, async (req, res) => {
       payout_schedule: payoutSchedule,
     });
   } catch (err) {
-    console.error('[withdrawals/request]', err.message);
+    console.error('[withdrawals/request]', {
+      message: err.message,
+      code: err.code,
+      routine: err.routine,
+    });
     res.status(500).json({ error: 'Server error.' });
   }
 });
