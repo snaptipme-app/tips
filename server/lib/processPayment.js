@@ -119,6 +119,17 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
   const stripePaymentAmount = options.stripePaymentAmount || null;
   const exchangeRateUsed = options.exchangeRateUsed || null;
   const employeeBalanceCurrency = options.employeeBalanceCurrency || currency;
+  const stripeChargeId = options.stripeChargeId || null;
+  const stripeBalanceTransactionId = options.stripeBalanceTransactionId || null;
+  const stripeFeeAmount = options.stripeFeeAmount ?? null;
+  const netPlatformReceivedAmount = options.netPlatformReceivedAmount ?? null;
+  const availableOn = options.availableOn || null;
+  const settlementStatus = ['pending', 'available'].includes(options.settlementStatus)
+    ? options.settlementStatus
+    : method === 'stripe'
+      ? 'pending'
+      : 'available';
+  const amountAvailableForEmployee = options.amountAvailableForEmployee || grossAmount;
 
   // 1. Insert gross payment record. SnapTip commission is calculated later, at withdrawal time.
   const { rows: paymentRows } = await pool.query(
@@ -126,15 +137,19 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
        employee_id, business_id, amount, gross_amount, platform_fee_amount,
        platform_fee_percent, net_amount, currency, original_currency, original_amount,
        stripe_payment_currency, stripe_payment_amount, exchange_rate_used, employee_balance_currency,
-       payment_method, status, stripe_payment_id, stripe_payment_intent_id,
+       payment_method, status, stripe_payment_id, stripe_payment_intent_id, stripe_charge_id,
+       stripe_balance_transaction_id, stripe_fee_amount, net_platform_received_amount,
+       settlement_status, available_on, amount_available_for_employee,
        tourist_email, rating, payout_method, fee
      )
      VALUES (
        $1, $2, $3::real, $4::numeric, $5::numeric,
        $6::numeric, $7::numeric, $8, $9, $10::numeric,
        $11, $12::numeric, $13::numeric, $14,
-       $15, 'completed', $16, $16,
-       $17, $18, $19, $5::real
+       $15, 'completed', $16, $16, $17,
+       $18, $19::numeric, $20::numeric,
+       $21, $22::timestamp, $23::numeric,
+       $24, $25, $26, $5::real
      ) RETURNING *`,
     [
       employeeId,
@@ -153,6 +168,13 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       employeeBalanceCurrency,
       method,
       transactionId || null,
+      stripeChargeId,
+      stripeBalanceTransactionId,
+      stripeFeeAmount,
+      netPlatformReceivedAmount,
+      settlementStatus,
+      availableOn,
+      amountAvailableForEmployee,
       touristEmail || null,
       safeRating,
       payoutMethod,

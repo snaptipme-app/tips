@@ -212,6 +212,14 @@ async function initDB() {
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(18,8)",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS employee_balance_currency TEXT",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_charge_id TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_balance_transaction_id TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_fee_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS net_platform_received_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'pending'",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS available_on TIMESTAMP",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_available_for_employee NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_withdrawn_from_this_payment NUMERIC(12,2) DEFAULT 0",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS business_id INTEGER",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS payout_method TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
@@ -247,6 +255,22 @@ async function initDB() {
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
     }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS withdrawal_payment_allocations (
+        id SERIAL PRIMARY KEY,
+        withdrawal_id INTEGER REFERENCES withdrawals(id),
+        payment_id INTEGER REFERENCES payments(id),
+        employee_id INTEGER REFERENCES employees(id),
+        amount NUMERIC(12,2) NOT NULL,
+        currency TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        released_at TIMESTAMP,
+        UNIQUE(withdrawal_id, payment_id)
+      )
+    `);
+    try { await pool.query('CREATE INDEX IF NOT EXISTS withdrawal_payment_allocations_employee_idx ON withdrawal_payment_allocations(employee_id)'); } catch (_) {}
+    try { await pool.query('CREATE INDEX IF NOT EXISTS payments_employee_settlement_idx ON payments(employee_id, settlement_status, currency)'); } catch (_) {}
 
     // Sync is_valid for pre-existing rows that were accepted or expired
     try {

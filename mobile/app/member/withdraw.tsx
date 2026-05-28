@@ -231,6 +231,14 @@ interface StripeConnectStatus {
   requirementsCurrentlyDue: string[];
 }
 
+interface PayoutAvailability {
+  totalBalance: number;
+  availableToWithdraw: number;
+  pendingSettlement: number;
+  currency: string;
+  reason: string;
+}
+
 type PayoutSchedule = 'weekly' | 'monthly' | 'manual';
 
 /* ======================================================================
@@ -262,6 +270,10 @@ export default function MemberWithdraw() {
   const countryCode = COUNTRY_CODE_MAP[userCountry] || 'MA';
   const isMorocco = countryCode === 'MA';
   const locale = language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US';
+  const formatMoney = useCallback((value: number) => Number(value || 0).toLocaleString(locale, {
+    minimumFractionDigits: cur === 'JPY' ? 0 : 2,
+    maximumFractionDigits: cur === 'JPY' ? 0 : 2,
+  }), [cur, locale]);
   const payoutCfg = getPayoutConfig(countryCode);
   const minWithdrawal = payoutCfg.minAmount;
   const payoutMethod = useMemo(() => getPayoutMethod(userCountry, minWithdrawal), [userCountry, minWithdrawal]);
@@ -294,6 +306,7 @@ export default function MemberWithdraw() {
   const [submitting, setSubmitting] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectStatus, setConnectStatus] = useState<StripeConnectStatus | null>(null);
+  const [payoutAvailability, setPayoutAvailability] = useState<PayoutAvailability | null>(null);
   const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('manual');
   const connectStatusCheckPending = useRef(false);
   const initialConnectCheckDone = useRef(false);
@@ -304,16 +317,47 @@ export default function MemberWithdraw() {
     amount: number; fee: number; net: number; method: string; currency: string; processingTime: string;
   } | null>(null);
 
+  const isStripeConnectPayout = payoutCfg.payoutMethod === 'stripe_connect';
+  const availableToWithdraw = isStripeConnectPayout
+    ? (payoutAvailability?.availableToWithdraw ?? balance)
+    : balance;
+  const pendingSettlement = isStripeConnectPayout
+    ? (payoutAvailability?.pendingSettlement ?? 0)
+    : 0;
+  const availabilityReason = payoutAvailability?.reason;
+  const hasSettlingFunds = isStripeConnectPayout
+    && pendingSettlement > 0
+    && (availabilityReason === 'funds_settling' || availabilityReason === 'partially_available');
+  const stripeFundsSettling = isStripeConnectPayout
+    && Boolean(connectStatus?.detailsSubmitted && connectStatus?.payoutsEnabled)
+    && balance > 0
+    && availableToWithdraw <= 0;
+  const activeAvailableToWithdraw = activeMethod?.id === 'stripe_connect' ? availableToWithdraw : balance;
+  const settlingMessage = 'Your payout is not ready yet. Funds are still settling and will be available soon.';
+
   /* -- Data -- */
+  const fetchPayoutAvailability = useCallback(async () => {
+    try {
+      const { data } = await api.get('/withdrawals/availability');
+      setPayoutAvailability(data);
+      return data as PayoutAvailability;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
-      const { data } = await api.get('/dashboard');
+      const [{ data }] = await Promise.all([
+        api.get('/dashboard'),
+        fetchPayoutAvailability(),
+      ]);
       const b = data.employee?.balance ?? data.balance ?? 0;
       setBalance(b);
       setWithdrawals(data.recent_withdrawals ?? []);
       if (data.employee?.payout_schedule) setPayoutSchedule(data.employee.payout_schedule);
     } catch {} finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  }, [fetchPayoutAvailability]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   /* -- Handlers -- */
@@ -328,10 +372,11 @@ export default function MemberWithdraw() {
   };
 
   const openForm = (method: SubMethod) => {
+    const maxAmount = method.id === 'stripe_connect' ? availableToWithdraw : balance;
     setActiveMethod(method);
     setFieldValues({});
     setFieldErrors({});
-    setAmount(balance > 0 ? String(Math.floor(balance)) : '');
+    setAmount(maxAmount > 0 ? String(Math.floor(maxAmount)) : '');
     setShowSubPicker(false);
     setShowForm(true);
   };
@@ -360,6 +405,7 @@ export default function MemberWithdraw() {
 
       if (status?.detailsSubmitted || status?.payoutsEnabled) {
         showToast('Stripe payout setup connected.', 'success');
+        fetchPayoutAvailability();
       }
     } catch (e: any) {
       connectStatusCheckPending.current = false;
@@ -368,7 +414,7 @@ export default function MemberWithdraw() {
     } finally {
       setConnectLoading(false);
     }
-  }, [checkStripeConnectStatus, countryCode, showToast]);
+  }, [checkStripeConnectStatus, countryCode, fetchPayoutAvailability, showToast]);
 
   useEffect(() => {
     if (payoutCfg.payoutMethod === 'stripe_connect' && !initialConnectCheckDone.current) {
@@ -381,13 +427,14 @@ export default function MemberWithdraw() {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active' && connectStatusCheckPending.current) {
         checkStripeConnectStatus().finally(() => {
+          fetchPayoutAvailability();
           connectStatusCheckPending.current = false;
           setConnectLoading(false);
         });
       }
     });
     return () => sub.remove();
-  }, [checkStripeConnectStatus]);
+  }, [checkStripeConnectStatus, fetchPayoutAvailability]);
 
   const updatePayoutSchedule = async (nextSchedule: PayoutSchedule) => {
     if (payoutCfg.payoutMethod !== 'stripe_connect' && nextSchedule !== 'manual') {
@@ -407,6 +454,16 @@ export default function MemberWithdraw() {
   const openStripePayout = () => {
     if (!connectStatus?.detailsSubmitted || !connectStatus?.payoutsEnabled) {
       showToast('Complete Stripe Express setup before requesting payouts.', 'error');
+      return;
+    }
+    if (stripeFundsSettling) {
+      showToast(settlingMessage, 'info');
+      return;
+    }
+    if (availableToWithdraw < minWithdrawal) {
+      showToast(hasSettlingFunds
+        ? `Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`
+        : tx('minimum_withdrawal_is', { amount: minWithdrawal, currency: cur }), hasSettlingFunds ? 'info' : 'error');
       return;
     }
     openForm(stripePayoutMethod);
@@ -451,6 +508,10 @@ export default function MemberWithdraw() {
     if (!amount || isNaN(amt) || amt <= 0) { showToast(t('enter_valid_amount'), 'error'); return false; }
     if (amt < activeMethod.min) { showToast(tx('minimum_is_for_method', { amount: activeMethod.min, currency: cur, method: activeMethod.label }), 'error'); return false; }
     if (amt > balance) { showToast(t('insufficient_balance'), 'error'); return false; }
+    if (activeMethod.id === 'stripe_connect' && amt > availableToWithdraw) {
+      showToast(`Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`, 'info');
+      return false;
+    }
 
     for (const f of activeMethod.fields) {
       const val = (fieldValues[f.key] || '').trim();
@@ -507,10 +568,17 @@ export default function MemberWithdraw() {
       if (user) updateUser({ balance: newBalance });
       if (data.withdrawals) setWithdrawals(data.withdrawals);
       setLastResult({ amount: amt, fee: feeToStore, net, method: activeMethod.label, currency: cur, processingTime: activeMethod.processingTime });
+      fetchPayoutAvailability();
       setShowForm(false);
       setShowSuccess(true);
     } catch (e: any) {
-      showToast(e.response?.data?.error || t('failed_submit'), 'error');
+      const response = e.response?.data;
+      if (response?.availability) setPayoutAvailability(response.availability);
+      if (response?.code === 'funds_settling' || response?.severity === 'info') {
+        showToast(response?.message || settlingMessage, 'info');
+      } else {
+        showToast(response?.error || t('failed_submit'), 'error');
+      }
     } finally { setSubmitting(false); }
   };
 
@@ -520,7 +588,7 @@ export default function MemberWithdraw() {
   const connectButtonLabel = connectLoading
     ? 'Opening Stripe...'
     : stripePayoutReady
-      ? 'Request payout'
+      ? (stripeFundsSettling ? 'Funds settling' : 'Request payout')
       : connectReady
         ? 'Continue setup'
       : connectStatus
@@ -562,10 +630,27 @@ export default function MemberWithdraw() {
           <LinearGradient colors={['#0a2a20', '#0d3328']} style={{ borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(0,200,150,0.2)' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <Ionicons name="wallet" size={16} color={GREEN} />
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('available_balance')}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total balance</Text>
             </View>
             <Text style={{ fontSize: 44, fontWeight: '800', color: GREEN, letterSpacing: -2, marginBottom: 4 }}>{balance.toFixed(2)}</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>{cur}  -  {t('available_to_withdraw')}</Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', marginBottom: isStripeConnectPayout ? 14 : 0 }}>{cur}</Text>
+            {isStripeConnectPayout && (
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)' }}>Available to withdraw</Text>
+                  <Text style={{ fontSize: 13, color: GREEN, fontWeight: '800' }}>{formatMoney(availableToWithdraw)} {cur}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)' }}>Pending settlement</Text>
+                  <Text style={{ fontSize: 13, color: hasSettlingFunds ? YELLOW : 'rgba(255,255,255,0.45)', fontWeight: '800' }}>{formatMoney(pendingSettlement)} {cur}</Text>
+                </View>
+                {hasSettlingFunds && (
+                  <View style={{ marginTop: 4, padding: 10, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.18)' }}>
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', lineHeight: 16 }}>{settlingMessage}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </LinearGradient>
         </LinearGradient>
 
@@ -627,6 +712,12 @@ export default function MemberWithdraw() {
                     {connectStatus?.payoutsEnabled ? 'Payouts enabled' : 'Payouts disabled'}
                   </Text>
                 </View>
+                {hasSettlingFunds && (
+                  <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.18)' }}>
+                    <Text style={{ fontSize: 12, color: YELLOW, fontWeight: '800', marginBottom: 4 }}>Funds settling</Text>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 17 }}>{settlingMessage}</Text>
+                  </View>
+                )}
               </View>
 
               <View style={{ marginBottom: 14 }}>
@@ -641,10 +732,10 @@ export default function MemberWithdraw() {
                 </View>
               </View>
 
-              <TouchableOpacity onPress={stripePayoutReady ? openStripePayout : startStripeConnect} disabled={connectLoading} activeOpacity={0.85}
-                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: connectReady ? 'rgba(0,200,150,0.35)' : BORDER, flexDirection: 'row', alignItems: 'center', gap: 16, opacity: connectLoading ? 0.75 : 1 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: connectReady ? 'rgba(0,200,150,0.12)' : 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Ionicons name={connectReady ? 'checkmark-circle-outline' : 'card-outline'} size={26} color={connectReady ? GREEN : ACCENT} />
+              <TouchableOpacity onPress={stripePayoutReady ? openStripePayout : startStripeConnect} disabled={connectLoading || stripeFundsSettling} activeOpacity={0.85}
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: stripeFundsSettling ? 'rgba(245,158,11,0.35)' : connectReady ? 'rgba(0,200,150,0.35)' : BORDER, flexDirection: 'row', alignItems: 'center', gap: 16, opacity: connectLoading || stripeFundsSettling ? 0.75 : 1 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: stripeFundsSettling ? 'rgba(245,158,11,0.12)' : connectReady ? 'rgba(0,200,150,0.12)' : 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name={stripeFundsSettling ? 'time-outline' : connectReady ? 'checkmark-circle-outline' : 'card-outline'} size={26} color={stripeFundsSettling ? YELLOW : connectReady ? GREEN : ACCENT} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Stripe Express</Text>
@@ -816,7 +907,7 @@ export default function MemberWithdraw() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff' }}>{activeMethod.label}</Text>
                       <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-                        {t('available')} <Text style={{ color: GREEN, fontWeight: '700' }}>{balance.toFixed(2)} {cur}</Text>
+                        {t('available')} <Text style={{ color: GREEN, fontWeight: '700' }}>{formatMoney(activeAvailableToWithdraw)} {cur}</Text>
                         {'  -  '}{t('min')}: <Text style={{ color: 'rgba(255,255,255,0.5)' }}>{activeMethod.min} {cur}</Text>
                       </Text>
                     </View>
@@ -828,8 +919,13 @@ export default function MemberWithdraw() {
                   <View style={inputWrapperStyle}>
                     <Text style={{ fontSize: 18, fontWeight: '700', color: GREEN, marginRight: 8 }}>{cur}</Text>
                     <TextInput style={{ flex: 1, color: '#fff', fontSize: 20, fontWeight: '700' }} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="rgba(255,255,255,0.2)" value={amount} onChangeText={setAmount} />
-                    <TouchableOpacity onPress={() => setAmount(String(Math.floor(balance)))}><Text style={{ fontSize: 12, color: ACCENT, fontWeight: '700' }}>{t('max')}</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setAmount(String(Math.floor(activeAvailableToWithdraw)))}><Text style={{ fontSize: 12, color: ACCENT, fontWeight: '700' }}>{t('max')}</Text></TouchableOpacity>
                   </View>
+                  {activeMethod.id === 'stripe_connect' && hasSettlingFunds && (
+                    <Text style={{ fontSize: 11, color: YELLOW, marginBottom: 14, lineHeight: 16 }}>
+                      Only {formatMoney(availableToWithdraw)} {cur} is currently available to withdraw. The rest is still settling.
+                    </Text>
+                  )}
 
                   {/* -- Summary Card -- */}
                   {parseFloat(amount) > 0 && (
@@ -871,11 +967,11 @@ export default function MemberWithdraw() {
                   ))}
 
                   {/* Submit */}
-                  <HapticButton onPress={handleSubmit} disabled={submitting} style={{ marginTop: 8 }}>
+                  <HapticButton onPress={handleSubmit} disabled={submitting || (activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0)} style={{ marginTop: 8 }}>
                     <LinearGradient colors={['#4facfe', '#00ffcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={{ height: 56, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting ? 0.6 : 1 }}>
+                      style={{ height: 56, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting || (activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0) ? 0.6 : 1 }}>
                       <Ionicons name={submitting ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? t('submitting') : t('request_withdrawal')}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? t('submitting') : activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0 ? 'Funds settling' : t('request_withdrawal')}</Text>
                     </LinearGradient>
                   </HapticButton>
                 </>)}

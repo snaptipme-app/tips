@@ -26,6 +26,62 @@ function parseRating(value) {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
 }
 
+async function getStripeSettlementDetails(paymentIntent) {
+  const details = {
+    stripeChargeId: null,
+    stripeBalanceTransactionId: null,
+    stripeFeeAmount: null,
+    netPlatformReceivedAmount: null,
+    availableOn: null,
+    settlementStatus: 'pending',
+  };
+
+  const latestChargeId = typeof paymentIntent.latest_charge === 'string'
+    ? paymentIntent.latest_charge
+    : paymentIntent.latest_charge?.id;
+  if (!latestChargeId) return details;
+
+  details.stripeChargeId = latestChargeId;
+
+  try {
+    const charge = await stripe.charges.retrieve(latestChargeId, {
+      expand: ['balance_transaction'],
+    });
+    const balanceTransaction = charge?.balance_transaction;
+    const balanceTransactionId = typeof balanceTransaction === 'string'
+      ? balanceTransaction
+      : balanceTransaction?.id;
+    details.stripeBalanceTransactionId = balanceTransactionId || null;
+
+    const balanceData = typeof balanceTransaction === 'object' && balanceTransaction
+      ? balanceTransaction
+      : balanceTransactionId
+        ? await stripe.balanceTransactions.retrieve(balanceTransactionId)
+        : null;
+
+    if (balanceData) {
+      const balanceCurrency = normalizeCurrency(balanceData.currency || paymentIntent.currency);
+      details.stripeFeeAmount = fromStripeMinorUnit(balanceData.fee || 0, balanceCurrency);
+      details.netPlatformReceivedAmount = fromStripeMinorUnit(balanceData.net || 0, balanceCurrency);
+      if (balanceData.available_on) {
+        details.availableOn = new Date(Number(balanceData.available_on) * 1000).toISOString();
+        details.settlementStatus = Number(balanceData.available_on) <= Math.floor(Date.now() / 1000)
+          ? 'available'
+          : 'pending';
+      }
+    }
+  } catch (err) {
+    console.warn('[payment/webhook] Could not retrieve Stripe settlement details', {
+      paymentIntentId: paymentIntent.id,
+      chargeId: latestChargeId,
+      message: err?.message,
+      code: err?.code,
+    });
+  }
+
+  return details;
+}
+
 router.post('/create-intent', async (req, res) => {
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
@@ -258,6 +314,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       );
 
       if (existingRows.length === 0) {
+        const settlementDetails = await getStripeSettlementDetails(paymentIntent);
         await processSuccessfulPayment(
           pool,
           employeeId,
@@ -274,6 +331,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             stripePaymentAmount: Number(metadata.stripe_payment_amount || paymentIntent.amount_received || paymentIntent.amount),
             exchangeRateUsed: Number(metadata.exchange_rate_used || 1),
             employeeBalanceCurrency: currency,
+            stripeChargeId: settlementDetails.stripeChargeId,
+            stripeBalanceTransactionId: settlementDetails.stripeBalanceTransactionId,
+            stripeFeeAmount: settlementDetails.stripeFeeAmount,
+            netPlatformReceivedAmount: settlementDetails.netPlatformReceivedAmount,
+            settlementStatus: settlementDetails.settlementStatus,
+            availableOn: settlementDetails.availableOn,
+            amountAvailableForEmployee: amount,
           }
         );
 
@@ -288,6 +352,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           balance: balanceRows[0]?.balance,
           totalTips: balanceRows[0]?.total_tips,
           stripePaymentIntent: paymentIntent.id,
+          settlementStatus: settlementDetails.settlementStatus,
+          availableOn: settlementDetails.availableOn,
         });
       } else {
         console.log(`[payment/webhook] Duplicate Stripe event ignored for ${paymentIntent.id}`);

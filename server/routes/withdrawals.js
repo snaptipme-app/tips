@@ -40,6 +40,213 @@ function platformFeeMinorForAmount(amountMinor) {
   return (amountMinor * BigInt(PLATFORM_FEE_PERCENT) + 50n) / 100n;
 }
 
+function minMinor(a, b) {
+  return a < b ? a : b;
+}
+
+function serializePayoutAvailability(availability) {
+  return {
+    totalBalance: minorToNumber(availability.totalBalanceMinor),
+    availableToWithdraw: minorToNumber(availability.availableToWithdrawMinor),
+    pendingSettlement: minorToNumber(availability.pendingSettlementMinor),
+    currency: availability.currency,
+    reason: availability.reason,
+  };
+}
+
+function insufficientEmployeeSettledResponse(availability) {
+  const available = minorToNumber(availability.availableToWithdrawMinor);
+  const currency = availability.currency;
+  return {
+    code: 'funds_settling',
+    severity: 'info',
+    message: `Only ${available.toLocaleString()} ${currency} is currently available to withdraw. The rest is still settling.`,
+    error: `Only ${available.toLocaleString()} ${currency} is currently available to withdraw. The rest is still settling.`,
+    availability: serializePayoutAvailability(availability),
+  };
+}
+
+function platformFundsSettlingResponse(availability) {
+  return {
+    code: 'platform_funds_settling',
+    severity: 'info',
+    message: 'Payout funds are still settling with Stripe. Please try again later.',
+    error: 'Payout funds are still settling with Stripe. Please try again later.',
+    availability: serializePayoutAvailability(availability),
+  };
+}
+
+async function syncAvailablePaymentLedger(db, employeeId) {
+  await db.query(
+    `UPDATE payments
+     SET settlement_status = 'available'
+     WHERE employee_id = $1
+       AND status = 'completed'
+       AND settlement_status = 'pending'
+       AND available_on IS NOT NULL
+       AND available_on <= NOW()`,
+    [employeeId]
+  );
+}
+
+async function getEmployeeSettledAvailableMinor(db, employeeId, currency) {
+  await syncAvailablePaymentLedger(db, employeeId);
+  const { rows } = await db.query(
+    `SELECT COALESCE(SUM(
+       GREATEST(
+         COALESCE(amount_available_for_employee, gross_amount, amount, 0)::numeric
+         - COALESCE(amount_withdrawn_from_this_payment, 0)::numeric,
+         0
+       )
+     ), 0) AS available
+     FROM payments
+     WHERE employee_id = $1
+       AND status = 'completed'
+       AND UPPER(COALESCE(employee_balance_currency, currency, '')) = $2
+       AND (
+         settlement_status = 'available'
+         OR (available_on IS NOT NULL AND available_on <= NOW())
+       )`,
+    [employeeId, normalizeCurrency(currency)]
+  );
+  return parseMoneyToMinor(rows[0]?.available) || 0n;
+}
+
+async function getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMethod, db = pool) {
+  const currency = normalizeCurrency(employee.currency || payoutCfg.currency || 'USD');
+  const totalBalanceMinor = parseMoneyToMinor(employee.balance) || 0n;
+
+  if (payoutMethod !== 'stripe_connect') {
+    return {
+      totalBalanceMinor,
+      availableToWithdrawMinor: totalBalanceMinor,
+      pendingSettlementMinor: 0n,
+      currency,
+      reason: 'manual_payout_available',
+    };
+  }
+
+  if (!stripe || !employee.stripe_account_id) {
+    return {
+      totalBalanceMinor,
+      availableToWithdrawMinor: 0n,
+      pendingSettlementMinor: totalBalanceMinor,
+      currency,
+      reason: 'stripe_setup_incomplete',
+    };
+  }
+
+  const employeeSettledAvailableMinor = await getEmployeeSettledAvailableMinor(db, employee.id, currency);
+  const availableToWithdrawMinor = minMinor(totalBalanceMinor, employeeSettledAvailableMinor);
+  const pendingSettlementMinor = totalBalanceMinor - availableToWithdrawMinor;
+
+  return {
+    totalBalanceMinor,
+    availableToWithdrawMinor,
+    pendingSettlementMinor,
+    currency,
+    reason: pendingSettlementMinor > 0n
+      ? (availableToWithdrawMinor > 0n ? 'partially_available' : 'funds_settling')
+      : 'available',
+  };
+}
+
+async function reserveSettledPaymentLedger(dbClient, employeeId, withdrawalId, amountMinor, currency) {
+  await syncAvailablePaymentLedger(dbClient, employeeId);
+
+  const { rows } = await dbClient.query(
+    `SELECT id,
+            GREATEST(
+              COALESCE(amount_available_for_employee, gross_amount, amount, 0)::numeric
+              - COALESCE(amount_withdrawn_from_this_payment, 0)::numeric,
+              0
+            ) AS available_amount
+     FROM payments
+     WHERE employee_id = $1
+       AND status = 'completed'
+       AND UPPER(COALESCE(employee_balance_currency, currency, '')) = $2
+       AND (
+         settlement_status = 'available'
+         OR (available_on IS NOT NULL AND available_on <= NOW())
+       )
+       AND GREATEST(
+         COALESCE(amount_available_for_employee, gross_amount, amount, 0)::numeric
+         - COALESCE(amount_withdrawn_from_this_payment, 0)::numeric,
+         0
+       ) > 0
+     ORDER BY available_on NULLS LAST, created_at, id
+     FOR UPDATE`,
+    [employeeId, normalizeCurrency(currency)]
+  );
+
+  const totalAvailableMinor = rows.reduce(
+    (total, payment) => total + (parseMoneyToMinor(payment.available_amount) || 0n),
+    0n
+  );
+  if (totalAvailableMinor < amountMinor) {
+    return false;
+  }
+
+  let remainingMinor = amountMinor;
+  for (const payment of rows) {
+    if (remainingMinor <= 0n) break;
+    const paymentAvailableMinor = parseMoneyToMinor(payment.available_amount) || 0n;
+    if (paymentAvailableMinor <= 0n) continue;
+
+    const allocationMinor = minMinor(remainingMinor, paymentAvailableMinor);
+    const allocationAmount = minorToMoneyString(allocationMinor);
+
+    await dbClient.query(
+      `UPDATE payments
+       SET amount_withdrawn_from_this_payment = ROUND((COALESCE(amount_withdrawn_from_this_payment, 0)::numeric + $1::numeric), 2)
+       WHERE id = $2`,
+      [allocationAmount, payment.id]
+    );
+    await dbClient.query(
+      `INSERT INTO withdrawal_payment_allocations (
+         withdrawal_id, payment_id, employee_id, amount, currency
+       )
+       VALUES ($1, $2, $3, $4::numeric, $5)
+       ON CONFLICT (withdrawal_id, payment_id)
+       DO UPDATE SET amount = withdrawal_payment_allocations.amount + EXCLUDED.amount`,
+      [withdrawalId, payment.id, employeeId, allocationAmount, normalizeCurrency(currency)]
+    );
+
+    remainingMinor -= allocationMinor;
+  }
+
+  return remainingMinor === 0n;
+}
+
+async function releasePaymentLedgerAllocations(dbClient, withdrawalId) {
+  const { rows } = await dbClient.query(
+    `SELECT id, payment_id, amount
+     FROM withdrawal_payment_allocations
+     WHERE withdrawal_id = $1 AND released_at IS NULL
+     FOR UPDATE`,
+    [withdrawalId]
+  );
+
+  for (const allocation of rows) {
+    await dbClient.query(
+      `UPDATE payments
+       SET amount_withdrawn_from_this_payment = GREATEST(
+         COALESCE(amount_withdrawn_from_this_payment, 0)::numeric - $1::numeric,
+         0
+       )
+       WHERE id = $2`,
+      [allocation.amount, allocation.payment_id]
+    );
+  }
+
+  await dbClient.query(
+    `UPDATE withdrawal_payment_allocations
+     SET released_at = NOW()
+     WHERE withdrawal_id = $1 AND released_at IS NULL`,
+    [withdrawalId]
+  );
+}
+
 function serializeDetails(details) {
   if (!details) return null;
   return typeof details === 'object' ? JSON.stringify(details) : String(details);
@@ -164,19 +371,30 @@ router.post('/request', authMiddleware, async (req, res) => {
         });
       }
 
-      const stripeBalance = await stripe.balance.retrieve();
-      const availableMinor = getAvailableBalanceMinor(stripeBalance, stripeTransferCurrency);
-      if (availableMinor < BigInt(stripeTransferAmount)) {
+      const payoutAvailability = await getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMethod);
+      if (payoutAvailability.availableToWithdrawMinor < amountMinor) {
         console.warn('[withdrawals/stripe-transfer-preflight]', {
           employeeId,
           requestedCurrency: normalizeCurrency(currency),
           transferCurrency: stripeTransferCurrency,
           transferAmountMinor: stripeTransferAmount,
-          availableMinor: Number(availableMinor),
+          availableToWithdraw: minorToNumber(payoutAvailability.availableToWithdrawMinor),
+          pendingSettlement: minorToNumber(payoutAvailability.pendingSettlementMinor),
+          reason: payoutAvailability.reason,
         });
-        return res.status(409).json({
-          error: 'Stripe payout funds are still settling. Please try again later. Your balance was not changed.',
+        return res.status(409).json(insufficientEmployeeSettledResponse(payoutAvailability));
+      }
+
+      const stripeBalance = await stripe.balance.retrieve();
+      const platformAvailableMinor = getAvailableBalanceMinor(stripeBalance, stripeTransferCurrency);
+      if (platformAvailableMinor < BigInt(stripeTransferAmount)) {
+        console.warn('[withdrawals/stripe-platform-preflight]', {
+          employeeId,
+          transferCurrency: stripeTransferCurrency,
+          transferAmountMinor: stripeTransferAmount,
+          platformAvailableMinor: Number(platformAvailableMinor),
         });
+        return res.status(409).json(platformFundsSettlingResponse(payoutAvailability));
       }
     }
 
@@ -254,6 +472,19 @@ router.post('/request', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Insufficient balance.' });
       }
 
+      if (payoutMethod === 'stripe_connect') {
+        const lockedAvailability = await getPayoutAvailabilityForEmployee(
+          lockedEmployee,
+          lockedPayoutCfg,
+          lockedPayoutMethod,
+          dbClient
+        );
+        if (lockedAvailability.availableToWithdrawMinor < amountMinor) {
+          await dbClient.query('ROLLBACK');
+          return res.status(409).json(insufficientEmployeeSettledResponse(lockedAvailability));
+        }
+      }
+
       const payoutStatus = payoutMethod === 'stripe_connect' ? 'processing' : 'pending';
 
       if (encKey) {
@@ -311,6 +542,22 @@ router.post('/request', authMiddleware, async (req, res) => {
          WHERE id = $2`,
         [idempotencyKey, withdrawalId]
       );
+
+      if (payoutMethod === 'stripe_connect') {
+        const ledgerReserved = await reserveSettledPaymentLedger(
+          dbClient,
+          employeeId,
+          withdrawalId,
+          amountMinor,
+          currency
+        );
+        if (!ledgerReserved) {
+          await dbClient.query('ROLLBACK');
+          return res.status(409).json(insufficientEmployeeSettledResponse(
+            await getPayoutAvailabilityForEmployee(lockedEmployee, lockedPayoutCfg, lockedPayoutMethod, dbClient)
+          ));
+        }
+      }
 
       const balanceResult = await dbClient.query(
         `UPDATE employees
@@ -389,6 +636,7 @@ router.post('/request', authMiddleware, async (req, res) => {
              WHERE id = $2`,
             [amt, employeeId]
           );
+          await releasePaymentLedgerAllocations(refundClient, withdrawalId);
           await refundClient.query('COMMIT');
           refundCommitted = true;
         } catch (refundErr) {
@@ -546,6 +794,35 @@ router.post('/request', authMiddleware, async (req, res) => {
       routine: err.routine,
     });
     res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+router.get('/availability', authMiddleware, async (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+    const { rows } = await pool.query(
+      `SELECT id, balance, country, currency, stripe_account_id, payout_method
+       FROM employees
+       WHERE id = $1`,
+      [employeeId]
+    );
+    const employee = rows[0];
+    if (!employee) return res.status(404).json({ error: 'Employee not found.' });
+
+    const payoutCfg = getEffectivePayoutConfig({
+      countryName: employee.country,
+      currency: employee.currency,
+    });
+    const payoutMethod = getEffectivePayoutMethod(payoutCfg);
+    const availability = await getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMethod);
+
+    res.json(serializePayoutAvailability(availability));
+  } catch (err) {
+    console.error('[withdrawals/availability]', {
+      message: err.message,
+      code: err.code,
+    });
+    res.status(500).json({ error: 'Could not check payout availability.' });
   }
 });
 
