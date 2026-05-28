@@ -130,11 +130,11 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
        tourist_email, rating, payout_method, fee
      )
      VALUES (
-       $1, $2, $3, $4, $5,
-       $6, $7, $8, $9, $10,
-       $11, $12, $13, $14,
+       $1, $2, $3::real, $4::numeric, $5::numeric,
+       $6::numeric, $7::numeric, $8, $9, $10::numeric,
+       $11, $12::numeric, $13::numeric, $14,
        $15, 'completed', $16, $16,
-       $17, $18, $19, $5
+       $17, $18, $19, $5::real
      ) RETURNING *`,
     [
       employeeId,
