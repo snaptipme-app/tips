@@ -509,6 +509,9 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
     if (withdrawal.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending withdrawals can be marked as paid.' });
     }
+    if (withdrawal.payout_method === 'stripe_connect' && withdrawal.payout_status === 'processing') {
+      return res.status(409).json({ error: 'Stripe payout is still processing.' });
+    }
 
     const amt = Number(withdrawal.gross_requested_amount || withdrawal.amount) || 0;
 
@@ -578,6 +581,9 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
     if (withdrawal.status !== 'pending') {
       return res.status(400).json({ error: 'Only pending withdrawals can be rejected.' });
+    }
+    if (withdrawal.payout_method === 'stripe_connect' && withdrawal.payout_status === 'processing') {
+      return res.status(409).json({ error: 'Stripe payout is still processing.' });
     }
 
     const amt = Number(withdrawal.gross_requested_amount || withdrawal.amount) || 0;

@@ -224,6 +224,7 @@ async function initDB() {
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS platform_fee_snapshot NUMERIC(5,2)",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS stripe_account_id TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS stripe_transfer_id TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS idempotency_key TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS processed_at TIMESTAMP",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details TEXT",
       // Phase 4.2: encrypted IBAN/RIB/wallet identifiers (see lib/cryptoFields.js).
@@ -237,6 +238,7 @@ async function initDB() {
       // balance. TRUE = balance already reduced. FALSE = legacy rows that still need
       // deduction when admin approves. New rows are inserted with TRUE.
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS balance_deducted BOOLEAN DEFAULT TRUE",
+      "CREATE UNIQUE INDEX IF NOT EXISTS withdrawals_idempotency_key_unique ON withdrawals(idempotency_key) WHERE idempotency_key IS NOT NULL",
     ];
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
