@@ -12,6 +12,7 @@ const {
   toStripeMinorUnit,
   fromStripeMinorUnit,
 } = require('../lib/stripeCurrency');
+const { getStripeSettlementDetails } = require('../lib/stripeSettlementLedger');
 
 const router = express.Router();
 
@@ -24,62 +25,6 @@ function normalizeCurrency(currency) {
 function parseRating(value) {
   const rating = Number(value);
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
-}
-
-async function getStripeSettlementDetails(paymentIntent) {
-  const details = {
-    stripeChargeId: null,
-    stripeBalanceTransactionId: null,
-    stripeFeeAmount: null,
-    netPlatformReceivedAmount: null,
-    availableOn: null,
-    settlementStatus: 'pending',
-  };
-
-  const latestChargeId = typeof paymentIntent.latest_charge === 'string'
-    ? paymentIntent.latest_charge
-    : paymentIntent.latest_charge?.id;
-  if (!latestChargeId) return details;
-
-  details.stripeChargeId = latestChargeId;
-
-  try {
-    const charge = await stripe.charges.retrieve(latestChargeId, {
-      expand: ['balance_transaction'],
-    });
-    const balanceTransaction = charge?.balance_transaction;
-    const balanceTransactionId = typeof balanceTransaction === 'string'
-      ? balanceTransaction
-      : balanceTransaction?.id;
-    details.stripeBalanceTransactionId = balanceTransactionId || null;
-
-    const balanceData = typeof balanceTransaction === 'object' && balanceTransaction
-      ? balanceTransaction
-      : balanceTransactionId
-        ? await stripe.balanceTransactions.retrieve(balanceTransactionId)
-        : null;
-
-    if (balanceData) {
-      const balanceCurrency = normalizeCurrency(balanceData.currency || paymentIntent.currency);
-      details.stripeFeeAmount = fromStripeMinorUnit(balanceData.fee || 0, balanceCurrency);
-      details.netPlatformReceivedAmount = fromStripeMinorUnit(balanceData.net || 0, balanceCurrency);
-      if (balanceData.available_on) {
-        details.availableOn = new Date(Number(balanceData.available_on) * 1000).toISOString();
-        details.settlementStatus = Number(balanceData.available_on) <= Math.floor(Date.now() / 1000)
-          ? 'available'
-          : 'pending';
-      }
-    }
-  } catch (err) {
-    console.warn('[payment/webhook] Could not retrieve Stripe settlement details', {
-      paymentIntentId: paymentIntent.id,
-      chargeId: latestChargeId,
-      message: err?.message,
-      code: err?.code,
-    });
-  }
-
-  return details;
 }
 
 router.post('/create-intent', async (req, res) => {
@@ -314,7 +259,26 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       );
 
       if (existingRows.length === 0) {
-        const settlementDetails = await getStripeSettlementDetails(paymentIntent);
+        let settlementDetails;
+        try {
+          settlementDetails = await getStripeSettlementDetails(paymentIntent);
+        } catch (settlementErr) {
+          settlementDetails = {
+            stripeChargeId: typeof paymentIntent.latest_charge === 'string'
+              ? paymentIntent.latest_charge
+              : paymentIntent.latest_charge?.id || null,
+            stripeBalanceTransactionId: null,
+            stripeFeeAmount: null,
+            netPlatformReceivedAmount: null,
+            availableOn: null,
+            settlementStatus: 'pending',
+          };
+          console.warn('[payment/webhook] Could not retrieve Stripe settlement details', {
+            paymentIntentId: paymentIntent.id,
+            message: settlementErr?.message,
+            code: settlementErr?.code,
+          });
+        }
         await processSuccessfulPayment(
           pool,
           employeeId,

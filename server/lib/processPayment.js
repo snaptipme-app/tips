@@ -149,7 +149,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
        $15, 'completed', $16, $16, $17,
        $18, $19::numeric, $20::numeric,
        $21, $22::timestamp, $23::numeric,
-       $24, $25, $26, $5::real
+       $24, $25, $26, $27::real
      ) RETURNING *`,
     [
       employeeId,
@@ -178,6 +178,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       touristEmail || null,
       safeRating,
       payoutMethod,
+      Number(zeroAmount),
     ]
   );
   const payment = paymentRows[0];

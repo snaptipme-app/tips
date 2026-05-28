@@ -27,6 +27,7 @@ const {
   getEffectivePayoutMethod,
   normalizePayoutSchedule,
 } = require('../lib/countryPayoutConfig');
+const { backfillPaymentSettlementRows } = require('../lib/stripeSettlementLedger');
 
 function isStripePayoutReady(account) {
   return Boolean(account?.details_submitted && account?.payouts_enabled);
@@ -90,6 +91,9 @@ async function syncAvailablePaymentLedger(db, employeeId) {
 }
 
 async function getEmployeeSettledAvailableMinor(db, employeeId, currency) {
+  if (db === pool) {
+    await backfillPaymentSettlementRows(pool, { employeeId, limit: 25 });
+  }
   await syncAvailablePaymentLedger(db, employeeId);
   const { rows } = await db.query(
     `SELECT COALESCE(SUM(
