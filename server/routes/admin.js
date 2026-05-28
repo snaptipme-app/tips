@@ -244,7 +244,7 @@ router.get('/stats', adminAuth, async (req, res) => {
     const { rows: tPay } = await pool.query('SELECT COUNT(*) as count FROM payments');
     const totalPayments = Number(tPay[0]?.count) || 0;
 
-    const { rows: tTips } = await pool.query('SELECT COALESCE(SUM(amount),0) as sum FROM payments');
+    const { rows: tTips } = await pool.query('SELECT COALESCE(SUM(COALESCE(gross_amount, amount)),0) as sum FROM payments');
     const totalTips = Number(tTips[0]?.sum) || 0;
 
     const { rows: pWithCount } = await pool.query("SELECT COUNT(*) as count FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)");
@@ -253,10 +253,14 @@ router.get('/stats', adminAuth, async (req, res) => {
     const { rows: pWithSum } = await pool.query("SELECT COALESCE(SUM(w.amount),0) as sum FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)");
     const pendingAmount = Number(pWithSum[0]?.sum) || 0;
     
-    const commission = totalTips * 0.10;
+    const { rows: commissionRows } = await pool.query(
+      "SELECT COALESCE(SUM(COALESCE(platform_fee_amount, fee, 0)),0) as sum FROM withdrawals WHERE status = 'paid'"
+    );
+    const commission = Number(commissionRows[0]?.sum) || 0;
 
     const { rows: recentPayments } = await pool.query(`
-      SELECT p.id, p.amount, p.payment_method, p.created_at,
+      SELECT p.id, COALESCE(p.gross_amount, p.amount) AS amount,
+        p.platform_fee_amount, p.net_amount, p.payment_method, p.created_at,
         COALESCE(p.currency, e.currency, 'USD') as currency,
         e.full_name, e.username
       FROM payments p
@@ -266,7 +270,9 @@ router.get('/stats', adminAuth, async (req, res) => {
 
     // Per-currency tips breakdown
     const { rows: tipsByCurrencyRows } = await pool.query(`
-      SELECT COALESCE(currency, 'USD') as currency, COALESCE(SUM(amount),0) as total, COUNT(*) as count
+      SELECT COALESCE(currency, 'USD') as currency,
+        COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total,
+        COUNT(*) as count
       FROM payments
       GROUP BY currency
       ORDER BY total DESC
@@ -274,7 +280,7 @@ router.get('/stats', adminAuth, async (req, res) => {
     const tipsByCurrency = tipsByCurrencyRows.map(r => ({ currency: r.currency, total: Number(r.total), count: Number(r.count) }));
 
     const { rows: recentWithdrawals } = await pool.query(`
-      SELECT w.id, w.amount, w.status, w.method, w.created_at,
+      SELECT w.id, w.amount, w.status, w.method, w.payout_method, w.processed_at, w.created_at,
         e.full_name, e.username, e.currency
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
@@ -449,15 +455,37 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       detailsExpr = decryptedAccountDetailsExpr(1);
     }
     const { rows: withdrawals } = await pool.query(`
+      WITH payment_rollup AS (
+        SELECT employee_id,
+          COALESCE(SUM(COALESCE(gross_amount, amount)), 0) AS gross_earned
+        FROM payments
+        WHERE status = 'completed'
+        GROUP BY employee_id
+      ),
+      withdrawal_fee_rollup AS (
+        SELECT employee_id,
+          COALESCE(SUM(COALESCE(platform_fee_amount, fee, 0)), 0) AS platform_fee_collected
+        FROM withdrawals
+        WHERE status = 'paid'
+        GROUP BY employee_id
+      )
       SELECT
-        w.id, w.amount, w.fee, w.net_amount, w.method,
+        w.id, w.amount, w.gross_requested_amount, w.fee, w.platform_fee_amount,
+        w.platform_fee_percent, w.net_amount, w.net_payout_amount,
+        w.method, w.payout_method, w.payout_status, w.payout_schedule,
+        w.platform_fee_snapshot, w.stripe_account_id, w.stripe_transfer_id, w.processed_at,
         ${detailsExpr} AS account_details,
         w.contact_phone, w.status, w.created_at, w.admin_note,
         e.id as employee_id, e.full_name, e.first_name, e.username, e.email,
-        e.country, e.currency, e.profile_image_url, e.photo_base64,
+        e.country, e.currency, e.balance AS net_balance,
+        COALESCE(pr.gross_earned, 0) AS gross_earned,
+        COALESCE(wfr.platform_fee_collected, 0) AS platform_fee_collected,
+        e.profile_image_url, e.photo_base64,
         e.created_at as emp_created_at
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
+      LEFT JOIN payment_rollup pr ON pr.employee_id = e.id
+      LEFT JOIN withdrawal_fee_rollup wfr ON wfr.employee_id = e.id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
     `, params);
@@ -478,26 +506,46 @@ router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
     const withdrawal = wRows[0];
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
     if (withdrawal.status === 'paid') return res.status(400).json({ error: 'Already marked as paid.' });
-
-    const amt = Number(withdrawal.amount) || 0;
-
-    // Only deduct balance now if it wasn't already deducted at request time.
-    // balance_deducted = FALSE  → new model: deduct here
-    // balance_deducted = TRUE   → legacy model: balance was already held at request, skip
-    if (withdrawal.balance_deducted === false) {
-      const { rowCount } = await pool.query(
-        'UPDATE employees SET balance = balance - $1 WHERE id = $2 AND balance >= $1',
-        [amt, withdrawal.employee_id]
-      );
-      if (rowCount === 0) {
-        return res.status(400).json({ error: 'Insufficient balance to approve this withdrawal.' });
-      }
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending withdrawals can be marked as paid.' });
     }
 
-    await pool.query(
-      "UPDATE withdrawals SET status = 'paid', balance_deducted = TRUE WHERE id = $1",
-      [id]
-    );
+    const amt = Number(withdrawal.gross_requested_amount || withdrawal.amount) || 0;
+
+    const dbClient = await pool.connect();
+    try {
+      await dbClient.query('BEGIN');
+      // Only deduct balance now for legacy pending rows that were not held at request time.
+      // New withdrawal requests already deduct the gross amount immediately.
+      if (withdrawal.balance_deducted === false) {
+        const { rowCount } = await dbClient.query(
+          `UPDATE employees
+           SET balance = ROUND((COALESCE(balance, 0)::numeric - $1::numeric), 2)::real
+           WHERE id = $2 AND COALESCE(balance, 0)::numeric >= $1::numeric`,
+          [amt, withdrawal.employee_id]
+        );
+        if (rowCount === 0) {
+          await dbClient.query('ROLLBACK');
+          return res.status(400).json({ error: 'Insufficient balance to approve this withdrawal.' });
+        }
+      }
+
+      await dbClient.query(
+        `UPDATE withdrawals
+         SET status = 'paid',
+             payout_status = 'paid',
+             processed_at = NOW(),
+             balance_deducted = TRUE
+         WHERE id = $1`,
+        [id]
+      );
+      await dbClient.query('COMMIT');
+    } catch (err) {
+      await dbClient.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      dbClient.release();
+    }
 
     const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
     const employee = eRows[0];
@@ -528,12 +576,39 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
     const { rows: wRows } = await pool.query('SELECT * FROM withdrawals WHERE id = $1', [id]);
     const withdrawal = wRows[0];
     if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found.' });
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending withdrawals can be rejected.' });
+    }
 
-    await pool.query("UPDATE withdrawals SET status = 'rejected' WHERE id = $1", [id]);
-    // Only refund if balance was already deducted at request time (legacy model).
-    // New-model withdrawals (balance_deducted = FALSE) never reduced the balance, so no refund.
-    if (withdrawal.balance_deducted !== false) {
-      await pool.query('UPDATE employees SET balance = balance + $1 WHERE id = $2', [Number(withdrawal.amount), withdrawal.employee_id]);
+    const amt = Number(withdrawal.gross_requested_amount || withdrawal.amount) || 0;
+    const shouldRefund = withdrawal.balance_deducted !== false;
+    const dbClient = await pool.connect();
+    try {
+      await dbClient.query('BEGIN');
+      await dbClient.query(
+        `UPDATE withdrawals
+         SET status = 'rejected',
+             payout_status = 'rejected',
+             processed_at = NOW(),
+             balance_deducted = FALSE
+         WHERE id = $1`,
+        [id]
+      );
+      // Only refund if the gross withdrawal amount was already deducted from balance.
+      if (shouldRefund) {
+        await dbClient.query(
+          `UPDATE employees
+           SET balance = ROUND((COALESCE(balance, 0)::numeric + $1::numeric), 2)::real
+           WHERE id = $2`,
+          [amt, withdrawal.employee_id]
+        );
+      }
+      await dbClient.query('COMMIT');
+    } catch (err) {
+      await dbClient.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      dbClient.release();
     }
 
     const { rows: eRows } = await pool.query('SELECT * FROM employees WHERE id = $1', [withdrawal.employee_id]);
@@ -546,7 +621,7 @@ router.patch('/withdrawals/:id/reject', adminAuth, async (req, res) => {
       action: 'withdrawal.reject',
       targetType: 'withdrawal',
       targetId: Number(id) || null,
-      metadata: { employee_id: withdrawal.employee_id, amount: Number(withdrawal.amount) || 0, reason: reason || null },
+      metadata: { employee_id: withdrawal.employee_id, amount: amt, reason: reason || null },
     });
     res.json({ success: true, message: 'Withdrawal rejected. Balance refunded. Email sent.' });
   } catch (err) {
@@ -641,7 +716,9 @@ router.get('/transactions', adminAuth, async (req, res) => {
     else if (range === 'month') dateFilter = "AND p.created_at >= CURRENT_DATE - INTERVAL '30 days'";
 
     const { rows: transactions } = await pool.query(`
-      SELECT p.id, p.amount, p.payment_method, p.created_at,
+      SELECT p.id, COALESCE(p.gross_amount, p.amount) AS amount,
+        p.platform_fee_amount, p.net_amount, p.payout_method,
+        p.payment_method, p.created_at,
         COALESCE(p.currency, e.currency, 'MAD') as currency,
         e.full_name, e.username
       FROM payments p
@@ -651,7 +728,9 @@ router.get('/transactions', adminAuth, async (req, res) => {
     `);
 
     const { rows: summaryRows } = await pool.query(`
-      SELECT COUNT(*) as count, COALESCE(SUM(amount),0) as total
+      SELECT COUNT(*) as count,
+        COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total,
+        0 as commission
       FROM payments p
       WHERE 1=1 ${dateFilter}
     `);
@@ -660,7 +739,7 @@ router.get('/transactions', adminAuth, async (req, res) => {
     res.json({
       transactions,
       totalVolume: Number(summary?.total) || 0,
-      totalCommission: (Number(summary?.total) || 0) * 0.10,
+      totalCommission: Number(summary?.commission) || 0,
       totalCount: Number(summary?.count) || 0,
     });
   } catch (err) {
@@ -676,7 +755,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
   try {
     const { rows: topEmployees } = await pool.query(`
       SELECT e.id, e.full_name, e.username, e.country, e.currency,
-        COALESCE(SUM(p.amount),0) as total_tips, COUNT(p.id) as tip_count
+        COALESCE(SUM(COALESCE(p.gross_amount, p.amount)),0) as total_tips, COUNT(p.id) as tip_count
       FROM employees e
       LEFT JOIN payments p ON p.employee_id = e.id
       GROUP BY e.id
@@ -694,7 +773,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
     `);
 
     const { rows: topCountriesByTips } = await pool.query(`
-      SELECT e.country, COALESCE(SUM(p.amount),0) as total
+      SELECT e.country, COALESCE(SUM(COALESCE(p.gross_amount, p.amount)),0) as total
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       WHERE e.country IS NOT NULL
@@ -703,11 +782,11 @@ router.get('/analytics', adminAuth, async (req, res) => {
       LIMIT 5
     `);
 
-    const { rows: avgTipRow } = await pool.query('SELECT COALESCE(AVG(amount),0) as avg FROM payments');
+    const { rows: avgTipRow } = await pool.query('SELECT COALESCE(AVG(COALESCE(gross_amount, amount)),0) as avg FROM payments');
     const avgTip = Number(avgTipRow[0]?.avg) || 0;
 
     const { rows: methodBreakdown } = await pool.query(`
-      SELECT payment_method, COUNT(*) as count, COALESCE(SUM(amount),0) as total
+      SELECT payment_method, COUNT(*) as count, COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total
       FROM payments
       GROUP BY payment_method
     `);

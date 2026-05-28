@@ -179,6 +179,8 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_method TEXT",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_country TEXT",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_onboarding_status TEXT",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS minimum_withdrawal_amount NUMERIC(12,2)",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_schedule TEXT DEFAULT 'manual'",
       // Phase 6.1 — GDPR soft-delete. NULL = active. Set to NOW() on delete-account;
       // hard-purged after 30 days by scripts/purge-deleted-accounts.js.
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
@@ -199,10 +201,30 @@ async function initDB() {
     // ── Payments, Withdrawals, Tips & Invitations migrations ──
     const otherAlterTables = [
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS gross_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_percent NUMERIC(5,2) DEFAULT 10",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS net_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS original_currency TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS original_amount NUMERIC(12,2)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS business_id INTEGER",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS payout_method TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS contact_phone TEXT",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS net_amount REAL",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS gross_requested_amount NUMERIC(12,2)",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS platform_fee_amount NUMERIC(12,2)",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS platform_fee_percent NUMERIC(5,2) DEFAULT 10",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS net_payout_amount NUMERIC(12,2)",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_method TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_status TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS payout_schedule TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS platform_fee_snapshot NUMERIC(5,2)",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS stripe_account_id TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS stripe_transfer_id TEXT",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS processed_at TIMESTAMP",
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details TEXT",
       // Phase 4.2: encrypted IBAN/RIB/wallet identifiers (see lib/cryptoFields.js).
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details_enc BYTEA",
@@ -212,9 +234,8 @@ async function initDB() {
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES employees(id)",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS rating INTEGER",
       // balance_deducted tracks whether the withdrawal amount has been held from the employee's
-      // balance. TRUE = balance already reduced (legacy behaviour). FALSE = balance will be
-      // reduced only when admin approves (new behaviour). DEFAULT TRUE so that ALL existing
-      // pending withdrawal rows keep the old accounting; new rows are inserted with FALSE.
+      // balance. TRUE = balance already reduced. FALSE = legacy rows that still need
+      // deduction when admin approves. New rows are inserted with TRUE.
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS balance_deducted BOOLEAN DEFAULT TRUE",
     ];
     for (const ddl of otherAlterTables) {

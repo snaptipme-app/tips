@@ -9,7 +9,12 @@ router.get('/', authMiddleware, async (req, res) => {
     const employeeId = req.employee.id;
 
     const { rows: empRows } = await pool.query(
-      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, email, balance, account_type, job_title, business_id, country, currency, created_at FROM employees WHERE id = $1',
+      `SELECT id, username, full_name, photo_url, photo_base64, profile_image_url,
+              email, balance, account_type, job_title, business_id, country,
+              currency, stripe_account_id, payout_method, payout_country,
+              payout_onboarding_status, payout_schedule, minimum_withdrawal_amount,
+              created_at
+       FROM employees WHERE id = $1`,
       [employeeId]
     );
 
@@ -75,7 +80,10 @@ router.get('/', authMiddleware, async (req, res) => {
       detailsExpr = decryptedAccountDetailsExpr(2);
     }
     const { rows: recentWithdrawals } = await pool.query(
-      `SELECT id, amount, method, ${detailsExpr} AS account_details, status, created_at
+      `SELECT id, amount, fee, platform_fee_amount, platform_fee_percent,
+              net_amount, net_payout_amount, method, payout_method, payout_status,
+              payout_schedule, stripe_account_id, stripe_transfer_id, processed_at, currency,
+              ${detailsExpr} AS account_details, status, created_at
        FROM withdrawals AS w
        WHERE employee_id = $1 ORDER BY created_at DESC LIMIT 10`,
       wParams

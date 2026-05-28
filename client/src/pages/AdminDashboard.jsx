@@ -285,7 +285,7 @@ function OverviewSection({showToast,onLogout,onNavigate,selectedCurrency,onCurre
 
   const currencyStats=(stats?.tipsByCurrency||[]).find(c=>c.currency===selectedCurrency)||{total:0,count:0};
   const pendingWds=(withdrawalsData?.withdrawals||[]).filter(w=>w.status==='pending'&&w.currency===selectedCurrency);
-  const pendingAmt=pendingWds.reduce((a,w)=>a+Number(w.net_amount||w.amount||0),0);
+  const pendingAmt=pendingWds.reduce((a,w)=>a+Number(w.amount||0),0);
   const pendingCount=pendingWds.length;
 
   const statCards=[
@@ -651,9 +651,16 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         </div>
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Withdrawal Details</p>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
-          {[{l:'Amount',v:fmtMoney(detail.amount,detail.currency),c:'#fff'},{l:'Fee',v:fmtMoney(detail.fee,detail.currency),c:YELLOW},{l:'Net Payout',v:fmtMoney(detail.net_amount,detail.currency),c:GREEN}].map(k=><div key={k.l} style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>{k.l}</p><p style={{fontSize:16,fontWeight:800,color:k.c}}>{k.v}</p></div>)}
+          {[
+            {l:'Withdrawal',v:fmtMoney(detail.amount,detail.currency),c:'#fff'},
+            {l:'SnapTip Fee',v:fmtMoney(detail.platform_fee_amount||detail.fee,detail.currency),c:YELLOW},
+            {l:'Net Payout',v:fmtMoney(detail.net_payout_amount||detail.net_amount,detail.currency),c:GREEN},
+            {l:'Gross Earned',v:fmtMoney(detail.gross_earned,detail.currency),c:'#fff'},
+            {l:'Fees Collected',v:fmtMoney(detail.platform_fee_collected,detail.currency),c:ACCENT},
+            {l:'Available Balance',v:fmtMoney(detail.net_balance,detail.currency),c:GREEN},
+          ].map(k=><div key={k.l} style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>{k.l}</p><p style={{fontSize:16,fontWeight:800,color:k.c}}>{k.v}</p></div>)}
         </div>
-        {[['Method',detail.method,'text'],['Status',null,'badge'],['Date',fmtDate(detail.created_at),'text']].map(([l,v,t])=><div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{l}</span>{t==='badge'?<StatusBadge status={detail.status}/>:<span style={{color:'#fff',fontSize:13,fontWeight:600}}>{v}</span>}</div>)}
+        {[['Method',detail.method,'text'],['Payout Method',detail.payout_method||'wise_manual','text'],['Schedule',detail.payout_schedule||'manual','text'],['Status',null,'badge'],['Requested',fmtDate(detail.created_at),'text'],['Processed',detail.processed_at?fmtDate(detail.processed_at):'Not processed','text']].map(([l,v,t])=><div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{l}</span>{t==='badge'?<StatusBadge status={detail.status}/>:<span style={{color:'#fff',fontSize:13,fontWeight:600,textTransform:l==='Payout Method'||l==='Schedule'?'capitalize':'none'}}>{v}</span>}</div>)}
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,margin:'20px 0 10px'}}>Account Details</p>
         <div style={{background:'rgba(255,255,255,.03)',borderRadius:12,padding:'4px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Admin Notes (internal)</p>
@@ -684,18 +691,20 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
     <div style={{background:CARD,borderRadius:16,border:'1px solid rgba(255,255,255,0.06)',overflow:'auto'}}>
-      <table><thead><tr><th>Date</th><th>Employee</th><th>Method</th><th>Amount</th><th>Fee</th><th>Net</th><th>Status</th><th>Actions</th></tr></thead>
+      <table><thead><tr><th>Requested</th><th>Employee</th><th>Payout</th><th>Gross Earned</th><th>SnapTip Fee</th><th>Available Balance</th><th>Withdrawal</th><th>Status</th><th>Processed</th><th>Actions</th></tr></thead>
       <tbody>{filtered.map(w=><tr key={w.id}>
         <td style={{fontSize:12,whiteSpace:'nowrap'}}>{fmtDate(w.created_at)}</td>
         <td><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:30,height:30,borderRadius:'50%',background:'rgba(0,255,204,.12)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{w.photo_base64||w.profile_image_url?<img src={w.photo_base64||w.profile_image_url} style={{width:30,height:30,objectFit:'cover'}} alt=""/>:<span style={{fontSize:12,fontWeight:700,color:ACCENT}}>{(w.full_name||'?')[0]}</span>}</div><div><div style={{fontWeight:700,color:'#fff',fontSize:13}}>{w.full_name}</div><div style={{fontSize:11,color:'rgba(255,255,255,.3)',display:'flex',alignItems:'center',gap:4}}>@{w.username} <CountryBadge country={w.country}/></div></div></div></td>
-        <td style={{fontSize:12,color:'rgba(255,255,255,.6)',maxWidth:140}}>{w.method}</td>
-        <td style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.amount,w.currency)}</td>
-        <td style={{color:YELLOW}}>{fmtMoney(w.fee,w.currency)}</td>
-        <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(w.net_amount,w.currency)}</td>
+        <td style={{fontSize:12,color:'rgba(255,255,255,.6)',maxWidth:150}}><div>{w.method}</div><div style={{fontSize:11,color:ACCENT,textTransform:'capitalize'}}>{w.payout_method||'wise_manual'} / {w.payout_schedule||'manual'}</div></td>
+        <td style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.gross_earned,w.currency)}</td>
+        <td style={{color:ACCENT}}>{fmtMoney(w.platform_fee_amount||w.fee,w.currency)}</td>
+        <td style={{fontWeight:700,color:GREEN}}>{fmtMoney(w.net_balance,w.currency)}</td>
+        <td><div style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.amount,w.currency)}</div><div style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Net {fmtMoney(w.net_payout_amount||w.net_amount,w.currency)}</div></td>
         <td><StatusBadge status={w.status}/></td>
-        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_notes||'');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#1a1a1a' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
+        <td style={{fontSize:12,whiteSpace:'nowrap'}}>{w.processed_at?fmtDate(w.processed_at):'-'}</td>
+        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_note||'');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#1a1a1a' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
       </tr>)}
-      {!filtered.length&&<tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
+      {!filtered.length&&<tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
       </tbody></table>
     </div>}
   </>);
@@ -735,12 +744,11 @@ function TransactionsSection({showToast,onLogout,selectedCurrency}){
   const fetchT=useCallback(()=>{setLoading(true);api().get('/transactions',{params:{range}}).then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[range,onLogout]);
   useEffect(()=>{fetchT()},[fetchT]);
   const filtered=useMemo(()=>(data.transactions||[]).filter(t=>t.currency===selectedCurrency),[data.transactions,selectedCurrency]);
-  const exportCSV=()=>{const h='Date,Employee,Username,Amount,Currency,Commission,Method\n';const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${(Number(t.amount)*.1).toFixed(2)},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')};
+  const exportCSV=()=>{const h='Date,Employee,Username,Gross,Currency,Payout Method,Method\n';const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${t.payout_method||''},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')};
   return(<>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}><h1 style={{fontSize:26,fontWeight:800,color:'#fff'}}>Transactions</h1><span style={{background:'rgba(0,255,204,.1)',border:'1px solid rgba(0,255,204,.3)',borderRadius:50,padding:'5px 14px',fontSize:13,fontWeight:700,color:ACCENT}}>{selectedCurrency} Market</span></div>
     <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>VOLUME ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0),selectedCurrency)}</p></div>
-      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>COMMISSION ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:PURPLE}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0)*0.1,selectedCurrency)}</p></div>
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TRANSACTIONS</p><p style={{fontSize:20,fontWeight:800,color:'#fff'}}>{filtered.length}</p></div>
     </div>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
@@ -749,12 +757,12 @@ function TransactionsSection({showToast,onLogout,selectedCurrency}){
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
     <div style={{background:CARD,borderRadius:16,border:`1px solid ${BORDER}`,overflow:'auto'}}>
-      <table><thead><tr><th>Date</th><th>Employee</th><th>Amount</th><th>Commission</th><th>Method</th></tr></thead>
+      <table><thead><tr><th>Date</th><th>Employee</th><th>Gross Tip</th><th>Payout</th><th>Method</th></tr></thead>
       <tbody>{filtered.map((t,i)=><tr key={i}>
         <td style={{fontSize:12}}>{fmtDate(t.created_at)}</td>
         <td><span style={{fontWeight:600,color:'#fff'}}>{t.full_name}</span> <span style={{color:'rgba(255,255,255,.3)'}}>@{t.username}</span></td>
         <td style={{fontWeight:700,color:'#fff'}}><CurrencyPill currency={t.currency} amount={t.amount}/></td>
-        <td><CurrencyPill currency={t.currency} amount={Number(t.amount)*.1}/></td>
+        <td><Badge text={t.payout_method||'wise_manual'} bg='rgba(0,255,204,.08)' color={ACCENT}/></td>
         <td><Badge text={t.payment_method||'mock'} bg='rgba(255,255,255,.06)' color='rgba(255,255,255,.5)'/></td>
       </tr>)}
       {!filtered.length&&<tr><td colSpan={5} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No {selectedCurrency} transactions for this period</td></tr>}

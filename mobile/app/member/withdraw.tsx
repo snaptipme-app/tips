@@ -71,7 +71,7 @@ const MOROCCAN_METHODS: MainMethod[] = [
     subMethods: [
       {
         id: 'cashplus_agency', label: 'Cash Plus Agency', sublabel: 'Pick up cash at any agency',
-        fee: 35, min: 400, processingTime: '1 business day',
+        fee: 35, min: 100, processingTime: '1 business day',
         fields: [
           { key: 'full_name', label: 'Full Name (as in ID)', placeholder: 'Your full legal name', keyboard: 'default' },
           { key: 'cin', label: 'CIN (ID Number)', placeholder: 'AB123456', keyboard: 'default' },
@@ -80,7 +80,7 @@ const MOROCCAN_METHODS: MainMethod[] = [
       },
       {
         id: 'cashplus_app', label: 'Cash Plus App', sublabel: 'Receive in your Cash Plus wallet',
-        fee: 0, min: 400, processingTime: '1 business day',
+        fee: 0, min: 100, processingTime: '1 business day',
         fields: [
           { key: 'phone', label: 'Phone (linked to app)', placeholder: '06XXXXXXXX', keyboard: 'phone-pad', phoneValidation: true },
           { key: 'contact_phone', label: 'Contact Phone', placeholder: '06XXXXXXXX', keyboard: 'phone-pad', phoneValidation: true },
@@ -94,7 +94,7 @@ const MOROCCAN_METHODS: MainMethod[] = [
     subMethods: [
       {
         id: 'wafacash_agency', label: 'Wafacash Agency', sublabel: 'Pick up cash at any agency',
-        fee: 35, min: 400, processingTime: '1 business day',
+        fee: 35, min: 100, processingTime: '1 business day',
         fields: [
           { key: 'full_name', label: 'Full Name (as in ID)', placeholder: 'Your full legal name', keyboard: 'default' },
           { key: 'cin', label: 'CIN (ID Number)', placeholder: 'AB123456', keyboard: 'default' },
@@ -103,7 +103,7 @@ const MOROCCAN_METHODS: MainMethod[] = [
       },
       {
         id: 'wafacash_jibi', label: 'Wafacash Jibi App', sublabel: 'Receive in your Jibi wallet',
-        fee: 0, min: 400, processingTime: '1 business day',
+        fee: 0, min: 100, processingTime: '1 business day',
         fields: [
           { key: 'phone', label: 'Phone (linked to Jibi)', placeholder: '06XXXXXXXX', keyboard: 'phone-pad', phoneValidation: true },
           { key: 'contact_phone', label: 'Contact Phone', placeholder: '06XXXXXXXX', keyboard: 'phone-pad', phoneValidation: true },
@@ -221,7 +221,7 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }
   failed: { color: RED, bg: 'rgba(239,68,68,0.12)', label: 'rejected' },
 };
 
-interface Withdrawal { id: number; amount: number; fee: number; net_amount: number; method: string; status: string; created_at: string; }
+interface Withdrawal { id: number; amount: number; fee: number; platform_fee_amount?: number; net_amount: number; method: string; status: string; created_at: string; }
 
 interface StripeConnectStatus {
   connected: boolean;
@@ -230,6 +230,8 @@ interface StripeConnectStatus {
   payoutsEnabled: boolean;
   requirementsCurrentlyDue: string[];
 }
+
+type PayoutSchedule = 'weekly' | 'monthly' | 'manual';
 
 /* ======================================================================
    MAIN COMPONENT
@@ -263,6 +265,15 @@ export default function MemberWithdraw() {
   const payoutCfg = getPayoutConfig(countryCode);
   const minWithdrawal = payoutCfg.minAmount;
   const payoutMethod = useMemo(() => getPayoutMethod(userCountry, minWithdrawal), [userCountry, minWithdrawal]);
+  const stripePayoutMethod = useMemo<SubMethod>(() => ({
+    id: 'stripe_connect',
+    label: 'Stripe Express',
+    sublabel: 'Payout to your connected Stripe Express account',
+    fee: 0,
+    min: minWithdrawal,
+    processingTime: 'Based on your payout schedule',
+    fields: [],
+  }), [minWithdrawal]);
   const isEWallet = !!EWALLET_NAMES[userCountry];
 
   const [balance, setBalance] = useState(user?.balance ?? 0);
@@ -283,7 +294,9 @@ export default function MemberWithdraw() {
   const [submitting, setSubmitting] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectStatus, setConnectStatus] = useState<StripeConnectStatus | null>(null);
+  const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('manual');
   const connectStatusCheckPending = useRef(false);
+  const initialConnectCheckDone = useRef(false);
 
   // Success modal
   const [showSuccess, setShowSuccess] = useState(false);
@@ -298,6 +311,7 @@ export default function MemberWithdraw() {
       const b = data.employee?.balance ?? data.balance ?? 0;
       setBalance(b);
       setWithdrawals(data.recent_withdrawals ?? []);
+      if (data.employee?.payout_schedule) setPayoutSchedule(data.employee.payout_schedule);
     } catch {} finally { setLoading(false); setRefreshing(false); }
   }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -357,6 +371,13 @@ export default function MemberWithdraw() {
   }, [checkStripeConnectStatus, countryCode, showToast]);
 
   useEffect(() => {
+    if (payoutCfg.payoutMethod === 'stripe_connect' && !initialConnectCheckDone.current) {
+      initialConnectCheckDone.current = true;
+      checkStripeConnectStatus();
+    }
+  }, [checkStripeConnectStatus, payoutCfg.payoutMethod]);
+
+  useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active' && connectStatusCheckPending.current) {
         checkStripeConnectStatus().finally(() => {
@@ -367,6 +388,29 @@ export default function MemberWithdraw() {
     });
     return () => sub.remove();
   }, [checkStripeConnectStatus]);
+
+  const updatePayoutSchedule = async (nextSchedule: PayoutSchedule) => {
+    if (payoutCfg.payoutMethod !== 'stripe_connect' && nextSchedule !== 'manual') {
+      showToast('Manual payouts are processed after review.', 'info');
+      return;
+    }
+    setPayoutSchedule(nextSchedule);
+    try {
+      const { data } = await api.patch('/withdrawals/settings', { payout_schedule: nextSchedule });
+      setPayoutSchedule(data.payout_schedule || nextSchedule);
+    } catch (e: any) {
+      setPayoutSchedule('manual');
+      showToast(e.response?.data?.error || 'Could not update payout schedule.', 'error');
+    }
+  };
+
+  const openStripePayout = () => {
+    if (!connectStatus?.detailsSubmitted || !connectStatus?.payoutsEnabled) {
+      showToast('Complete Stripe Express setup before requesting payouts.', 'error');
+      return;
+    }
+    openForm(stripePayoutMethod);
+  };
 
   const openManualPayout = () => {
     if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }
@@ -394,9 +438,10 @@ export default function MemberWithdraw() {
     if (fieldErrors[key]) setFieldErrors(prev => ({ ...prev, [key]: '' }));
   };
 
-  /* -- Wise fee calc -- */
-  const wiseFee = !isMorocco && parseFloat(amount) > 0 ? parseFloat(amount) * 0.005 : 0;
-  const effectiveFee = isMorocco ? (activeMethod?.fee ?? 0) : wiseFee;
+  /* -- SnapTip platform fee calc, applied only when withdrawing. */
+  const withdrawalAmount = parseFloat(amount) > 0 ? parseFloat(amount) : 0;
+  const effectiveFee = Math.round(withdrawalAmount * 0.10 * 100) / 100;
+  const receiveAmount = Math.max(0, Math.round((withdrawalAmount - effectiveFee) * 100) / 100);
 
   /* -- Validation -- */
   const validate = (): boolean => {
@@ -434,8 +479,8 @@ export default function MemberWithdraw() {
     if (!validate() || !activeMethod) return;
     setSubmitting(true);
     const amt = parseFloat(amount);
-    const feeToStore = isMorocco ? activeMethod.fee : Math.round(wiseFee * 100) / 100;
-    const net = amt - feeToStore;
+    const feeToStore = Math.round(amt * 0.10 * 100) / 100;
+    const net = Math.max(0, Math.round((amt - feeToStore) * 100) / 100);
 
     const details: Record<string, string> = {};
     for (const f of activeMethod.fields) {
@@ -443,7 +488,7 @@ export default function MemberWithdraw() {
     }
     details['Country'] = userCountry;
     details['Currency'] = cur;
-    if (!isMorocco) details['Wise Fee'] = `${feeToStore.toFixed(2)} ${cur}`;
+    details['SnapTip Fee'] = `${feeToStore.toFixed(2)} ${cur}`;
 
     const contactPhone = (fieldValues['contact_phone'] || '').trim();
 
@@ -452,6 +497,7 @@ export default function MemberWithdraw() {
         amount: amt,
         method: activeMethod.label,
         payout_type: activeMethod.id,
+        payout_schedule: payoutSchedule,
         country: userCountry,
         account_details: details,
         contact_phone: contactPhone,
@@ -470,12 +516,15 @@ export default function MemberWithdraw() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
   const connectReady = Boolean(connectStatus?.detailsSubmitted || connectStatus?.payoutsEnabled);
+  const stripePayoutReady = Boolean(connectStatus?.detailsSubmitted && connectStatus?.payoutsEnabled);
   const connectButtonLabel = connectLoading
     ? 'Opening Stripe...'
-    : connectReady
-      ? 'Payout setup connected'
-      : connectStatus
+    : stripePayoutReady
+      ? 'Request payout'
+      : connectReady
         ? 'Continue setup'
+      : connectStatus
+        ? 'Setup incomplete'
         : 'Set up automatic payouts';
 
   /* ======================================================================
@@ -522,6 +571,19 @@ export default function MemberWithdraw() {
 
         <View style={{ paddingHorizontal: 20 }}>
 
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.045)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, marginTop: 18, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Ionicons name="information-circle-outline" size={16} color={ACCENT} />
+              <Text style={{ fontSize: 13, fontWeight: '800', color: ACCENT }}>Payout summary</Text>
+            </View>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18 }}>
+              SnapTip fee: 10% is deducted only when you withdraw.
+            </Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18, marginTop: 4 }}>
+              Minimum withdrawal: {minWithdrawal.toLocaleString(locale)} {cur}.
+            </Text>
+          </View>
+
           {/* === Payment Methods === */}
           <Text style={sectionTitle}>{isMorocco ? t('select_payment_method') : t('transfer_method')}</Text>
 
@@ -536,8 +598,8 @@ export default function MemberWithdraw() {
                   {m.subMethods && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{t('tap_to_choose_option')}</Text>}
                   {m.directMethod && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <View style={{ backgroundColor: m.directMethod.fee > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(0,200,150,0.1)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: m.directMethod.fee > 0 ? YELLOW : GREEN }}>{m.directMethod.fee > 0 ? `${t('fee')} ${m.directMethod.fee} MAD` : t('no_fee')}</Text>
+                      <View style={{ backgroundColor: 'rgba(0,255,204,0.08)', borderRadius: 50, paddingHorizontal: 8, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: ACCENT }}>SnapTip 10%</Text>
                       </View>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('min')} {m.directMethod.min} MAD</Text>
                     </View>
@@ -553,11 +615,33 @@ export default function MemberWithdraw() {
                   <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>Automatic payouts</Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
-                  Connect a Stripe Express account for payouts in {userCountry}. You can return here to continue setup any time.
+                  {stripePayoutReady
+                    ? 'Stripe Express is connected and payouts are enabled.'
+                    : 'Connect a Stripe Express account before requesting payouts.'}
                 </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                  <Text style={{ fontSize: 11, color: connectStatus?.detailsSubmitted ? GREEN : YELLOW, fontWeight: '700' }}>
+                    {connectStatus?.detailsSubmitted ? 'Connected' : 'Setup incomplete'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: connectStatus?.payoutsEnabled ? GREEN : YELLOW, fontWeight: '700' }}>
+                    {connectStatus?.payoutsEnabled ? 'Payouts enabled' : 'Payouts disabled'}
+                  </Text>
+                </View>
               </View>
 
-              <TouchableOpacity onPress={startStripeConnect} disabled={connectLoading} activeOpacity={0.85}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '700', marginBottom: 8 }}>Payout schedule</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {(['weekly', 'monthly', 'manual'] as PayoutSchedule[]).map(schedule => (
+                    <TouchableOpacity key={schedule} onPress={() => updatePayoutSchedule(schedule)} activeOpacity={0.85}
+                      style={{ flex: 1, height: 38, borderRadius: 12, borderWidth: 1, borderColor: payoutSchedule === schedule ? 'rgba(0,255,204,0.45)' : BORDER, backgroundColor: payoutSchedule === schedule ? 'rgba(0,255,204,0.12)' : 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 12, color: payoutSchedule === schedule ? ACCENT : 'rgba(255,255,255,0.48)', fontWeight: '800', textTransform: 'capitalize' }}>{schedule}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={stripePayoutReady ? openStripePayout : startStripeConnect} disabled={connectLoading} activeOpacity={0.85}
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 20, borderWidth: 1.5, borderColor: connectReady ? 'rgba(0,200,150,0.35)' : BORDER, flexDirection: 'row', alignItems: 'center', gap: 16, opacity: connectLoading ? 0.75 : 1 }}>
                 <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: connectReady ? 'rgba(0,200,150,0.12)' : 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
                   <Ionicons name={connectReady ? 'checkmark-circle-outline' : 'card-outline'} size={26} color={connectReady ? GREEN : ACCENT} />
@@ -580,6 +664,9 @@ export default function MemberWithdraw() {
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18 }}>
                   Automatic payouts are not available for this country yet. You can continue with manual payout review.
+                </Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
+                  Manual payouts are processed after review.
                 </Text>
               </View>
 
@@ -607,7 +694,10 @@ export default function MemberWithdraw() {
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
                   {isEWallet
                     ? `Funds sent directly to your ${EWALLET_NAMES[userCountry]} wallet via Wise Business. Processing: ${payoutMethod.processingTime}.`
-                    : `Transfers processed via Wise Business. Processing: ${payoutMethod.processingTime}. Wise fees (~0.5%) may apply.`}
+                    : `Manual payouts are processed via Wise Business. Processing: ${payoutMethod.processingTime}.`}
+                </Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
+                  Manual payouts are reviewed and processed by SnapTip.
                 </Text>
               </View>
 
@@ -645,7 +735,7 @@ export default function MemberWithdraw() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{w.method}</Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(w.created_at)}</Text>
-                      {Number(w.fee) > 0 && <Text style={{ fontSize: 11, color: YELLOW, marginTop: 1 }}>{t('fee')}: {Number(w.fee).toFixed(2)} {cur}</Text>}
+                      {Number(w.platform_fee_amount || w.fee) > 0 && <Text style={{ fontSize: 11, color: YELLOW, marginTop: 1 }}>SnapTip fee: {Number(w.platform_fee_amount || w.fee).toFixed(2)} {cur}</Text>}
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>-{Number(w.amount).toFixed(2)} {cur}</Text>
@@ -680,16 +770,16 @@ export default function MemberWithdraw() {
                 {subPickerMethod.subMethods?.map(sm => (
                   <TouchableOpacity key={sm.id} onPress={() => openForm(sm)} activeOpacity={0.85}
                     style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 18, marginBottom: 10, borderWidth: 1.5, borderColor: BORDER, gap: 14 }}>
-                    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: sm.fee > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(0,200,150,0.08)', justifyContent: 'center', alignItems: 'center' }}>
-                      <Ionicons name={sm.fee > 0 ? 'storefront-outline' : 'phone-portrait-outline'} size={22} color={sm.fee > 0 ? YELLOW : GREEN} />
+                    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(0,200,150,0.08)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name="phone-portrait-outline" size={22} color={GREEN} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{sm.label}</Text>
                       <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{sm.sublabel}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <View style={{ backgroundColor: sm.fee > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(0,200,150,0.12)', borderRadius: 50, paddingHorizontal: 10, paddingVertical: 3 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: sm.fee > 0 ? YELLOW : GREEN }}>{sm.fee > 0 ? `${sm.fee} MAD` : t('no_fee')}</Text>
+                      <View style={{ backgroundColor: 'rgba(0,255,204,0.08)', borderRadius: 50, paddingHorizontal: 10, paddingVertical: 3 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT }}>10%</Text>
                       </View>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('min')} {sm.min} MAD</Text>
                     </View>
@@ -745,19 +835,17 @@ export default function MemberWithdraw() {
                   {parseFloat(amount) > 0 && (
                     <View style={{ backgroundColor: 'rgba(0,200,150,0.06)', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: 'rgba(0,200,150,0.15)', marginBottom: 20 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={summaryLabelStyle}>{t('requested')}</Text>
+                        <Text style={summaryLabelStyle}>Withdraw</Text>
                         <Text style={summaryValueStyle}>{parseFloat(amount || '0').toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={summaryLabelStyle}>{isMorocco ? t('processing_fee') : t('wise_fee')}</Text>
-                        <Text style={[summaryValueStyle, { color: effectiveFee > 0 ? YELLOW : GREEN }]}>
-                          {effectiveFee > 0 ? `-${effectiveFee.toFixed(2)} ${cur}` : t('free')}
-                        </Text>
+                        <Text style={summaryLabelStyle}>SnapTip fee (10%)</Text>
+                        <Text style={[summaryValueStyle, { color: YELLOW }]}>-{effectiveFee.toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10 }} />
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{isMorocco ? t('you_will_receive') : t('estimated_received')}</Text>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>{Math.max(0, parseFloat(amount || '0') - effectiveFee).toFixed(2)} {cur}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>You receive</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>{receiveAmount.toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={summaryLabelStyle}>{t('payment_method_label')}</Text>
@@ -767,7 +855,7 @@ export default function MemberWithdraw() {
                         <Text style={summaryLabelStyle}>{t('processing_time')}</Text>
                         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>{activeMethod.processingTime}</Text>
                       </View>
-                      {!isMorocco && <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center', fontStyle: 'italic' }}>{t('wise_fee_note')}</Text>}
+                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center', fontStyle: 'italic' }}>Your full withdrawal amount is deducted from balance.</Text>
                     </View>
                   )}
 
@@ -818,7 +906,7 @@ export default function MemberWithdraw() {
                     <Text style={summaryLabelStyle}>{t('requested')}</Text><Text style={summaryValueStyle}>{lastResult.amount.toFixed(2)} {lastResult.currency}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={summaryLabelStyle}>{t('fee')}</Text><Text style={[summaryValueStyle, { color: YELLOW }]}>{lastResult.fee.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={summaryLabelStyle}>SnapTip fee (10%)</Text><Text style={[summaryValueStyle, { color: YELLOW }]}>{lastResult.fee.toFixed(2)} {lastResult.currency}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{t('you_receive')}</Text><Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{lastResult.net.toFixed(2)} {lastResult.currency}</Text>

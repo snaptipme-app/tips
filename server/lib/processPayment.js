@@ -4,6 +4,11 @@ const {
   buildPaymentConfirmationEmail,
   buildTipReceivedEmail,
 } = require('../utils/sendEmail');
+const { parseMoneyToMinor, minorToMoneyString } = require('./money');
+const {
+  getEffectivePayoutConfig,
+  getEffectivePayoutMethod,
+} = require('./countryPayoutConfig');
 
 /**
  * Sends an Expo push notification without adding any npm dependency.
@@ -51,7 +56,7 @@ function sendExpoPush(pushToken, title, body, data) {
 }
 
 /**
- * processSuccessfulPayment — Core payment processing function
+ * processSuccessfulPayment - Core payment processing function
  *
  * This is a PURE DATABASE FUNCTION. It knows nothing about HTTP, Express,
  * or request/response objects. It performs exactly 3 operations:
@@ -71,10 +76,16 @@ function sendExpoPush(pushToken, title, body, data) {
  * @param {string}  currency      - Currency code (e.g. 'MAD', 'EUR', 'USD', 'AED')
  * @returns {object} The created payment object
  */
-async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD', rating = null) {
+async function processSuccessfulPayment(pool, employeeId, amount, method, transactionId, touristEmail, currency = 'MAD', rating = null, options = {}) {
   console.log(`[DEBUG processPayment] employeeId=${employeeId} amount=${amount} currency=${currency} method=${method} rating=${rating}`);
 
   const safeRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
+  const grossMinor = parseMoneyToMinor(amount);
+  if (!grossMinor) {
+    throw new Error('Invalid payment amount.');
+  }
+  const grossAmount = minorToMoneyString(grossMinor);
+  const zeroAmount = '0.00';
 
   if (transactionId) {
     const { rows: existingRows } = await pool.query(
@@ -87,32 +98,79 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
     }
   }
 
-  // 1. Insert payment record (with currency + rating for full traceability)
+  const { rows: employeeRows } = await pool.query(
+    `SELECT id, business_id, country, currency, payout_method
+     FROM employees
+     WHERE id = $1`,
+    [employeeId]
+  );
+  const employee = employeeRows[0];
+  const payoutConfig = getEffectivePayoutConfig({
+    countryName: employee?.country,
+    currency: employee?.currency || currency,
+  });
+  const storedPayoutMethod = ['stripe_connect', 'wise_manual'].includes(employee?.payout_method)
+    ? employee.payout_method
+    : null;
+  const payoutMethod = storedPayoutMethod || getEffectivePayoutMethod(payoutConfig);
+  const originalAmount = options.originalAmount || amount;
+  const originalCurrency = options.originalCurrency || currency;
+
+  // 1. Insert gross payment record. SnapTip commission is calculated later, at withdrawal time.
   const { rows: paymentRows } = await pool.query(
-    `INSERT INTO payments (employee_id, amount, payment_method, status, stripe_payment_id, tourist_email, currency, rating)
-     VALUES ($1, $2, $3, 'completed', $4, $5, $6, $7) RETURNING *`,
-    [employeeId, amount, method, transactionId || null, touristEmail || null, currency, safeRating]
+    `INSERT INTO payments (
+       employee_id, business_id, amount, gross_amount, platform_fee_amount,
+       platform_fee_percent, net_amount, currency, original_currency, original_amount,
+       payment_method, status, stripe_payment_id, stripe_payment_intent_id,
+       tourist_email, rating, payout_method, fee
+     )
+     VALUES (
+       $1, $2, $3, $4, $5,
+       $6, $7, $8, $9, $10,
+       $11, 'completed', $12, $12,
+       $13, $14, $15, $5
+     ) RETURNING *`,
+    [
+      employeeId,
+      employee?.business_id || null,
+      grossAmount,
+      grossAmount,
+      zeroAmount,
+      0,
+      grossAmount,
+      currency,
+      originalCurrency,
+      originalAmount,
+      method,
+      transactionId || null,
+      touristEmail || null,
+      safeRating,
+      payoutMethod,
+    ]
   );
   const payment = paymentRows[0];
-  console.log(`[DEBUG processPayment] Payment inserted: id=${payment?.id}, currency=${payment?.currency}`);
+  console.log(`[DEBUG processPayment] Payment inserted: id=${payment?.id}, gross=${grossAmount}, currency=${payment?.currency}`);
 
-  // 2. Update employee balance and total_tips
+  // 2. Update employee balance by the full gross tip. SnapTip fee is taken on withdrawal.
   await pool.query(
-    'UPDATE employees SET balance = balance + $1, total_tips = total_tips + $1 WHERE id = $2',
-    [amount, employeeId]
+    `UPDATE employees
+     SET balance = ROUND((COALESCE(balance, 0)::numeric + $1::numeric), 2)::real,
+         total_tips = ROUND((COALESCE(total_tips, 0)::numeric + $1::numeric), 2)::real
+     WHERE id = $2`,
+    [grossAmount, employeeId]
   );
 
-  // 3. Insert into tips table (keeps existing dashboard/analytics working)
+  // 3. Insert gross tip into tips table (keeps existing dashboard/analytics working)
   await pool.query(
     "INSERT INTO tips (employee_id, amount, status, rating) VALUES ($1, $2, 'completed', $3)",
-    [employeeId, amount, safeRating]
+    [employeeId, Number(grossAmount), safeRating]
   );
-  // Ensure rating column exists (idempotent — only runs if column is missing)
+  // Ensure rating column exists (idempotent - only runs if column is missing)
   pool.query(
     'ALTER TABLE tips ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)'
   ).catch(() => {});
 
-  // 4. Send push notification + emails (fire-and-forget — never blocks payment flow)
+  // 4. Send push notification + emails (fire-and-forget - never blocks payment flow)
   try {
     const { rows: empRows } = await pool.query(
       `SELECT e.push_token, e.currency, e.full_name, e.email, b.business_name
@@ -127,21 +185,27 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       sendExpoPush(
         emp.push_token,
         'New Tip Received! 💰',
-        `You received ${amount} ${notifCurrency}!`,
-        { type: 'tip', amount, currency: notifCurrency }
+        `You received ${grossAmount} ${notifCurrency}.`,
+        {
+          type: 'tip',
+          amount: Number(grossAmount),
+          grossAmount: Number(grossAmount),
+          platformFeeAmount: 0,
+          currency: notifCurrency,
+        }
       );
-      console.log(`[push] Notification queued for employee_id=${employeeId} amount=${amount} ${notifCurrency}`);
+      console.log(`[push] Notification queued for employee_id=${employeeId} gross=${grossAmount} ${notifCurrency}`);
     } else {
-      console.log(`[push] No push_token for employee_id=${employeeId} — skipping notification`);
+      console.log(`[push] No push_token for employee_id=${employeeId} - skipping notification`);
     }
 
     // 4a. Email the employee that they received a tip.
     if (emp?.email) {
       sendEmail(
         emp.email,
-        `You received a tip — ${Number(amount).toFixed(2)} ${currency}`,
+        `You received a tip - ${Number(grossAmount).toFixed(2)} ${currency}`,
         buildTipReceivedEmail({
-          amount,
+          amount: Number(grossAmount),
           currency,
           dashboardUrl: 'https://snaptip.me',
         })
@@ -152,9 +216,9 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
     if (touristEmail) {
       sendEmail(
         touristEmail,
-        `Your SnapTip receipt — ${Number(amount).toFixed(2)} ${currency}`,
+        `Your SnapTip receipt - ${Number(grossAmount).toFixed(2)} ${currency}`,
         buildPaymentConfirmationEmail({
-          amount,
+          amount: Number(grossAmount),
           currency,
           employeeName: emp?.full_name || null,
           businessName: emp?.business_name || null,

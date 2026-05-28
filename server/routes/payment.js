@@ -248,7 +248,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           paymentIntent.id,
           touristEmail,
           currency,
-          safeRating
+          safeRating,
+          {
+            originalAmount: amount,
+            originalCurrency: currency,
+          }
         );
 
         const { rows: balanceRows } = await pool.query(
@@ -257,7 +261,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         );
         console.log('[payment/webhook] Employee balance updated', {
           employeeId,
-          amount,
+          grossAmount: amount,
           currency,
           balance: balanceRows[0]?.balance,
           totalTips: balanceRows[0]?.total_tips,
