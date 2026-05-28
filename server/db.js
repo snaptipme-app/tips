@@ -181,6 +181,9 @@ async function initDB() {
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_onboarding_status TEXT",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS minimum_withdrawal_amount NUMERIC(12,2)",
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS payout_schedule TEXT DEFAULT 'manual'",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS auto_payout_enabled BOOLEAN DEFAULT false",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS next_payout_at TIMESTAMP",
+      "ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_auto_payout_at TIMESTAMP",
       // Phase 6.1 — GDPR soft-delete. NULL = active. Set to NOW() on delete-account;
       // hard-purged after 30 days by scripts/purge-deleted-accounts.js.
       "ALTER TABLE employees ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
@@ -241,6 +244,8 @@ async function initDB() {
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details TEXT",
       // Phase 4.2: encrypted IBAN/RIB/wallet identifiers (see lib/cryptoFields.js).
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS account_details_enc BYTEA",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS withdrawal_source TEXT DEFAULT 'manual'",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS schedule_period_key TEXT",
       "ALTER TABLE tips ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'MAD'",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS required_country TEXT",
       "ALTER TABLE invitations ADD COLUMN IF NOT EXISTS is_valid BOOLEAN DEFAULT TRUE",
@@ -251,6 +256,7 @@ async function initDB() {
       // deduction when admin approves. New rows are inserted with TRUE.
       "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS balance_deducted BOOLEAN DEFAULT TRUE",
       "CREATE UNIQUE INDEX IF NOT EXISTS withdrawals_idempotency_key_unique ON withdrawals(idempotency_key) WHERE idempotency_key IS NOT NULL",
+      "CREATE INDEX IF NOT EXISTS withdrawals_schedule_lookup_idx ON withdrawals(employee_id, withdrawal_source, schedule_period_key)",
     ];
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
@@ -280,6 +286,8 @@ async function initDB() {
     // Default settings
     await pool.query("UPDATE employees SET country = 'Morocco' WHERE country IS NULL");
     await pool.query("UPDATE employees SET currency = 'MAD' WHERE currency IS NULL");
+    await pool.query("UPDATE employees SET payout_schedule = 'manual' WHERE payout_schedule IS NULL OR payout_schedule NOT IN ('manual','weekly','monthly')");
+    await pool.query("UPDATE employees SET auto_payout_enabled = false WHERE auto_payout_enabled IS NULL");
 
     console.log('PostgreSQL Database initialized');
   } catch (err) {

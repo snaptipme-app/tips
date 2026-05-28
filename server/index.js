@@ -129,6 +129,9 @@ app.use((err, req, res, _next) => {
 // Initialize database and start server
 async function start() {
   await initDB();
+  if (typeof withdrawalRoutes.startScheduledPayoutScheduler === 'function') {
+    withdrawalRoutes.startScheduledPayoutScheduler();
+  }
   app.listen(PORT, () => {
     console.log(`🚀 SnapTip server running on http://localhost:${PORT}`);
   });

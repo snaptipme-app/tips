@@ -242,6 +242,13 @@ interface PayoutAvailability {
   reason: string;
 }
 
+interface WithdrawalPreferences {
+  payoutSchedule: PayoutSchedule;
+  autoPayoutEnabled: boolean;
+  nextPayoutAt: string | null;
+  lastAutoPayoutAt: string | null;
+}
+
 type PayoutSchedule = 'weekly' | 'monthly' | 'manual';
 
 /* ======================================================================
@@ -311,6 +318,10 @@ export default function MemberWithdraw() {
   const [connectStatus, setConnectStatus] = useState<StripeConnectStatus | null>(null);
   const [payoutAvailability, setPayoutAvailability] = useState<PayoutAvailability | null>(null);
   const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('manual');
+  const [preferences, setPreferences] = useState<WithdrawalPreferences | null>(null);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [draftSchedule, setDraftSchedule] = useState<PayoutSchedule>('manual');
+  const [savingPreferences, setSavingPreferences] = useState(false);
   const connectStatusCheckPending = useRef(false);
   const initialConnectCheckDone = useRef(false);
 
@@ -342,6 +353,7 @@ export default function MemberWithdraw() {
   const limitedAvailabilityMessage = stripeCapacityCapped
     ? stripeCapacityMessage
     : settlingMessage;
+  const preferenceLabel = payoutSchedule.charAt(0).toUpperCase() + payoutSchedule.slice(1);
 
   /* -- Data -- */
   const fetchPayoutAvailability = useCallback(async () => {
@@ -354,18 +366,32 @@ export default function MemberWithdraw() {
     }
   }, []);
 
+  const fetchPreferences = useCallback(async () => {
+    try {
+      const { data } = await api.get('/withdrawals/preferences');
+      setPreferences(data);
+      const nextSchedule = (data?.payoutSchedule || 'manual') as PayoutSchedule;
+      setPayoutSchedule(nextSchedule);
+      setDraftSchedule(nextSchedule);
+      return data as WithdrawalPreferences;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const [{ data }] = await Promise.all([
         api.get('/dashboard'),
         fetchPayoutAvailability(),
+        fetchPreferences(),
       ]);
       const b = data.employee?.balance ?? data.balance ?? 0;
       setBalance(b);
       setWithdrawals(data.recent_withdrawals ?? []);
       if (data.employee?.payout_schedule) setPayoutSchedule(data.employee.payout_schedule);
     } catch {} finally { setLoading(false); setRefreshing(false); }
-  }, [fetchPayoutAvailability]);
+  }, [fetchPayoutAvailability, fetchPreferences]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   /* -- Handlers -- */
@@ -444,18 +470,18 @@ export default function MemberWithdraw() {
     return () => sub.remove();
   }, [checkStripeConnectStatus, fetchPayoutAvailability]);
 
-  const updatePayoutSchedule = async (nextSchedule: PayoutSchedule) => {
-    if (payoutCfg.payoutMethod !== 'stripe_connect' && nextSchedule !== 'manual') {
-      showToast('Manual payouts are processed after review.', 'info');
-      return;
-    }
-    setPayoutSchedule(nextSchedule);
+  const saveWithdrawalPreferences = async () => {
+    setSavingPreferences(true);
     try {
-      const { data } = await api.patch('/withdrawals/settings', { payout_schedule: nextSchedule });
-      setPayoutSchedule(data.payout_schedule || nextSchedule);
+      const { data } = await api.put('/withdrawals/preferences', { payoutSchedule: draftSchedule });
+      setPreferences(data);
+      setPayoutSchedule((data?.payoutSchedule || draftSchedule) as PayoutSchedule);
+      setShowPreferences(false);
+      showToast('Withdrawal preferences saved.', 'success');
     } catch (e: any) {
-      setPayoutSchedule('manual');
-      showToast(e.response?.data?.error || 'Could not update payout schedule.', 'error');
+      showToast(e.response?.data?.error || 'Could not save preferences.', 'error');
+    } finally {
+      setSavingPreferences(false);
     }
   };
 
@@ -669,16 +695,21 @@ export default function MemberWithdraw() {
         <View style={{ paddingHorizontal: 20 }}>
 
           <View style={{ backgroundColor: 'rgba(255,255,255,0.045)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER, marginTop: 18, marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Ionicons name="information-circle-outline" size={16} color={ACCENT} />
-              <Text style={{ fontSize: 13, fontWeight: '800', color: ACCENT }}>Payout summary</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(0,255,204,0.08)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="options-outline" size={19} color={ACCENT} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Withdrawal preferences</Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', marginTop: 2 }}>
+                  Current value: <Text style={{ color: ACCENT, fontWeight: '800' }}>{preferenceLabel}</Text>
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => { setDraftSchedule(payoutSchedule); setShowPreferences(true); }} activeOpacity={0.85}
+                style={{ height: 34, paddingHorizontal: 14, borderRadius: 50, backgroundColor: 'rgba(0,255,204,0.1)', borderWidth: 1, borderColor: 'rgba(0,255,204,0.2)', justifyContent: 'center' }}>
+                <Text style={{ color: ACCENT, fontSize: 12, fontWeight: '800' }}>Edit</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18 }}>
-              SnapTip fee: 10% is deducted only when you withdraw.
-            </Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18, marginTop: 4 }}>
-              Minimum withdrawal: {minWithdrawal.toLocaleString(locale)} {cur}.
-            </Text>
           </View>
 
           {/* === Payment Methods === */}
@@ -716,6 +747,11 @@ export default function MemberWithdraw() {
                     ? 'Stripe Express is connected and payouts are enabled.'
                     : 'Connect a Stripe Express account before requesting payouts.'}
                 </Text>
+                {payoutSchedule !== 'manual' && (
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
+                    Automatic withdrawals are enabled. You can still withdraw manually anytime.
+                  </Text>
+                )}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                   <Text style={{ fontSize: 11, color: connectStatus?.detailsSubmitted ? GREEN : YELLOW, fontWeight: '700' }}>
                     {connectStatus?.detailsSubmitted ? 'Connected' : 'Setup incomplete'}
@@ -730,18 +766,6 @@ export default function MemberWithdraw() {
                     <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 17 }}>{limitedAvailabilityMessage}</Text>
                   </View>
                 )}
-              </View>
-
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '700', marginBottom: 8 }}>Payout schedule</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {(['weekly', 'monthly', 'manual'] as PayoutSchedule[]).map(schedule => (
-                    <TouchableOpacity key={schedule} onPress={() => updatePayoutSchedule(schedule)} activeOpacity={0.85}
-                      style={{ flex: 1, height: 38, borderRadius: 12, borderWidth: 1, borderColor: payoutSchedule === schedule ? 'rgba(0,255,204,0.45)' : BORDER, backgroundColor: payoutSchedule === schedule ? 'rgba(0,255,204,0.12)' : 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center' }}>
-                      <Text style={{ fontSize: 12, color: payoutSchedule === schedule ? ACCENT : 'rgba(255,255,255,0.48)', fontWeight: '800', textTransform: 'capitalize' }}>{schedule}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </View>
 
               <TouchableOpacity onPress={stripePayoutReady ? openStripePayout : startStripeConnect} disabled={connectLoading || stripeFundsSettling} activeOpacity={0.85}
@@ -771,6 +795,11 @@ export default function MemberWithdraw() {
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
                   Manual payouts are processed after review.
                 </Text>
+                {payoutSchedule !== 'manual' && (
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
+                    Automatic withdrawals are enabled. You can still withdraw manually anytime.
+                  </Text>
+                )}
               </View>
 
               <TouchableOpacity onPress={openManualPayout} activeOpacity={0.85}
@@ -802,6 +831,11 @@ export default function MemberWithdraw() {
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
                   Manual payouts are reviewed and processed by SnapTip.
                 </Text>
+                {payoutSchedule !== 'manual' && (
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
+                    Automatic withdrawals are enabled. You can still withdraw manually anytime.
+                  </Text>
+                )}
               </View>
 
               <TouchableOpacity onPress={openInternational} activeOpacity={0.85}
@@ -889,6 +923,59 @@ export default function MemberWithdraw() {
                   </TouchableOpacity>
                 ))}
               </>)}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* === Withdrawal Preferences === */}
+      <Modal visible={showPreferences} animationType="slide" transparent statusBarTranslucent>
+        <TouchableOpacity activeOpacity={1} onPress={() => !savingPreferences && setShowPreferences(false)}
+          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <View style={{ backgroundColor: SHEET_BG, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 42 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}><View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)' }} /></View>
+            <View style={{ paddingHorizontal: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(0,255,204,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="options-outline" size={21} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>Edit withdrawal preferences</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.42)', fontSize: 12, marginTop: 2 }}>Choose how you want to receive your earnings.</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowPreferences(false)} disabled={savingPreferences}><Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" /></TouchableOpacity>
+              </View>
+
+              {([
+                ['manual', 'Manual', 'Withdraw whenever you want once funds are available.'],
+                ['weekly', 'Weekly', 'Automatically withdraw available funds once per week.'],
+                ['monthly', 'Monthly', 'Automatically withdraw available funds once per month.'],
+              ] as [PayoutSchedule, string, string][]).map(([value, label, description]) => {
+                const selected = draftSchedule === value;
+                return (
+                  <TouchableOpacity key={value} onPress={() => setDraftSchedule(value)} activeOpacity={0.85}
+                    style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1.5, borderColor: selected ? 'rgba(0,255,204,0.45)' : BORDER, backgroundColor: selected ? 'rgba(0,255,204,0.10)' : 'rgba(255,255,255,0.04)' }}>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: selected ? ACCENT : 'rgba(255,255,255,0.24)', alignItems: 'center', justifyContent: 'center' }}>
+                      {selected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT }} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{label}</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, lineHeight: 17, marginTop: 3 }}>{description}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6, marginBottom: 16 }}>
+                SnapTip fee is applied only when a withdrawal is processed.
+              </Text>
+
+              <HapticButton onPress={saveWithdrawalPreferences} disabled={savingPreferences}>
+                <LinearGradient colors={['#4facfe', '#00ffcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={{ height: 54, borderRadius: 50, justifyContent: 'center', alignItems: 'center', opacity: savingPreferences ? 0.65 : 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>{savingPreferences ? 'Saving...' : 'Save preferences'}</Text>
+                </LinearGradient>
+              </HapticButton>
             </View>
           </View>
         </TouchableOpacity>

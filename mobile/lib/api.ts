@@ -57,6 +57,7 @@ export const apiRequest = async (
 export const api = {
   get:    (path: string)             => apiRequest(path, { method: 'GET' }),
   post:   (path: string, body?: any) => apiRequest(path, { method: 'POST',  body: body !== undefined ? JSON.stringify(body) : undefined }),
+  put:    (path: string, body: any)  => apiRequest(path, { method: 'PUT',   body: JSON.stringify(body) }),
   patch:  (path: string, body: any)  => apiRequest(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string)             => apiRequest(path, { method: 'DELETE' }),
 }
