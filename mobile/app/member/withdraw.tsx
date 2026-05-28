@@ -233,6 +233,9 @@ interface StripeConnectStatus {
 
 interface PayoutAvailability {
   totalBalance: number;
+  employeeSettledAvailable?: number;
+  stripeAvailableForCurrency?: number;
+  maxGrossWithdrawableFromStripe?: number;
   availableToWithdraw: number;
   pendingSettlement: number;
   currency: string;
@@ -325,15 +328,20 @@ export default function MemberWithdraw() {
     ? (payoutAvailability?.pendingSettlement ?? 0)
     : 0;
   const availabilityReason = payoutAvailability?.reason;
+  const stripeCapacityCapped = isStripeConnectPayout && availabilityReason === 'stripe_capacity_capped';
   const hasSettlingFunds = isStripeConnectPayout
     && pendingSettlement > 0
-    && (availabilityReason === 'funds_settling' || availabilityReason === 'partially_available');
+    && (availabilityReason === 'funds_settling' || availabilityReason === 'partially_available' || stripeCapacityCapped);
   const stripeFundsSettling = isStripeConnectPayout
     && Boolean(connectStatus?.detailsSubmitted && connectStatus?.payoutsEnabled)
     && balance > 0
     && availableToWithdraw <= 0;
   const activeAvailableToWithdraw = activeMethod?.id === 'stripe_connect' ? availableToWithdraw : balance;
   const settlingMessage = 'Your payout is not ready yet. Funds are still settling and will be available soon.';
+  const stripeCapacityMessage = 'Some settled funds are waiting for Stripe payout availability.';
+  const limitedAvailabilityMessage = stripeCapacityCapped
+    ? stripeCapacityMessage
+    : settlingMessage;
 
   /* -- Data -- */
   const fetchPayoutAvailability = useCallback(async () => {
@@ -462,7 +470,9 @@ export default function MemberWithdraw() {
     }
     if (availableToWithdraw < minWithdrawal) {
       showToast(hasSettlingFunds
-        ? `Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`
+        ? stripeCapacityCapped
+          ? stripeCapacityMessage
+          : `Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`
         : tx('minimum_withdrawal_is', { amount: minWithdrawal, currency: cur }), hasSettlingFunds ? 'info' : 'error');
       return;
     }
@@ -509,7 +519,9 @@ export default function MemberWithdraw() {
     if (amt < activeMethod.min) { showToast(tx('minimum_is_for_method', { amount: activeMethod.min, currency: cur, method: activeMethod.label }), 'error'); return false; }
     if (amt > balance) { showToast(t('insufficient_balance'), 'error'); return false; }
     if (activeMethod.id === 'stripe_connect' && amt > availableToWithdraw) {
-      showToast(`Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`, 'info');
+      showToast(stripeCapacityCapped
+        ? `Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. ${stripeCapacityMessage}`
+        : `Only ${formatMoney(availableToWithdraw)} ${cur} is currently available to withdraw. The rest is still settling.`, 'info');
       return false;
     }
 
@@ -646,7 +658,7 @@ export default function MemberWithdraw() {
                 </View>
                 {hasSettlingFunds && (
                   <View style={{ marginTop: 4, padding: 10, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.18)' }}>
-                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', lineHeight: 16 }}>{settlingMessage}</Text>
+                    <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', lineHeight: 16 }}>{limitedAvailabilityMessage}</Text>
                   </View>
                 )}
               </View>
@@ -714,8 +726,8 @@ export default function MemberWithdraw() {
                 </View>
                 {hasSettlingFunds && (
                   <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.18)' }}>
-                    <Text style={{ fontSize: 12, color: YELLOW, fontWeight: '800', marginBottom: 4 }}>Funds settling</Text>
-                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 17 }}>{settlingMessage}</Text>
+                    <Text style={{ fontSize: 12, color: YELLOW, fontWeight: '800', marginBottom: 4 }}>{stripeCapacityCapped ? 'Payout availability' : 'Funds settling'}</Text>
+                    <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 17 }}>{limitedAvailabilityMessage}</Text>
                   </View>
                 )}
               </View>
@@ -923,7 +935,7 @@ export default function MemberWithdraw() {
                   </View>
                   {activeMethod.id === 'stripe_connect' && hasSettlingFunds && (
                     <Text style={{ fontSize: 11, color: YELLOW, marginBottom: 14, lineHeight: 16 }}>
-                      Only {formatMoney(availableToWithdraw)} {cur} is currently available to withdraw. The rest is still settling.
+                      Only {formatMoney(availableToWithdraw)} {cur} is currently available to withdraw. {stripeCapacityCapped ? stripeCapacityMessage : 'The rest is still settling.'}
                     </Text>
                   )}
 

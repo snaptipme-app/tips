@@ -13,6 +13,7 @@ const {
 } = require('../utils/withdrawalEmails');
 const {
   PLATFORM_FEE_PERCENT,
+  ZERO_DECIMAL_CURRENCIES,
   parseMoneyToMinor,
   minorToMoneyString,
   normalizeCurrency,
@@ -41,13 +42,36 @@ function platformFeeMinorForAmount(amountMinor) {
   return (amountMinor * BigInt(PLATFORM_FEE_PERCENT) + 50n) / 100n;
 }
 
+function netMinorForGross(amountMinor) {
+  return amountMinor - platformFeeMinorForAmount(amountMinor);
+}
+
 function minMinor(a, b) {
   return a < b ? a : b;
+}
+
+function stripeMinorToMoneyMinor(amountMinor, currency) {
+  const safeMinor = BigInt(amountMinor || 0);
+  return ZERO_DECIMAL_CURRENCIES.has(normalizeCurrency(currency))
+    ? safeMinor * 100n
+    : safeMinor;
+}
+
+function maxGrossMinorFromStripeNetCapacity(netCapacityMinor) {
+  if (netCapacityMinor <= 0n) return 0n;
+  let grossMinor = (netCapacityMinor * 100n) / BigInt(100 - PLATFORM_FEE_PERCENT);
+  while (grossMinor > 0n && netMinorForGross(grossMinor) > netCapacityMinor) {
+    grossMinor -= 1n;
+  }
+  return grossMinor;
 }
 
 function serializePayoutAvailability(availability) {
   return {
     totalBalance: minorToNumber(availability.totalBalanceMinor),
+    employeeSettledAvailable: minorToNumber(availability.employeeSettledAvailableMinor ?? availability.availableToWithdrawMinor),
+    stripeAvailableForCurrency: minorToNumber(availability.stripeAvailableForCurrencyMinor ?? 0n),
+    maxGrossWithdrawableFromStripe: minorToNumber(availability.maxGrossWithdrawableFromStripeMinor ?? availability.availableToWithdrawMinor),
     availableToWithdraw: minorToNumber(availability.availableToWithdrawMinor),
     pendingSettlement: minorToNumber(availability.pendingSettlementMinor),
     currency: availability.currency,
@@ -116,6 +140,66 @@ async function getEmployeeSettledAvailableMinor(db, employeeId, currency) {
   return parseMoneyToMinor(rows[0]?.available) || 0n;
 }
 
+async function backfillLegacyCompletedWithdrawalAllocations(db, employeeId, currency) {
+  const ownsClient = db === pool;
+  const client = ownsClient ? await pool.connect() : db;
+  try {
+    if (ownsClient) await client.query('BEGIN');
+    await syncAvailablePaymentLedger(client, employeeId);
+    const { rows } = await client.query(
+      `SELECT w.id,
+              COALESCE(w.gross_requested_amount, w.amount, 0)::numeric AS gross_amount,
+              COALESCE((
+                SELECT SUM(a.amount)
+                FROM withdrawal_payment_allocations a
+                WHERE a.withdrawal_id = w.id AND a.released_at IS NULL
+              ), 0)::numeric AS allocated_amount
+       FROM withdrawals w
+       WHERE w.employee_id = $1
+         AND w.payout_method = 'stripe_connect'
+         AND COALESCE(w.balance_deducted, FALSE) = TRUE
+         AND (w.payout_status = 'completed' OR w.status = 'paid')
+         AND UPPER(COALESCE(w.currency, $2)) = $2
+       ORDER BY w.processed_at NULLS LAST, w.created_at, w.id
+       FOR UPDATE OF w`,
+      [employeeId, normalizeCurrency(currency)]
+    );
+
+    let allocatedCount = 0;
+    for (const withdrawal of rows) {
+      const grossMinor = parseMoneyToMinor(withdrawal.gross_amount) || 0n;
+      const allocatedMinor = parseMoneyToMinor(withdrawal.allocated_amount) || 0n;
+      const missingMinor = grossMinor - allocatedMinor;
+      if (missingMinor <= 0n) continue;
+
+      const reserved = await reserveSettledPaymentLedger(
+        client,
+        employeeId,
+        withdrawal.id,
+        missingMinor,
+        currency
+      );
+      if (reserved) allocatedCount += 1;
+      else {
+        console.warn('[withdrawals/legacy-allocation-backfill] insufficient settled ledger for completed withdrawal', {
+          employeeId,
+          withdrawalId: withdrawal.id,
+          missingAmount: minorToNumber(missingMinor),
+          currency: normalizeCurrency(currency),
+        });
+      }
+    }
+
+    if (ownsClient) await client.query('COMMIT');
+    return allocatedCount;
+  } catch (err) {
+    if (ownsClient) await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    if (ownsClient) client.release();
+  }
+}
+
 async function getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMethod, db = pool) {
   const currency = normalizeCurrency(employee.currency || payoutCfg.currency || 'USD');
   const totalBalanceMinor = parseMoneyToMinor(employee.balance) || 0n;
@@ -123,6 +207,9 @@ async function getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMetho
   if (payoutMethod !== 'stripe_connect') {
     return {
       totalBalanceMinor,
+      employeeSettledAvailableMinor: totalBalanceMinor,
+      stripeAvailableForCurrencyMinor: 0n,
+      maxGrossWithdrawableFromStripeMinor: totalBalanceMinor,
       availableToWithdrawMinor: totalBalanceMinor,
       pendingSettlementMinor: 0n,
       currency,
@@ -133,6 +220,9 @@ async function getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMetho
   if (!stripe || !employee.stripe_account_id) {
     return {
       totalBalanceMinor,
+      employeeSettledAvailableMinor: 0n,
+      stripeAvailableForCurrencyMinor: 0n,
+      maxGrossWithdrawableFromStripeMinor: 0n,
       availableToWithdrawMinor: 0n,
       pendingSettlementMinor: totalBalanceMinor,
       currency,
@@ -141,15 +231,36 @@ async function getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMetho
   }
 
   const employeeSettledAvailableMinor = await getEmployeeSettledAvailableMinor(db, employee.id, currency);
-  const availableToWithdrawMinor = minMinor(totalBalanceMinor, employeeSettledAvailableMinor);
+  if (db === pool) {
+    await backfillLegacyCompletedWithdrawalAllocations(db, employee.id, currency);
+  }
+  const adjustedEmployeeSettledAvailableMinor = db === pool
+    ? await getEmployeeSettledAvailableMinor(db, employee.id, currency)
+    : employeeSettledAvailableMinor;
+  const transferCurrency = getStripeTransferCurrency(payoutCfg.code);
+  const stripeBalance = await stripe.balance.retrieve();
+  const stripeAvailableMinor = getAvailableBalanceMinor(stripeBalance, transferCurrency);
+  const stripeAvailableForCurrencyMinor = stripeMinorToMoneyMinor(stripeAvailableMinor, transferCurrency);
+  const maxGrossWithdrawableFromStripeMinor = maxGrossMinorFromStripeNetCapacity(stripeAvailableForCurrencyMinor);
+  const availableToWithdrawMinor = minMinor(
+    totalBalanceMinor,
+    minMinor(adjustedEmployeeSettledAvailableMinor, maxGrossWithdrawableFromStripeMinor)
+  );
   const pendingSettlementMinor = totalBalanceMinor - availableToWithdrawMinor;
+  const cappedByStripe = adjustedEmployeeSettledAvailableMinor > maxGrossWithdrawableFromStripeMinor
+    && totalBalanceMinor > maxGrossWithdrawableFromStripeMinor;
 
   return {
     totalBalanceMinor,
+    employeeSettledAvailableMinor: adjustedEmployeeSettledAvailableMinor,
+    stripeAvailableForCurrencyMinor,
+    maxGrossWithdrawableFromStripeMinor,
     availableToWithdrawMinor,
     pendingSettlementMinor,
-    currency,
-    reason: pendingSettlementMinor > 0n
+    currency: normalizeCurrency(currency),
+    reason: cappedByStripe
+      ? 'stripe_capacity_capped'
+      : pendingSettlementMinor > 0n
       ? (availableToWithdrawMinor > 0n ? 'partially_available' : 'funds_settling')
       : 'available',
   };
@@ -376,7 +487,7 @@ router.post('/request', authMiddleware, async (req, res) => {
       }
 
       const payoutAvailability = await getPayoutAvailabilityForEmployee(employee, payoutCfg, payoutMethod);
-      if (payoutAvailability.availableToWithdrawMinor < amountMinor) {
+      if (payoutAvailability.employeeSettledAvailableMinor < amountMinor) {
         console.warn('[withdrawals/stripe-transfer-preflight]', {
           employeeId,
           requestedCurrency: normalizeCurrency(currency),
@@ -389,14 +500,13 @@ router.post('/request', authMiddleware, async (req, res) => {
         return res.status(409).json(insufficientEmployeeSettledResponse(payoutAvailability));
       }
 
-      const stripeBalance = await stripe.balance.retrieve();
-      const platformAvailableMinor = getAvailableBalanceMinor(stripeBalance, stripeTransferCurrency);
-      if (platformAvailableMinor < BigInt(stripeTransferAmount)) {
+      if (payoutAvailability.maxGrossWithdrawableFromStripeMinor < amountMinor) {
         console.warn('[withdrawals/stripe-platform-preflight]', {
           employeeId,
           transferCurrency: stripeTransferCurrency,
           transferAmountMinor: stripeTransferAmount,
-          platformAvailableMinor: Number(platformAvailableMinor),
+          stripeAvailableForCurrency: minorToNumber(payoutAvailability.stripeAvailableForCurrencyMinor),
+          maxGrossWithdrawableFromStripe: minorToNumber(payoutAvailability.maxGrossWithdrawableFromStripeMinor),
         });
         return res.status(409).json(platformFundsSettlingResponse(payoutAvailability));
       }
@@ -483,7 +593,7 @@ router.post('/request', authMiddleware, async (req, res) => {
           lockedPayoutMethod,
           dbClient
         );
-        if (lockedAvailability.availableToWithdrawMinor < amountMinor) {
+        if (lockedAvailability.employeeSettledAvailableMinor < amountMinor) {
           await dbClient.query('ROLLBACK');
           return res.status(409).json(insufficientEmployeeSettledResponse(lockedAvailability));
         }
