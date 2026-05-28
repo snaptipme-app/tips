@@ -6,11 +6,6 @@ const ZERO_DECIMAL_CURRENCIES = new Set([
   'XOF', 'XPF',
 ]);
 
-const STRIPE_TRANSFER_CURRENCIES = new Set([
-  'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'SGD', 'HKD',
-  'JPY', 'SEK', 'DKK', 'NOK', 'PLN', 'CHF',
-]);
-
 function normalizeCurrency(currency) {
   return String(currency || '').trim().toUpperCase();
 }
@@ -52,25 +47,6 @@ function calculatePlatformBreakdown(grossAmount, feePercent = PLATFORM_FEE_PERCE
   };
 }
 
-function isStripeTransferCurrencySupported(currency) {
-  return STRIPE_TRANSFER_CURRENCIES.has(normalizeCurrency(currency));
-}
-
-function toStripeSmallestUnit(amount, currency) {
-  const normalizedCurrency = normalizeCurrency(currency);
-  if (!isStripeTransferCurrencySupported(normalizedCurrency)) return null;
-
-  const minor = parseMoneyToMinor(amount);
-  if (!minor) return null;
-
-  if (ZERO_DECIMAL_CURRENCIES.has(normalizedCurrency)) {
-    if (minor % BigInt(MONEY_SCALE) !== 0n) return null;
-    return Number(minor / BigInt(MONEY_SCALE));
-  }
-
-  return Number(minor);
-}
-
 module.exports = {
   PLATFORM_FEE_PERCENT,
   ZERO_DECIMAL_CURRENCIES,
@@ -78,7 +54,5 @@ module.exports = {
   minorToMoneyString,
   moneyStringToNumber,
   calculatePlatformBreakdown,
-  isStripeTransferCurrencySupported,
   normalizeCurrency,
-  toStripeSmallestUnit,
 };

@@ -3,30 +3,22 @@ const { pool } = require('../db');
 const { stripe, stripeConfigError } = require('../lib/stripe');
 const { processSuccessfulPayment } = require('../lib/processPayment');
 const { logFromReq } = require('../lib/audit');
+const {
+  getEffectivePayoutConfig,
+  getEffectivePayoutMethod,
+} = require('../lib/countryPayoutConfig');
+const {
+  getStripePaymentCurrency,
+  toStripeMinorUnit,
+  fromStripeMinorUnit,
+} = require('../lib/stripeCurrency');
 
 const router = express.Router();
 
-const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'HKD']);
 const LOCAL_TO_USD_RATE = 10;
 
 function normalizeCurrency(currency) {
   return String(currency || 'MAD').trim().toUpperCase();
-}
-
-function toStripeAmount(amount, currency) {
-  const numericAmount = Number(amount);
-  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return null;
-  return ZERO_DECIMAL_CURRENCIES.has(normalizeCurrency(currency))
-    ? Math.round(numericAmount)
-    : Math.round(numericAmount * 100);
-}
-
-function fromStripeAmount(amount, currency) {
-  const numericAmount = Number(amount);
-  if (!Number.isFinite(numericAmount)) return 0;
-  return ZERO_DECIMAL_CURRENCIES.has(normalizeCurrency(currency))
-    ? numericAmount
-    : numericAmount / 100;
 }
 
 function parseRating(value) {
@@ -81,7 +73,7 @@ router.post('/create-intent', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT id, username, full_name, currency
+      `SELECT id, username, full_name, country, currency, payout_method
        FROM employees
        WHERE id = $1`,
       [employeeId]
@@ -98,15 +90,29 @@ router.post('/create-intent', async (req, res) => {
 
     const originalCurrency = normalizeCurrency(employee.currency || requestedCurrency || 'MAD');
     const originalAmount = parsedAmount;
-    const usdAmount = originalAmount / LOCAL_TO_USD_RATE;
-    const stripeAmount = Math.round(usdAmount * 100);
+    const payoutConfig = getEffectivePayoutConfig({
+      countryName: employee.country,
+      currency: employee.currency || originalCurrency,
+    });
+    const storedPayoutMethod = ['stripe_connect', 'wise_manual'].includes(employee.payout_method)
+      ? employee.payout_method
+      : null;
+    const payoutMethod = storedPayoutMethod || getEffectivePayoutMethod(payoutConfig);
+    const stripePaymentCurrency = payoutMethod === 'stripe_connect'
+      ? getStripePaymentCurrency(payoutConfig.code)
+      : 'USD';
+    const stripePaymentMajorAmount = payoutMethod === 'stripe_connect'
+      ? originalAmount
+      : originalAmount / LOCAL_TO_USD_RATE;
+    const stripePaymentAmount = toStripeMinorUnit(stripePaymentMajorAmount, stripePaymentCurrency);
+    const exchangeRateUsed = payoutMethod === 'stripe_connect' ? 1 : LOCAL_TO_USD_RATE;
 
-    if (!stripeAmount || stripeAmount < 1) {
+    if (!stripePaymentAmount || stripePaymentAmount < 1) {
       console.warn(`[payment/create-intent:${requestId}] amount too small`, {
         originalAmount,
         originalCurrency,
-        usdAmount,
-        stripeAmount,
+        stripePaymentCurrency,
+        stripePaymentAmount,
       });
       return res.status(400).json({
         success: false,
@@ -117,16 +123,17 @@ router.post('/create-intent', async (req, res) => {
     const safeRating = parseRating(rating);
     console.log(`[payment/create-intent:${requestId}] creating Stripe PaymentIntent`, {
       employeeId: employee.id,
-      stripeAmount,
-      stripeCurrency: 'USD',
+      stripePaymentAmount,
+      stripePaymentCurrency,
       originalAmount,
       originalCurrency,
+      payoutMethod,
       safeRating,
     });
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: stripeAmount,
-      currency: 'usd',
+      amount: stripePaymentAmount,
+      currency: stripePaymentCurrency.toLowerCase(),
       automatic_payment_methods: { enabled: true },
       description: `SnapTip for ${employee.full_name || employee.username || `employee ${employee.id}`}`,
       receipt_email: tourist_email || undefined,
@@ -138,7 +145,14 @@ router.post('/create-intent', async (req, res) => {
         original_currency: originalCurrency,
         amount: String(originalAmount),
         currency: originalCurrency,
-        stripe_amount_usd: usdAmount.toFixed(2),
+        stripe_payment_currency: stripePaymentCurrency,
+        stripe_payment_amount: String(stripePaymentAmount),
+        exchange_rate_used: String(exchangeRateUsed),
+        employee_balance_currency: originalCurrency,
+        payout_method: payoutMethod,
+        stripe_amount_usd: stripePaymentCurrency === 'USD'
+          ? String(fromStripeMinorUnit(stripePaymentAmount, stripePaymentCurrency))
+          : '',
         tourist_email: tourist_email || '',
         rating: safeRating ? String(safeRating) : '',
       },
@@ -158,7 +172,9 @@ router.post('/create-intent', async (req, res) => {
       metadata: {
         amount: originalAmount,
         currency: originalCurrency,
-        stripe_amount_usd: usdAmount,
+        stripe_payment_amount: stripePaymentAmount,
+        stripe_payment_currency: stripePaymentCurrency,
+        exchange_rate_used: exchangeRateUsed,
         stripe_payment_intent: paymentIntent.id,
       },
     });
@@ -169,7 +185,9 @@ router.post('/create-intent', async (req, res) => {
       paymentIntentId: paymentIntent.id,
       amount: originalAmount,
       currency: originalCurrency,
-      stripeAmountUsd: usdAmount,
+      stripePaymentAmount,
+      stripePaymentCurrency,
+      exchangeRateUsed,
     });
   } catch (err) {
     const stripeMessage = err?.raw?.message || err?.message;
@@ -223,9 +241,9 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const paymentIntent = event.data.object;
       const metadata = paymentIntent.metadata || {};
       const employeeId = Number(metadata.employee_id);
-      const currency = normalizeCurrency(metadata.original_currency || metadata.currency || paymentIntent.currency);
+      const currency = normalizeCurrency(metadata.employee_balance_currency || metadata.original_currency || metadata.currency || paymentIntent.currency);
       const amount = Number(metadata.original_amount || metadata.amount)
-        || fromStripeAmount(paymentIntent.amount_received || paymentIntent.amount, currency);
+        || fromStripeMinorUnit(paymentIntent.amount_received || paymentIntent.amount, currency);
       const touristEmail = metadata.tourist_email || paymentIntent.receipt_email || null;
       const safeRating = parseRating(metadata.rating);
 
@@ -252,6 +270,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           {
             originalAmount: amount,
             originalCurrency: currency,
+            stripePaymentCurrency: normalizeCurrency(metadata.stripe_payment_currency || paymentIntent.currency),
+            stripePaymentAmount: Number(metadata.stripe_payment_amount || paymentIntent.amount_received || paymentIntent.amount),
+            exchangeRateUsed: Number(metadata.exchange_rate_used || 1),
+            employeeBalanceCurrency: currency,
           }
         );
 

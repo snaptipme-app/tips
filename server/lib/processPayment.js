@@ -115,20 +115,26 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
   const payoutMethod = storedPayoutMethod || getEffectivePayoutMethod(payoutConfig);
   const originalAmount = options.originalAmount || amount;
   const originalCurrency = options.originalCurrency || currency;
+  const stripePaymentCurrency = options.stripePaymentCurrency || null;
+  const stripePaymentAmount = options.stripePaymentAmount || null;
+  const exchangeRateUsed = options.exchangeRateUsed || null;
+  const employeeBalanceCurrency = options.employeeBalanceCurrency || currency;
 
   // 1. Insert gross payment record. SnapTip commission is calculated later, at withdrawal time.
   const { rows: paymentRows } = await pool.query(
     `INSERT INTO payments (
        employee_id, business_id, amount, gross_amount, platform_fee_amount,
        platform_fee_percent, net_amount, currency, original_currency, original_amount,
+       stripe_payment_currency, stripe_payment_amount, exchange_rate_used, employee_balance_currency,
        payment_method, status, stripe_payment_id, stripe_payment_intent_id,
        tourist_email, rating, payout_method, fee
      )
      VALUES (
        $1, $2, $3, $4, $5,
        $6, $7, $8, $9, $10,
-       $11, 'completed', $12, $12,
-       $13, $14, $15, $5
+       $11, $12, $13, $14,
+       $15, 'completed', $16, $16,
+       $17, $18, $19, $5
      ) RETURNING *`,
     [
       employeeId,
@@ -141,6 +147,10 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       currency,
       originalCurrency,
       originalAmount,
+      stripePaymentCurrency,
+      stripePaymentAmount,
+      exchangeRateUsed,
+      employeeBalanceCurrency,
       method,
       transactionId || null,
       touristEmail || null,

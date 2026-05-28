@@ -13,12 +13,15 @@ const {
 } = require('../utils/withdrawalEmails');
 const {
   PLATFORM_FEE_PERCENT,
-  isStripeTransferCurrencySupported,
   parseMoneyToMinor,
   minorToMoneyString,
   normalizeCurrency,
-  toStripeSmallestUnit,
 } = require('../lib/money');
+const {
+  getStripeTransferCurrency,
+  toStripeMinorUnit,
+  getAvailableBalanceMinor,
+} = require('../lib/stripeCurrency');
 const {
   getEffectivePayoutConfig,
   getEffectivePayoutMethod,
@@ -147,14 +150,32 @@ router.post('/request', authMiddleware, async (req, res) => {
     const netMinor = amountMinor - platformFeeMinor;
     const platformFee = minorToNumber(platformFeeMinor);
     const netAmount = minorToNumber(netMinor);
+    const stripeTransferCurrency = payoutMethod === 'stripe_connect'
+      ? getStripeTransferCurrency(payoutCfg.code)
+      : null;
     const stripeTransferAmount = payoutMethod === 'stripe_connect'
-      ? toStripeSmallestUnit(netAmount, currency)
+      ? toStripeMinorUnit(netAmount, stripeTransferCurrency)
       : null;
 
     if (payoutMethod === 'stripe_connect') {
-      if (!isStripeTransferCurrencySupported(currency) || !stripeTransferAmount) {
+      if (!stripeTransferCurrency || !stripeTransferAmount) {
         return res.status(400).json({
           error: `Stripe payouts are not available for ${normalizeCurrency(currency)} right now.`,
+        });
+      }
+
+      const stripeBalance = await stripe.balance.retrieve();
+      const availableMinor = getAvailableBalanceMinor(stripeBalance, stripeTransferCurrency);
+      if (availableMinor < BigInt(stripeTransferAmount)) {
+        console.warn('[withdrawals/stripe-transfer-preflight]', {
+          employeeId,
+          requestedCurrency: normalizeCurrency(currency),
+          transferCurrency: stripeTransferCurrency,
+          transferAmountMinor: stripeTransferAmount,
+          availableMinor: Number(availableMinor),
+        });
+        return res.status(409).json({
+          error: 'Stripe payout funds are still settling. Please try again later. Your balance was not changed.',
         });
       }
     }
@@ -328,7 +349,7 @@ router.post('/request', authMiddleware, async (req, res) => {
         transfer = await stripe.transfers.create(
           {
             amount: stripeTransferAmount,
-            currency: normalizeCurrency(currency).toLowerCase(),
+            currency: stripeTransferCurrency.toLowerCase(),
             destination: employee.stripe_account_id,
             description: 'SnapTip Withdrawal',
             metadata: {
@@ -337,6 +358,10 @@ router.post('/request', authMiddleware, async (req, res) => {
               gross_requested_amount: String(amt),
               platform_fee_amount: String(platformFee),
               net_payout_amount: String(netAmount),
+              display_currency: normalizeCurrency(currency),
+              transfer_currency: stripeTransferCurrency,
+              transfer_amount_minor: String(stripeTransferAmount),
+              transfer_strategy: 'employee_currency_balance',
             },
           },
           { idempotencyKey }
