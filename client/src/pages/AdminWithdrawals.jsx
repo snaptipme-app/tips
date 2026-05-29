@@ -844,57 +844,61 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
 
       return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#101820', border: `1px solid ${BORDER}`, borderRadius: 20, padding: 24, width: 'min(640px,100%)', boxShadow: '0 24px 80px rgba(0,0,0,.55)' }}>
-            <p style={{ fontSize: 18, fontWeight: 950, color: '#fff', marginBottom: 8 }}>Confirm Mark as Paid</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', lineHeight: 1.55, marginBottom: 18 }}>
-              Confirm this manual payout has been sent to the correct bank details.
-            </p>
-
-            <div className="withdrawals-dialog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginBottom: 16 }}>
-              <DetailField label="Employee" value={employeeName(withdrawal)} />
-              <DetailField label="Country" value={`${withdrawal.country || ISO_TO_COUNTRY[payout.country] || 'Country'} (${payout.country})`} />
-              <DetailField label="Payout method" value={methodLabel(withdrawal)} />
-              <DetailField label="Bank name" value={payout.bankName} allowCopy />
-              <DetailField label="Gross withdrawal" value={fmtMoney(grossRequested(withdrawal), withdrawal.currency)} />
-              <DetailField label="SnapTip fee" value={fmtMoney(feeAmount(withdrawal), withdrawal.currency)} />
-              <DetailField label="Net payout" value={fmtMoney(netPayout(withdrawal), withdrawal.currency)} allowCopy />
-              <DetailField label="Account last 4" value={accountTail} />
+          <div style={{ background: '#101820', border: `1px solid ${BORDER}`, borderRadius: 20, width: 'min(640px,100%)', maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 80px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '24px 24px 18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+              <p style={{ fontSize: 18, fontWeight: 950, color: '#fff', marginBottom: 8 }}>Confirm Mark as Paid</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', lineHeight: 1.55 }}>
+                Confirm this manual payout has been sent to the correct bank details.
+              </p>
             </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.58)', fontWeight: 800, marginBottom: 10 }}>Internal note</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                {PAID_NOTE_SUGGESTIONS.map((text) => (
-                  <NoteChip
-                    key={text}
-                    text={text}
-                    tone="success"
-                    onSelect={(value) => setPaidDialog((current) => ({ ...current, note: appendNote(current.note, value) }))}
-                  />
-                ))}
+            <div style={{ padding: '18px 24px 24px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: 1, minHeight: 0 }}>
+              <div className="withdrawals-dialog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginBottom: 16 }}>
+                <DetailField label="Employee" value={employeeName(withdrawal)} />
+                <DetailField label="Country" value={`${withdrawal.country || ISO_TO_COUNTRY[payout.country] || 'Country'} (${payout.country})`} />
+                <DetailField label="Payout method" value={methodLabel(withdrawal)} />
+                <DetailField label="Bank name" value={payout.bankName} allowCopy />
+                <DetailField label="Gross withdrawal" value={fmtMoney(grossRequested(withdrawal), withdrawal.currency)} />
+                <DetailField label="SnapTip fee" value={fmtMoney(feeAmount(withdrawal), withdrawal.currency)} />
+                <DetailField label="Net payout" value={fmtMoney(netPayout(withdrawal), withdrawal.currency)} allowCopy />
+                <DetailField label="Account last 4" value={accountTail} />
               </div>
-              <textarea
-                value={paidDialog.note}
-                onChange={(event) => setPaidDialog((current) => ({ ...current, note: event.target.value }))}
-                rows={4}
-                placeholder="Add a payout processing note..."
-                style={{ width: '100%', resize: 'vertical', background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', padding: 12, outline: 'none', fontSize: 13 }}
-              />
+
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.58)', fontWeight: 800, marginBottom: 10 }}>Internal note</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {PAID_NOTE_SUGGESTIONS.map((text) => (
+                    <NoteChip
+                      key={text}
+                      text={text}
+                      tone="success"
+                      onSelect={(value) => setPaidDialog((current) => ({ ...current, note: appendNote(current.note, value) }))}
+                    />
+                  ))}
+                </div>
+                <textarea
+                  value={paidDialog.note}
+                  onChange={(event) => setPaidDialog((current) => ({ ...current, note: event.target.value }))}
+                  rows={4}
+                  placeholder="Add a payout processing note..."
+                  style={{ width: '100%', resize: 'vertical', background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 12, color: '#fff', padding: 12, outline: 'none', fontSize: 13 }}
+                />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', paddingBottom: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={paidDialog.confirmed}
+                  onChange={(event) => setPaidDialog((current) => ({ ...current, confirmed: event.target.checked }))}
+                  style={{ marginTop: 2 }}
+                />
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.76)', lineHeight: 1.5 }}>
+                  I confirm the Wise transfer has been sent to the correct bank details.
+                </span>
+              </label>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={paidDialog.confirmed}
-                onChange={(event) => setPaidDialog((current) => ({ ...current, confirmed: event.target.checked }))}
-                style={{ marginTop: 2 }}
-              />
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,.76)', lineHeight: 1.5 }}>
-                I confirm the Wise transfer has been sent to the correct bank details.
-              </span>
-            </label>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px 24px', borderTop: `1px solid ${BORDER}`, flexShrink: 0, background: '#101820' }}>
               <Button onClick={() => setPaidDialog(null)}>Cancel</Button>
               <Button variant="green" disabled={!paidDialog.confirmed || actionId === withdrawal.id} onClick={handleConfirmPaid}>
                 Confirm Mark as Paid
@@ -908,43 +912,47 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
     const withdrawal = rejectDialog.withdrawal;
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div style={{ background: '#101820', border: `1px solid ${BORDER}`, borderRadius: 20, padding: 24, width: 'min(640px,100%)', boxShadow: '0 24px 80px rgba(0,0,0,.55)' }}>
-          <p style={{ fontSize: 18, fontWeight: 950, color: '#fff', marginBottom: 8 }}>Reject Withdrawal</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', lineHeight: 1.55, marginBottom: 18 }}>
-            Rejected withdrawals may return funds to the employee balance depending on current backend logic.
-          </p>
-
-          <div className="withdrawals-dialog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginBottom: 16 }}>
-            <DetailField label="Employee" value={employeeName(withdrawal)} />
-            <DetailField label="Status" value={visibleStatus(withdrawal)} />
-            <DetailField label="Requested amount" value={fmtMoney(grossRequested(withdrawal), withdrawal.currency)} />
-            <DetailField label="Net payout" value={fmtMoney(netPayout(withdrawal), withdrawal.currency)} />
-            <DetailField label="Method" value={methodLabel(withdrawal)} />
-            <DetailField label="Ticket" value={`#${withdrawal.id}`} />
+        <div style={{ background: '#101820', border: `1px solid ${BORDER}`, borderRadius: 20, width: 'min(640px,100%)', maxHeight: 'calc(100vh - 48px)', boxShadow: '0 24px 80px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '24px 24px 18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+            <p style={{ fontSize: 18, fontWeight: 950, color: '#fff', marginBottom: 8 }}>Reject Withdrawal</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,.58)', lineHeight: 1.55 }}>
+              Rejected withdrawals may return funds to the employee balance depending on current backend logic.
+            </p>
           </div>
 
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.58)', fontWeight: 800, marginBottom: 10 }}>Reject reason</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              {REJECT_NOTE_SUGGESTIONS.map((text) => (
-                <NoteChip
-                  key={text}
-                  text={text}
-                  tone="danger"
-                  onSelect={(value) => setRejectDialog((current) => ({ ...current, reason: appendNote(current.reason, value) }))}
-                />
-              ))}
+          <div style={{ padding: '18px 24px 24px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: 1, minHeight: 0 }}>
+            <div className="withdrawals-dialog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginBottom: 16 }}>
+              <DetailField label="Employee" value={employeeName(withdrawal)} />
+              <DetailField label="Status" value={visibleStatus(withdrawal)} />
+              <DetailField label="Requested amount" value={fmtMoney(grossRequested(withdrawal), withdrawal.currency)} />
+              <DetailField label="Net payout" value={fmtMoney(netPayout(withdrawal), withdrawal.currency)} />
+              <DetailField label="Method" value={methodLabel(withdrawal)} />
+              <DetailField label="Ticket" value={`#${withdrawal.id}`} />
             </div>
-            <textarea
-              value={rejectDialog.reason}
-              onChange={(event) => setRejectDialog((current) => ({ ...current, reason: event.target.value }))}
-              rows={4}
-              placeholder="Add the rejection reason sent to the employee..."
-              style={{ width: '100%', resize: 'vertical', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(239,68,68,.25)', borderRadius: 12, color: '#fff', padding: 12, outline: 'none', fontSize: 13 }}
-            />
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.58)', fontWeight: 800, marginBottom: 10 }}>Reject reason</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                {REJECT_NOTE_SUGGESTIONS.map((text) => (
+                  <NoteChip
+                    key={text}
+                    text={text}
+                    tone="danger"
+                    onSelect={(value) => setRejectDialog((current) => ({ ...current, reason: appendNote(current.reason, value) }))}
+                  />
+                ))}
+              </div>
+              <textarea
+                value={rejectDialog.reason}
+                onChange={(event) => setRejectDialog((current) => ({ ...current, reason: event.target.value }))}
+                rows={4}
+                placeholder="Add the rejection reason sent to the employee..."
+                style={{ width: '100%', resize: 'vertical', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(239,68,68,.25)', borderRadius: 12, color: '#fff', padding: 12, outline: 'none', fontSize: 13 }}
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px 24px', borderTop: `1px solid ${BORDER}`, flexShrink: 0, background: '#101820' }}>
             <Button onClick={() => setRejectDialog(null)}>Cancel</Button>
             <Button
               variant="red"
