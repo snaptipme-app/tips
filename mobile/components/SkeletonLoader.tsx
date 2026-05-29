@@ -9,7 +9,7 @@
  *   <SkeletonLoader.Dashboard /> — full dashboard skeleton (balance + tips)
  */
 import { useEffect, useRef } from 'react';
-import { View, Animated, ViewStyle } from 'react-native';
+import { View, Animated, ViewStyle, StyleProp } from 'react-native';
 
 const SHIMMER_DURATION = 1200;
 
@@ -29,7 +29,7 @@ function useShimmer() {
   return anim;
 }
 
-function ShimmerBlock({ style }: { style?: ViewStyle | ViewStyle[] }) {
+function ShimmerBlock({ style }: { style?: StyleProp<ViewStyle> }) {
   const opacity = useShimmer();
   return (
     <Animated.View
