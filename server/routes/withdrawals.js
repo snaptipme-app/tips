@@ -29,6 +29,9 @@ const {
   normalizePayoutSchedule,
 } = require('../lib/countryPayoutConfig');
 const { backfillPaymentSettlementRows } = require('../lib/stripeSettlementLedger');
+const {
+  payoutDetailsToWithdrawalAccountDetails,
+} = require('../lib/wisePayoutDetails');
 
 const VALID_PAYOUT_SCHEDULES = new Set(['manual', 'weekly', 'monthly']);
 let scheduledPayoutTimer = null;
@@ -447,6 +450,26 @@ function normalizeManualAccountDetails(details) {
     bankName: String(d.bankName || d.bank_name || d.bank || d.Bank || d['Bank Name or E-Wallet'] || d['Bank Name'] || '').trim(),
     accountNumber: String(d.accountNumber || d.account_number || d.rib || d.RIB || d.iban || d.IBAN || d.phone || d.Phone || d['Account Number / RIB / Phone'] || d['RIB / Account Number'] || d['RIB (16 digits)'] || d['RIB (24 digits)'] || d.Details || '').trim(),
   };
+}
+
+async function getSavedWisePayoutDetailsForWithdrawal(employeeId, encKey, db = pool) {
+  if (!encKey) return null;
+  const { rows } = await db.query(
+    `SELECT id, payout_method, country_code, currency, account_holder_name,
+            account_holder_name_en, bank_name, details_last4, is_confirmed,
+            CASE WHEN rib_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(rib_number_encrypted, $2) ELSE NULL END AS rib_number,
+            CASE WHEN iban_encrypted IS NOT NULL THEN pgp_sym_decrypt(iban_encrypted, $2) ELSE NULL END AS iban,
+            CASE WHEN account_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(account_number_encrypted, $2) ELSE NULL END AS account_number,
+            CASE WHEN phone_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(phone_number_encrypted, $2) ELSE NULL END AS phone_number,
+            CASE WHEN contact_email_encrypted IS NOT NULL THEN pgp_sym_decrypt(contact_email_encrypted, $2) ELSE NULL END AS contact_email,
+            CASE WHEN address_encrypted IS NOT NULL THEN pgp_sym_decrypt(address_encrypted, $2) ELSE NULL END AS address
+     FROM employee_payout_details
+     WHERE employee_id = $1
+       AND payout_method = 'wise_manual'
+       AND is_confirmed = TRUE`,
+    [employeeId, encKey]
+  );
+  return payoutDetailsToWithdrawalAccountDetails(rows[0]);
 }
 
 function sanitizeStripeError(err) {
@@ -970,9 +993,13 @@ router.post('/request', authMiddleware, async (req, res) => {
       });
     }
 
+    const encKey = getEncryptionKey();
+    const savedManualAccountDetails = payoutMethod === 'stripe_connect'
+      ? null
+      : await getSavedWisePayoutDetailsForWithdrawal(employeeId, encKey);
     const manualAccountDetails = payoutMethod === 'stripe_connect'
       ? null
-      : normalizeManualAccountDetails(account_details);
+      : savedManualAccountDetails;
 
     if (payoutMethod === 'stripe_connect') {
       if (!employee.stripe_account_id || !stripe) {
@@ -986,11 +1013,14 @@ router.post('/request', authMiddleware, async (req, res) => {
       if (!method) {
         return res.status(400).json({ error: 'Withdrawal method is required.' });
       }
-      if (!account_details) {
-        return res.status(400).json({ error: 'Account details are required.' });
+      if (!encKey) {
+        return res.status(503).json({ error: 'Secure payout details storage is not configured. Please try again later.' });
       }
-      if (!manualAccountDetails.fullName || !manualAccountDetails.bankName || !manualAccountDetails.accountNumber) {
-        return res.status(400).json({ error: 'Full legal name, bank name, and account number are required.' });
+      if (!manualAccountDetails || !manualAccountDetails.fullName || !manualAccountDetails.bankName || !manualAccountDetails.accountNumber) {
+        return res.status(400).json({
+          code: 'payout_details_required',
+          error: 'Add your bank details before requesting a withdrawal.',
+        });
       }
     }
 
@@ -1057,7 +1087,6 @@ router.post('/request', authMiddleware, async (req, res) => {
       : serializeDetails(manualAccountDetails);
     const contactPhone = payoutMethod === 'stripe_connect' ? null : String(contact_phone || manualAccountDetails?.accountNumber || '').trim();
 
-    const encKey = getEncryptionKey();
     const dbClient = await pool.connect();
     let newBalance = minorToNumber(availableMinor - amountMinor);
     let withdrawalId = null;

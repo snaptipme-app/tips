@@ -26,6 +26,7 @@ const adminRoutes = require('./routes/admin');
 const supportRoutes = require('./routes/support');
 const splitRoutes = require('./routes/split');
 const onboardingRoutes = require('./routes/onboarding');
+const payoutDetailsRoutes = require('./routes/payoutDetails');
 
 const path = require('path');
 
@@ -85,6 +86,7 @@ app.use('/api/admin', checkOriginCsrf, adminRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/split', splitRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/payout-details', payoutDetailsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

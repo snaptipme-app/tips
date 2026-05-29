@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   Modal, KeyboardAvoidingView, Platform, RefreshControl, AppState,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,11 +62,7 @@ const getPayoutMethod = (_country: string, minAmount: number): SubMethod => {
   return {
     id: 'wise_manual', label: 'Manual bank transfer', sublabel: 'via Wise Business',
     fee: 0, min: minAmount, processingTime: '1-3 business days',
-    fields: [
-      { key: 'fullName', label: 'Full Legal Name', placeholder: 'Your full legal name', keyboard: 'default' },
-      { key: 'bankName', label: 'Bank Name or E-Wallet', placeholder: 'Bank name, mobile wallet, or payout provider', keyboard: 'default' },
-      { key: 'accountNumber', label: 'Account Number / RIB / Phone', placeholder: 'Account number, RIB, IBAN, or wallet phone', keyboard: 'default' },
-    ],
+    fields: [],
   };
 };
 
@@ -106,6 +102,15 @@ interface WithdrawalPreferences {
 }
 
 type PayoutSchedule = 'weekly' | 'monthly' | 'manual';
+
+interface PayoutDetailsStatus {
+  isComplete: boolean;
+  details?: {
+    bankName?: string;
+    detailsLast4?: string;
+    isComplete?: boolean;
+  } | null;
+}
 
 /* ======================================================================
    MAIN COMPONENT
@@ -168,6 +173,7 @@ export default function MemberWithdraw() {
   const [payoutAvailability, setPayoutAvailability] = useState<PayoutAvailability | null>(null);
   const [payoutSchedule, setPayoutSchedule] = useState<PayoutSchedule>('manual');
   const [preferences, setPreferences] = useState<WithdrawalPreferences | null>(null);
+  const [payoutDetails, setPayoutDetails] = useState<PayoutDetailsStatus | null>(null);
   const [showPreferences, setShowPreferences] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<PayoutSchedule>('manual');
   const [savingPreferences, setSavingPreferences] = useState(false);
@@ -228,19 +234,36 @@ export default function MemberWithdraw() {
     }
   }, []);
 
+  const fetchPayoutDetails = useCallback(async () => {
+    if (payoutCfg.payoutMethod === 'stripe_connect') return null;
+    try {
+      const { data } = await api.get('/payout-details');
+      setPayoutDetails(data);
+      return data as PayoutDetailsStatus;
+    } catch {
+      setPayoutDetails(null);
+      return null;
+    }
+  }, [payoutCfg.payoutMethod]);
+
+  useFocusEffect(useCallback(() => {
+    fetchPayoutDetails();
+  }, [fetchPayoutDetails]));
+
   const fetchData = useCallback(async () => {
     try {
       const [{ data }] = await Promise.all([
         api.get('/dashboard'),
         fetchPayoutAvailability(),
         fetchPreferences(),
+        fetchPayoutDetails(),
       ]);
       const b = data.employee?.balance ?? data.balance ?? 0;
       setBalance(b);
       setWithdrawals(data.recent_withdrawals ?? []);
       if (data.employee?.payout_schedule) setPayoutSchedule(data.employee.payout_schedule);
     } catch {} finally { setLoading(false); setRefreshing(false); }
-  }, [fetchPayoutAvailability, fetchPreferences]);
+  }, [fetchPayoutAvailability, fetchPreferences, fetchPayoutDetails]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   /* -- Handlers -- */
@@ -347,6 +370,11 @@ export default function MemberWithdraw() {
     if (balance <= 0) { showToast(t('no_funds_withdraw'), 'error'); return; }
     if (balance < minWithdrawal) {
       showToast(tx('minimum_withdrawal_balance', { amount: minWithdrawal.toLocaleString(locale), balance: balance.toFixed(2), currency: cur }), 'error');
+      return;
+    }
+    if (!payoutDetails?.isComplete) {
+      showToast('Add your bank details before requesting a withdrawal.', 'info');
+      router.push('/member/bank-details' as any);
       return;
     }
     openForm(payoutMethod);
@@ -456,6 +484,9 @@ export default function MemberWithdraw() {
       if (response?.availability) setPayoutAvailability(response.availability);
       if (response?.code === 'funds_settling' || response?.severity === 'info') {
         showToast(response?.message || settlingMessage, 'info');
+      } else if (response?.code === 'payout_details_required') {
+        showToast(response?.error || 'Add your bank details before requesting a withdrawal.', 'info');
+        router.push('/member/bank-details' as any);
       } else {
         showToast(response?.error || t('failed_submit'), 'error');
       }
@@ -553,6 +584,28 @@ export default function MemberWithdraw() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {!isStripeConnectPayout && (
+            <View style={{ backgroundColor: payoutDetails?.isComplete ? 'rgba(0,200,150,0.07)' : 'rgba(245,158,11,0.08)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: payoutDetails?.isComplete ? 'rgba(0,200,150,0.18)' : 'rgba(245,158,11,0.18)', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: payoutDetails?.isComplete ? 'rgba(0,200,150,0.12)' : 'rgba(245,158,11,0.12)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name={payoutDetails?.isComplete ? 'shield-checkmark-outline' : 'alert-circle-outline'} size={19} color={payoutDetails?.isComplete ? GREEN : YELLOW} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#fff' }}>Bank details</Text>
+                  <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                    {payoutDetails?.isComplete
+                      ? `${payoutDetails.details?.bankName || 'Saved'}${payoutDetails.details?.detailsLast4 ? ` - ending ${payoutDetails.details.detailsLast4}` : ''}`
+                      : 'Add your bank details before requesting a withdrawal.'}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push('/member/bank-details' as any)} activeOpacity={0.85}
+                  style={{ height: 34, paddingHorizontal: 14, borderRadius: 50, backgroundColor: 'rgba(0,255,204,0.1)', borderWidth: 1, borderColor: 'rgba(0,255,204,0.2)', justifyContent: 'center' }}>
+                  <Text style={{ color: ACCENT, fontSize: 12, fontWeight: '900' }}>{payoutDetails?.isComplete ? 'Edit' : 'Add'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* === Payment Methods === */}
           <Text style={sectionTitle}>{t('transfer_method')}</Text>

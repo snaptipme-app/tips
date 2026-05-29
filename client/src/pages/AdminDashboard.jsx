@@ -540,6 +540,8 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
   const[rejectReason,setRejectReason]=useState('');
   const[standaloneRejectId,setStandaloneRejectId]=useState(null);
   const[standaloneReason,setStandaloneReason]=useState('');
+  const[revealedPayoutDetails,setRevealedPayoutDetails]=useState(null);
+  const[revealingPayoutDetails,setRevealingPayoutDetails]=useState(false);
 
   const fetchW=useCallback(()=>{
     setLoading(true);
@@ -569,18 +571,34 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     try{await api().patch('/withdrawals/'+detail.id+'/note',{note:adminNotes});showToast('Note saved!');}catch{showToast('Failed to save note','error');}
   };
 
+  const revealPayoutDetails=async()=>{
+    if(!detail)return;
+    setRevealingPayoutDetails(true);
+    try{
+      const r=await api().get('/withdrawals/'+detail.id+'/payout-details');
+      setRevealedPayoutDetails({...r.data.details,withdrawalId:detail.id});
+      showToast('Payout details revealed.');
+    }catch(e){showToast(e.response?.data?.error||'Could not reveal payout details','error');}
+    setRevealingPayoutDetails(false);
+  };
+
   const parseDetails=d=>{if(!d)return{};if(typeof d==='object')return d;try{return JSON.parse(d);}catch(_){return{Details:d};}};
   const countryCodeFor=w=>COUNTRY_CODES[w?.country]||w?.country||'??';
   const payoutMethodLabel=w=>String(w?.payout_method||w?.method||'Wise Manual').replace(/_/g,' ');
   const getBankSummary=w=>{
+    const revealed=w?.id&&revealedPayoutDetails?.withdrawalId===w.id?revealedPayoutDetails:null;
+    const pd=revealed||w?.employee?.payout_details||w?.payout_details;
     const d=parseDetails(w?.employee?.account_details??w?.account_details);
     return {
-      bankName:d.bankName||d.bank_name||d.bank||d.Bank||w?.method||'Manual transfer',
-      fullName:d.fullName||d.full_name||d.accountHolder||d.account_holder||d.recipientName||w?.full_name,
-      accountNumber:d.accountNumber||d.account_number||d.rib||d.RIB||d.iban||d.IBAN||d.phone||d.Phone||d.Details||d.raw,
-      phone:d.phone||d.contactPhone||w?.contact_phone,
+      bankName:pd?.bankName||d.bankName||d.bank_name||d.bank||d.Bank||w?.method||'Manual transfer',
+      fullName:pd?.accountHolderName||pd?.accountHolderNameEn||d.fullName||d.full_name||d.accountHolder||d.account_holder||d.recipientName||w?.full_name,
+      accountNumber:pd?.ribNumber||pd?.iban||pd?.accountNumber||pd?.masked?.ribNumber||pd?.masked?.iban||pd?.masked?.accountNumber||d.accountNumber||d.account_number||d.rib||d.RIB||d.iban||d.IBAN||d.phone||d.Phone||d.Details||d.raw,
+      phone:pd?.phoneNumber||pd?.masked?.phoneNumber||d.phone||d.contactPhone||w?.contact_phone,
+      contactEmail:pd?.contactEmail||pd?.masked?.contactEmail,
+      address:pd?.address||pd?.masked?.address,
       swift:d.swift||d.bic||d.SWIFT,
       cin:d.cin||d.CIN,
+      revealed:Boolean(revealed),
     };
   };
   const AccountDetailsBlock=({w})=>{
@@ -592,10 +610,12 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     if(m.includes('wise')||m.includes('international'))return(<>
       <TicketRow label="Bank Name" val={b.bankName}/>
       <TicketRow label="Full Name" val={b.fullName} copy emphasis/>
-      <TicketRow label="RIB / Account No." val={b.accountNumber} copy emphasis/>
-      <TicketRow label="IBAN" val={d.iban||d.IBAN} copy/>
+      <TicketRow label="RIB / Account No." val={b.accountNumber} copy={b.revealed} emphasis/>
+      <TicketRow label="Contact Email" val={b.contactEmail} copy={b.revealed}/>
+      <TicketRow label="Phone" val={b.phone} copy={b.revealed}/>
+      <TicketRow label="Address" val={b.address} copy={b.revealed}/>
+      <TicketRow label="IBAN" val={d.iban||d.IBAN} copy={b.revealed}/>
       <TicketRow label="SWIFT / BIC" val={b.swift} copy/>
-      <TicketRow label="Contact Phone" val={b.phone} copy/>
       <div style={{marginTop:14}}>
         <a href="https://wise.com/send" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(0,200,150,.1)',border:'1px solid rgba(0,200,150,.3)',color:'#00C896',textDecoration:'none',padding:'10px 20px',borderRadius:50,fontSize:14,fontWeight:700}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -692,7 +712,13 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         </div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,margin:'18px 0 10px'}}>
           <p style={{fontSize:11,fontWeight:800,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.7}}>Bank Details</p>
-          <span style={{fontSize:12,color:'rgba(255,255,255,.45)',fontWeight:700}}>{detailBank?.bankName}</span>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:12,color:'rgba(255,255,255,.45)',fontWeight:700}}>{detailBank?.bankName}</span>
+            {(detail.payout_method==='wise_manual'||String(detail.method||'').toLowerCase().includes('wise'))&&
+              <button type="button" onClick={revealPayoutDetails} disabled={revealingPayoutDetails||revealedPayoutDetails?.withdrawalId===detail.id} style={{border:'1px solid rgba(0,200,150,.28)',background:'rgba(0,200,150,.10)',color:GREEN,borderRadius:50,padding:'7px 11px',fontSize:11,fontWeight:800,cursor:revealingPayoutDetails?'wait':'pointer'}}>
+                {revealedPayoutDetails?.withdrawalId===detail.id?'Full details shown':revealingPayoutDetails?'Revealing...':'Reveal details'}
+              </button>}
+          </div>
         </div>
         <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,padding:'4px 16px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Admin Notes (internal)</p>
@@ -734,7 +760,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         <td><div style={{fontWeight:700,color:'#fff'}}>{fmtMoney(w.amount,w.currency)}</div><div style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Net {fmtMoney(w.net_payout_amount||w.net_amount,w.currency)}</div></td>
         <td><StatusBadge status={w.status}/></td>
         <td style={{fontSize:12,whiteSpace:'nowrap'}}>{w.processed_at?fmtDate(w.processed_at):'-'}</td>
-        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_note||'');setRejectMode(false);setRejectReason('');}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#1a1a1a' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
+        <td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Btn small onClick={()=>{setDetail(w);setAdminNotes(w.admin_note||'');setRejectMode(false);setRejectReason('');setRevealedPayoutDetails(null);}}>View</Btn>{w.status==='pending'&&<><Btn small bg={GREEN} color='#1a1a1a' disabled={actionId===w.id} onClick={()=>handlePaid(w.id)} style={{padding:'6px 10px'}}>{I.check}</Btn><Btn small bg='rgba(239,68,68,.1)' color={RED} disabled={actionId===w.id} onClick={()=>{setStandaloneRejectId(w.id);setStandaloneReason('');}} style={{padding:'6px 10px'}}>{I.x}</Btn></>}</div></td>
       </tr>)}
       {!filtered.length&&<tr><td colSpan={10} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No withdrawals found</td></tr>}
       </tbody></table>

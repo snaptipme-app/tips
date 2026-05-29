@@ -9,6 +9,13 @@ const { ADMIN_COOKIE } = require('../middleware/adminAuth');
 const { getEncryptionKey, decryptedAccountDetailsExpr } = require('../lib/cryptoFields');
 const { logFromReq } = require('../lib/audit');
 const { buildAdminPasswordResetEmail } = require('../utils/sendEmail');
+const {
+  serializeMaskedPayoutDetails,
+  serializeFullPayoutDetails,
+  maskValue,
+  maskEmail,
+  maskPhone,
+} = require('../lib/wisePayoutDetails');
 
 const ADMIN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -57,6 +64,21 @@ function normalizeAccountDetails(details) {
     bankName: String(d.bankName || d.bank_name || d.bank || d.Bank || d['Bank Name or E-Wallet'] || d['Bank Name'] || '').trim(),
     accountNumber: String(d.accountNumber || d.account_number || d.rib || d.RIB || d.iban || d.IBAN || d.phone || d.Phone || d['Account Number / RIB / Phone'] || d['RIB / Account Number'] || d['RIB (16 digits)'] || d['RIB (24 digits)'] || d.Details || '').trim(),
   };
+}
+
+function maskNormalizedAccountDetails(details) {
+  if (!details) return null;
+  return {
+    ...details,
+    accountNumber: details.accountNumber ? maskValue(details.accountNumber) : '',
+    phone: details.phone ? maskPhone(details.phone) : '',
+    contactEmail: details.contactEmail ? maskEmail(details.contactEmail) : '',
+    address: details.address ? 'Saved' : '',
+  };
+}
+
+function decryptedPayoutDetailsExpr(column, keyParamIndex, alias = 'epd') {
+  return `CASE WHEN ${alias}.${column} IS NOT NULL THEN pgp_sym_decrypt(${alias}.${column}, $${keyParamIndex}) ELSE NULL END`;
 }
 
 /* ── Email templates ── */
@@ -470,9 +492,23 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
     const encKey = getEncryptionKey();
     const params = [];
     let detailsExpr = 'w.account_details';
+    let payoutDetailsSensitiveExpr = `
+        NULL AS payout_details_rib_number,
+        NULL AS payout_details_iban,
+        NULL AS payout_details_account_number,
+        NULL AS payout_details_phone_number,
+        NULL AS payout_details_contact_email,
+        NULL AS payout_details_address`;
     if (encKey) {
       params.push(encKey);
       detailsExpr = decryptedAccountDetailsExpr(1);
+      payoutDetailsSensitiveExpr = `
+        ${decryptedPayoutDetailsExpr('rib_number_encrypted', 1)} AS payout_details_rib_number,
+        ${decryptedPayoutDetailsExpr('iban_encrypted', 1)} AS payout_details_iban,
+        ${decryptedPayoutDetailsExpr('account_number_encrypted', 1)} AS payout_details_account_number,
+        ${decryptedPayoutDetailsExpr('phone_number_encrypted', 1)} AS payout_details_phone_number,
+        ${decryptedPayoutDetailsExpr('contact_email_encrypted', 1)} AS payout_details_contact_email,
+        ${decryptedPayoutDetailsExpr('address_encrypted', 1)} AS payout_details_address`;
     }
     const { rows } = await pool.query(`
       WITH payment_rollup AS (
@@ -499,12 +535,22 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
         w.contact_phone, w.status, w.created_at, w.admin_note,
         e.id as employee_id, e.full_name, e.first_name, e.username, e.email,
         e.country, e.currency, e.balance AS net_balance, e.next_payout_at,
+        epd.id AS payout_details_id, epd.payout_method AS payout_details_method,
+        epd.country_code AS payout_details_country_code, epd.currency AS payout_details_currency,
+        epd.account_holder_name AS payout_details_account_holder_name,
+        epd.account_holder_name_en AS payout_details_account_holder_name_en,
+        epd.bank_name AS payout_details_bank_name,
+        epd.details_last4 AS payout_details_last4,
+        epd.is_confirmed AS payout_details_is_confirmed,
+        epd.updated_at AS payout_details_updated_at,
+        ${payoutDetailsSensitiveExpr},
         COALESCE(pr.gross_earned, 0) AS gross_earned,
         COALESCE(wfr.platform_fee_collected, 0) AS platform_fee_collected,
         e.profile_image_url, e.photo_base64,
         e.created_at as emp_created_at
       FROM withdrawals w
       INNER JOIN employees e ON e.id = w.employee_id
+      LEFT JOIN employee_payout_details epd ON epd.employee_id = e.id
       LEFT JOIN payment_rollup pr ON pr.employee_id = e.id
       LEFT JOIN withdrawal_fee_rollup wfr ON wfr.employee_id = e.id
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
@@ -512,9 +558,38 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
     `, params);
     const withdrawals = rows.map((w) => {
       const accountDetails = normalizeAccountDetails(w.account_details);
+      const maskedAccountDetails = maskNormalizedAccountDetails(accountDetails);
+      const payoutDetails = serializeMaskedPayoutDetails({
+        id: w.payout_details_id,
+        payout_method: w.payout_details_method,
+        country_code: w.payout_details_country_code,
+        currency: w.payout_details_currency,
+        account_holder_name: w.payout_details_account_holder_name,
+        account_holder_name_en: w.payout_details_account_holder_name_en,
+        bank_name: w.payout_details_bank_name,
+        details_last4: w.payout_details_last4,
+        is_confirmed: w.payout_details_is_confirmed,
+        updated_at: w.payout_details_updated_at,
+        rib_number: w.payout_details_rib_number,
+        iban: w.payout_details_iban,
+        account_number: w.payout_details_account_number,
+        phone_number: w.payout_details_phone_number,
+        contact_email: w.payout_details_contact_email,
+        address: w.payout_details_address,
+      });
+      const {
+        payout_details_rib_number,
+        payout_details_iban,
+        payout_details_account_number,
+        payout_details_phone_number,
+        payout_details_contact_email,
+        payout_details_address,
+        ...safeWithdrawal
+      } = w;
       return {
-        ...w,
-        account_details: accountDetails ? JSON.stringify(accountDetails) : w.account_details,
+        ...safeWithdrawal,
+        account_details: maskedAccountDetails ? JSON.stringify(maskedAccountDetails) : w.account_details,
+        payout_details: payoutDetails,
         employee: {
           id: w.employee_id,
           full_name: w.full_name,
@@ -524,7 +599,8 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
           country: w.country,
           currency: w.currency,
           balance: w.net_balance,
-          account_details: accountDetails,
+          account_details: maskedAccountDetails,
+          payout_details: payoutDetails,
         },
       };
     });
@@ -538,6 +614,48 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
 /* ══════════════════════════════════════════════════════
    PATCH /api/admin/withdrawals/:id/status → mark as paid
    ══════════════════════════════════════════════════════ */
+router.get('/withdrawals/:id/payout-details', adminAuth, async (req, res) => {
+  try {
+    const encKey = getEncryptionKey();
+    if (!encKey) {
+      return res.status(503).json({ error: 'Secure payout details storage is not configured.' });
+    }
+
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      `SELECT epd.id, epd.payout_method, epd.country_code, epd.currency,
+              epd.account_holder_name, epd.account_holder_name_en, epd.bank_name,
+              epd.details_last4, epd.is_confirmed, epd.updated_at,
+              CASE WHEN epd.rib_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.rib_number_encrypted, $2) ELSE NULL END AS rib_number,
+              CASE WHEN epd.iban_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.iban_encrypted, $2) ELSE NULL END AS iban,
+              CASE WHEN epd.account_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.account_number_encrypted, $2) ELSE NULL END AS account_number,
+              CASE WHEN epd.phone_number_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.phone_number_encrypted, $2) ELSE NULL END AS phone_number,
+              CASE WHEN epd.contact_email_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.contact_email_encrypted, $2) ELSE NULL END AS contact_email,
+              CASE WHEN epd.address_encrypted IS NOT NULL THEN pgp_sym_decrypt(epd.address_encrypted, $2) ELSE NULL END AS address
+       FROM withdrawals w
+       INNER JOIN employee_payout_details epd ON epd.employee_id = w.employee_id
+       WHERE w.id = $1
+       LIMIT 1`,
+      [id, encKey]
+    );
+
+    const details = serializeFullPayoutDetails(rows[0]);
+    if (!details) return res.status(404).json({ error: 'Payout details not found.' });
+
+    logFromReq(req, {
+      actorType: 'admin',
+      action: 'admin.withdrawal_payout_details.reveal',
+      targetType: 'withdrawal',
+      targetId: Number(id) || null,
+    });
+
+    res.json({ details });
+  } catch (err) {
+    console.error('[admin/withdrawals/payout-details GET]', err.message);
+    res.status(500).json({ error: 'Could not load payout details.' });
+  }
+});
+
 router.patch('/withdrawals/:id/status', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;

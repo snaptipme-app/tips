@@ -278,6 +278,51 @@ async function initDB() {
     try { await pool.query('CREATE INDEX IF NOT EXISTS withdrawal_payment_allocations_employee_idx ON withdrawal_payment_allocations(employee_id)'); } catch (_) {}
     try { await pool.query('CREATE INDEX IF NOT EXISTS payments_employee_settlement_idx ON payments(employee_id, settlement_status, currency)'); } catch (_) {}
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS employee_payout_details (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER UNIQUE REFERENCES employees(id) ON DELETE CASCADE,
+        payout_method TEXT DEFAULT 'wise_manual',
+        country_code TEXT,
+        currency TEXT,
+        account_holder_name TEXT,
+        account_holder_name_en TEXT,
+        bank_name TEXT,
+        rib_number_encrypted BYTEA,
+        iban_encrypted BYTEA,
+        account_number_encrypted BYTEA,
+        phone_number_encrypted BYTEA,
+        contact_email_encrypted BYTEA,
+        address_encrypted BYTEA,
+        details_last4 TEXT,
+        is_confirmed BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const payoutDetailsAlterTables = [
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS payout_method TEXT DEFAULT 'wise_manual'",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS country_code TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS currency TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS account_holder_name TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS account_holder_name_en TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS bank_name TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS rib_number_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS iban_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS account_number_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS phone_number_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS contact_email_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS address_encrypted BYTEA",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS details_last4 TEXT",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT false",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+      "ALTER TABLE employee_payout_details ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()",
+      "CREATE INDEX IF NOT EXISTS employee_payout_details_employee_idx ON employee_payout_details(employee_id)",
+    ];
+    for (const ddl of payoutDetailsAlterTables) {
+      try { await pool.query(ddl); } catch (_) {}
+    }
+
     // Sync is_valid for pre-existing rows that were accepted or expired
     try {
       await pool.query("UPDATE invitations SET is_valid = FALSE WHERE status IN ('accepted','expired') AND is_valid = TRUE");

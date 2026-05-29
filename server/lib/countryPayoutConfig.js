@@ -28,8 +28,8 @@ const COUNTRY_PAYOUT_CONFIG = {
   ID: { code: 'ID', name: 'Indonesia', currency: 'IDR', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 150000 },
   TH: { code: 'TH', name: 'Thailand', currency: 'THB', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 300 },
 
-  AE: { code: 'AE', name: 'UAE', currency: 'AED', status: 'review_needed', payoutMethod: 'review_needed', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 40 },
-  MY: { code: 'MY', name: 'Malaysia', currency: 'MYR', status: 'review_needed', payoutMethod: 'review_needed', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 45 },
+  AE: { code: 'AE', name: 'UAE', currency: 'AED', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 40 },
+  MY: { code: 'MY', name: 'Malaysia', currency: 'MYR', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minWithdrawalAmount: 45 },
 };
 
 const COUNTRY_NAME_TO_CODE = Object.values(COUNTRY_PAYOUT_CONFIG).reduce((acc, country) => {

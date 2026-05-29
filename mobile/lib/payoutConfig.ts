@@ -41,8 +41,8 @@ export const PAYOUT_CONFIG: Record<string, PayoutConfig> = {
   ID: { code: 'ID', name: 'Indonesia', currency: 'IDR', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minAmount: 150000 },
   TH: { code: 'TH', name: 'Thailand', currency: 'THB', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minAmount: 300 },
 
-  AE: { code: 'AE', name: 'UAE', currency: 'AED', status: 'review_needed', payoutMethod: 'review_needed', autoPayouts: false, manualPayouts: true, minAmount: 50 },
-  MY: { code: 'MY', name: 'Malaysia', currency: 'MYR', status: 'review_needed', payoutMethod: 'review_needed', autoPayouts: false, manualPayouts: true, minAmount: 100 },
+  AE: { code: 'AE', name: 'UAE', currency: 'AED', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minAmount: 50 },
+  MY: { code: 'MY', name: 'Malaysia', currency: 'MYR', status: 'active', payoutMethod: 'wise_manual', autoPayouts: false, manualPayouts: true, minAmount: 100 },
 };
 
 const FALLBACK_CONFIG: PayoutConfig = {
