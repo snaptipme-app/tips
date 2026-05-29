@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { clearAdminToken } from './AdminLogin';
+import WithdrawalsSectionPro from './AdminWithdrawals';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Copy } from 'lucide-react';
 
@@ -206,7 +207,7 @@ export default function AdminDashboard({onLogout}){
     <div className="admin-main" style={{marginLeft:240,minHeight:'100dvh',padding:'88px 28px 24px'}}>
       {section==='overview'&&<OverviewSection showToast={showToast} onLogout={onLogout} onNavigate={switchSection} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency}/>}
       {section==='users'&&<UsersSection showToast={showToast} onLogout={onLogout}/>}
-      {section==='withdrawals'&&<WithdrawalsSection showToast={showToast} onLogout={onLogout} onUpdate={()=>api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0))}/>}
+      {section==='withdrawals'&&<WithdrawalsSectionPro showToast={showToast} onLogout={onLogout} onUpdate={()=>api().get('/stats').then(r=>setPendingCount(r.data.pendingWithdrawals||0))}/>}
       {section==='businesses'&&<BusinessesSection showToast={showToast} onLogout={onLogout}/>}
       {section==='transactions'&&<TransactionsSection showToast={showToast} onLogout={onLogout} selectedCurrency={selectedCurrency}/>}
       {section==='analytics'&&<AnalyticsSection showToast={showToast} selectedCurrency={selectedCurrency}/>}
