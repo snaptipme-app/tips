@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { clearAdminToken } from './AdminLogin';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Copy } from 'lucide-react';
 
 const BG='#1a1a1a',CARD='#222222',BORDER='rgba(255,255,255,0.06)',ACCENT='#00ffcc',GREEN='#00C896',YELLOW='#f59e0b',RED='#ef4444',PURPLE='#00ffcc';
 // Country name → ISO 3166-1 alpha-2 code (all 10 supported countries)
@@ -66,10 +67,11 @@ const CURRENCIES=[
   {code:'IDR',label:'IDR — Indonesian Rupiah',sym:'IDR',pre:false},
 ];
 const fmtCur=(n,code)=>{const c=CURRENCIES.find(x=>x.code===code)||CURRENCIES[0];const v=Number(n||0).toFixed(2);return c.pre?`${c.sym}${v}`:`${v} ${c.sym}`;};
-// SVG flag via flag-icons (CSS loaded in <style> block) — no emoji, no external React package
+// SVG country flags via flagcdn.com.
 const CountryFlag=({isoCode,size=18})=>{
-  if(!isoCode||isoCode==='??')return<span style={{width:size,height:Math.round(size*.75),borderRadius:2,background:'rgba(255,255,255,.1)',display:'inline-block'}}/>;
-  return<span className={`fi fi-${isoCode.toLowerCase()}`} style={{width:size,height:Math.round(size*.75),borderRadius:2,display:'inline-block',flexShrink:0,backgroundSize:'cover'}}/> ;
+  const code=String(isoCode||'').toLowerCase();
+  if(!code||code==='??')return<span style={{width:size,height:Math.round(size*.75),borderRadius:3,background:'rgba(255,255,255,.1)',display:'inline-block'}}/>;
+  return<img src={`https://flagcdn.com/${code}.svg`} alt={code.toUpperCase()} width={size} height={Math.round(size*.75)} loading="lazy" style={{width:size,height:Math.round(size*.75),borderRadius:3,display:'inline-block',flexShrink:0,objectFit:'cover',boxShadow:'0 0 0 1px rgba(255,255,255,.12)'}}/>;
 };
 const CountryBadge=({country})=>{
   const code=COUNTRY_CODES[country]||country||'??';
@@ -568,17 +570,32 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
   };
 
   const parseDetails=d=>{if(!d)return{};try{return JSON.parse(d);}catch(_){return{Details:d};}};
+  const countryCodeFor=w=>COUNTRY_CODES[w?.country]||w?.country||'??';
+  const payoutMethodLabel=w=>String(w?.payout_method||w?.method||'Wise Manual').replace(/_/g,' ');
+  const getBankSummary=w=>{
+    const d=parseDetails(w?.account_details);
+    return {
+      bankName:d.bankName||d.bank_name||d.bank||d.Bank||w?.method||'Manual transfer',
+      fullName:d.fullName||d.full_name||d.accountHolder||d.account_holder||d.recipientName||w?.full_name,
+      accountNumber:d.rib||d.RIB||d.iban||d.IBAN||d.accountNumber||d.account_number||d.Details||d.raw,
+      phone:d.phone||d.contactPhone||w?.contact_phone,
+      swift:d.swift||d.bic||d.SWIFT,
+      cin:d.cin||d.CIN,
+    };
+  };
   const AccountDetailsBlock=({w})=>{
     const d=parseDetails(w.account_details);
+    const b=getBankSummary(w);
     const m=(w.method||'').toLowerCase();
-    const CopyBtn=({val})=>val?<button onClick={()=>{navigator.clipboard.writeText(val);showToast('Copied!');}} style={{marginLeft:6,background:'rgba(0,255,204,.12)',border:'none',color:ACCENT,fontSize:11,cursor:'pointer',fontWeight:700,padding:'2px 7px',borderRadius:6}}>Copy</button>:null;
-    const Row=({label,val,copy})=>(<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13,minWidth:120}}>{label}</span><span style={{color:'#fff',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',textAlign:'right',wordBreak:'break-all'}}>{val||'—'}{copy&&<CopyBtn val={val}/>}</span></div>);
+    const CopyBtn=({val,label='value'})=>val?<button type="button" title={`Copy ${label}`} onClick={()=>{navigator.clipboard?.writeText(String(val));showToast('Copied!');}} style={{width:30,height:30,display:'inline-flex',alignItems:'center',justifyContent:'center',marginLeft:10,background:'rgba(0,200,150,.12)',border:'1px solid rgba(0,200,150,.25)',color:GREEN,cursor:'pointer',borderRadius:8,flexShrink:0}}><Copy size={15} strokeWidth={2}/></button>:null;
+    const TicketRow=({label,val,copy,emphasis})=>(<div style={{display:'grid',gridTemplateColumns:'130px minmax(0,1fr)',gap:14,alignItems:'center',padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,0.07)'}}><span style={{color:'rgba(255,255,255,.42)',fontSize:12,fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>{label}</span><span style={{color:emphasis?'#fff':'rgba(255,255,255,.82)',fontSize:emphasis?15:13,fontWeight:emphasis?800:650,display:'flex',alignItems:'center',justifyContent:'flex-end',textAlign:'right',wordBreak:'break-word',minWidth:0}}>{val||'—'}{copy&&<CopyBtn val={val} label={label}/>}</span></div>);
     if(m.includes('wise')||m.includes('international'))return(<>
-      <Row label="Account Holder" val={d.accountHolder||d.account_holder} copy/>
-      <Row label="IBAN" val={d.iban||d.IBAN} copy/>
-      <Row label="SWIFT / BIC" val={d.swift||d.bic||d.SWIFT} copy/>
-      <Row label="Bank Name" val={d.bankName||d.bank_name}/>
-      <Row label="Contact Phone" val={d.phone||d.contactPhone||w.contact_phone} copy/>
+      <TicketRow label="Bank Name" val={b.bankName}/>
+      <TicketRow label="Full Name" val={b.fullName} copy emphasis/>
+      <TicketRow label="RIB / Account No." val={b.accountNumber} copy emphasis/>
+      <TicketRow label="IBAN" val={d.iban||d.IBAN} copy/>
+      <TicketRow label="SWIFT / BIC" val={b.swift} copy/>
+      <TicketRow label="Contact Phone" val={b.phone} copy/>
       <div style={{marginTop:14}}>
         <a href="https://wise.com/send" target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(0,200,150,.1)',border:'1px solid rgba(0,200,150,.3)',color:'#00C896',textDecoration:'none',padding:'10px 20px',borderRadius:50,fontSize:14,fontWeight:700}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -586,10 +603,10 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
         </a>
       </div>
     </>);
-    if(m.includes('cih'))return(<><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="RIB (16 digits)" val={d.rib||d.RIB} copy/></>);
-    if(m.includes('other bank')||m.includes('bank'))return(<><Row label="Bank Name" val={d.bankName||d.bank_name}/><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="RIB (24 digits)" val={d.rib||d.RIB} copy/></>);
-    if(m.includes('agency')||m.includes('cash')||m.includes('wafa'))return(<><Row label="Full Name" val={d.fullName||d.full_name} copy/><Row label="CIN" val={d.cin||d.CIN} copy/><Row label="Phone" val={d.phone||w.contact_phone} copy/></>);
-    return(<Row label="Phone Number" val={d.phone||w.contact_phone||d.phoneNumber} copy/>);
+    if(m.includes('cih'))return(<><TicketRow label="Bank Name" val="CIH Bank"/><TicketRow label="Full Name" val={b.fullName} copy emphasis/><TicketRow label="RIB / Account No." val={b.accountNumber} copy emphasis/></>);
+    if(m.includes('other bank')||m.includes('bank'))return(<><TicketRow label="Bank Name" val={b.bankName}/><TicketRow label="Full Name" val={b.fullName} copy emphasis/><TicketRow label="RIB / Account No." val={b.accountNumber} copy emphasis/></>);
+    if(m.includes('agency')||m.includes('cash')||m.includes('wafa'))return(<><TicketRow label="Full Name" val={b.fullName} copy emphasis/><TicketRow label="CIN" val={b.cin} copy/><TicketRow label="Phone" val={b.phone} copy/></>);
+    return(<><TicketRow label="Full Name" val={b.fullName} copy emphasis/><TicketRow label="Account / Phone" val={b.accountNumber||b.phone||d.phoneNumber} copy emphasis/></>);
   };
 
   const allMethods=useMemo(()=>['all',...new Set(withdrawals.map(w=>w.method).filter(Boolean))],[withdrawals]);
@@ -598,7 +615,8 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     if(filter!=='all')list=list.filter(w=>w.status===filter);
     if(methodFilter!=='all')list=list.filter(w=>w.method===methodFilter);
     if(search){const q=search.toLowerCase();list=list.filter(w=>(w.full_name||'').toLowerCase().includes(q)||(w.username||'').toLowerCase().includes(q));}
-    return list;
+    const rank={pending:0,processing:1,failed:2,rejected:3,paid:4,completed:4};
+    return [...list].sort((a,b)=>(rank[a.status]??9)-(rank[b.status]??9)||new Date(b.created_at||0)-new Date(a.created_at||0));
   },[withdrawals,filter,methodFilter,search]);
 
   // ── Wise Batch Payment CSV export ──────────────────────────────────────
@@ -634,11 +652,12 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     URL.revokeObjectURL(url);
     showToast(`Exported ${pending.length} pending withdrawal${pending.length!==1?'s':''} for Wise`);
   };
+  const detailBank=detail?getBankSummary(detail):null;
 
   return(<>
     {detail&&<div onClick={()=>{setDetail(null);setRejectMode(false);setRejectReason('');}} style={{position:'fixed',inset:0,zIndex:9998,background:'rgba(0,0,0,.82)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:20,overflowY:'auto'}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:CARD,border:'1px solid rgba(255,255,255,0.06)',borderRadius:24,padding:28,maxWidth:560,width:'100%',marginTop:20,marginBottom:20}}>
-        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:24,paddingBottom:24,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#1f1f1f',border:'1px solid rgba(255,255,255,0.08)',borderRadius:24,padding:24,maxWidth:760,width:'100%',marginTop:20,marginBottom:20,boxShadow:'0 24px 80px rgba(0,0,0,.45)'}}>
+        <div style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:18,padding:18,display:'flex',alignItems:'center',gap:16,marginBottom:16}}>
           <div style={{width:72,height:72,borderRadius:'50%',overflow:'hidden',background:'rgba(0,255,204,.12)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
             {detail.photo_base64||detail.profile_image_url?<img src={detail.photo_base64||detail.profile_image_url} style={{width:72,height:72,objectFit:'cover'}} alt=""/>:<span style={{fontSize:28,fontWeight:700,color:ACCENT}}>{(detail.full_name||'?')[0]}</span>}
           </div>
@@ -648,21 +667,34 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
             <div style={{fontSize:12,color:'rgba(255,255,255,.3)',marginTop:3}}>{detail.email}</div>
             <div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}><CountryBadge country={detail.country}/><span style={{fontSize:12,color:'rgba(255,255,255,.3)'}}>{detail.country} · {detail.currency} · Joined {fmtDate(detail.emp_created_at)}</span></div>
           </div>
+          <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
+            <span style={{background:'rgba(0,200,150,.12)',border:'1px solid rgba(0,200,150,.28)',color:GREEN,borderRadius:50,padding:'7px 12px',fontSize:12,fontWeight:800,textTransform:'capitalize',whiteSpace:'nowrap'}}>{payoutMethodLabel(detail)}</span>
+            <StatusBadge status={detail.status}/>
+          </div>
         </div>
-        <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Withdrawal Details</p>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
-          {[
-            {l:'Withdrawal',v:fmtMoney(detail.amount,detail.currency),c:'#fff'},
-            {l:'SnapTip Fee',v:fmtMoney(detail.platform_fee_amount||detail.fee,detail.currency),c:YELLOW},
-            {l:'Net Payout',v:fmtMoney(detail.net_payout_amount||detail.net_amount,detail.currency),c:GREEN},
-            {l:'Gross Earned',v:fmtMoney(detail.gross_earned,detail.currency),c:'#fff'},
-            {l:'Fees Collected',v:fmtMoney(detail.platform_fee_collected,detail.currency),c:ACCENT},
-            {l:'Available Balance',v:fmtMoney(detail.net_balance,detail.currency),c:GREEN},
-          ].map(k=><div key={k.l} style={{background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>{k.l}</p><p style={{fontSize:16,fontWeight:800,color:k.c}}>{k.v}</p></div>)}
+        <p style={{fontSize:11,fontWeight:800,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.7,margin:'4px 0 10px'}}>Financials</p>
+        <div style={{display:'grid',gridTemplateColumns:'1.15fr .85fr',gap:12,marginBottom:16}}>
+          <div style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,padding:18}}>
+            <p style={{fontSize:11,color:'rgba(255,255,255,.42)',fontWeight:800,textTransform:'uppercase',letterSpacing:.6,marginBottom:8}}>Net payout to send</p>
+            <div style={{fontSize:34,fontWeight:900,color:GREEN,lineHeight:1}}>{fmtMoney(detail.net_payout_amount||detail.net_amount,detail.currency)}</div>
+            <p style={{fontSize:12,color:'rgba(255,255,255,.38)',marginTop:8}}>Use this exact amount for the Wise transfer.</p>
+          </div>
+          <div style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,padding:18,display:'grid',gap:10}}>
+            {[
+              {l:'Gross requested',v:fmtMoney(detail.amount,detail.currency)},
+              {l:'SnapTip fee',v:fmtMoney(detail.platform_fee_amount||detail.fee,detail.currency)},
+              {l:'Gross earned',v:fmtMoney(detail.gross_earned,detail.currency)},
+            ].map(k=><div key={k.l} style={{display:'flex',justifyContent:'space-between',gap:12}}><span style={{fontSize:12,color:'rgba(255,255,255,.42)'}}>{k.l}</span><span style={{fontSize:13,color:'#fff',fontWeight:800}}>{k.v}</span></div>)}
+          </div>
         </div>
+        <div style={{background:'rgba(255,255,255,.035)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,padding:'4px 14px'}}>
         {[['Method',detail.method,'text'],['Payout Method',detail.payout_method||'wise_manual','text'],['Payout Status',detail.payout_status||detail.status,'payoutBadge'],['Source',detail.withdrawal_source||'manual','text'],['Schedule',detail.payout_schedule||'manual','text'],['Period',detail.schedule_period_key||'-','text'],['Next Payout',detail.next_payout_at?fmtDate(detail.next_payout_at):'-','text'],['Status',null,'badge'],['Stripe Transfer',detail.stripe_transfer_id||'Not created','text'],['Requested',fmtDate(detail.created_at),'text'],['Processed',detail.processed_at?fmtDate(detail.processed_at):'Not processed','text']].map(([l,v,t])=><div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><span style={{color:'rgba(255,255,255,.4)',fontSize:13}}>{l}</span>{t==='badge'?<StatusBadge status={detail.status}/>:t==='payoutBadge'?<StatusBadge status={v}/>:<span style={{color:'#fff',fontSize:13,fontWeight:600,textTransform:['Payout Method','Schedule','Payout Status','Source'].includes(l)?'capitalize':'none'}}>{v}</span>}</div>)}
-        <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,margin:'20px 0 10px'}}>Account Details</p>
-        <div style={{background:'rgba(255,255,255,.03)',borderRadius:12,padding:'4px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,margin:'18px 0 10px'}}>
+          <p style={{fontSize:11,fontWeight:800,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:.7}}>Bank Details</p>
+          <span style={{fontSize:12,color:'rgba(255,255,255,.45)',fontWeight:700}}>{detailBank?.bankName}</span>
+        </div>
+        <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:16,padding:'4px 16px 14px',marginBottom:20}}><AccountDetailsBlock w={detail}/></div>
         <p style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>Admin Notes (internal)</p>
         <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} placeholder="Add internal notes..." rows={2} style={{width:'100%',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:12,color:'#fff',fontSize:13,outline:'none',resize:'vertical',marginBottom:8,boxSizing:'border-box'}}/>
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}><Btn small onClick={handleSaveNote} bg='rgba(0,255,204,.12)' color={ACCENT}>Save Note</Btn></div>
