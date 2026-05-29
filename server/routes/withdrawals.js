@@ -430,6 +430,25 @@ function serializeDetails(details) {
   return typeof details === 'object' ? JSON.stringify(details) : String(details);
 }
 
+function parseDetails(details) {
+  if (!details) return {};
+  if (typeof details === 'object') return details;
+  try {
+    return JSON.parse(details);
+  } catch (_) {
+    return { accountNumber: String(details) };
+  }
+}
+
+function normalizeManualAccountDetails(details) {
+  const d = parseDetails(details);
+  return {
+    fullName: String(d.fullName || d.full_name || d.accountHolder || d.account_holder || d['Full Legal Name'] || d['Full Name'] || d['Account Holder'] || '').trim(),
+    bankName: String(d.bankName || d.bank_name || d.bank || d.Bank || d['Bank Name or E-Wallet'] || d['Bank Name'] || '').trim(),
+    accountNumber: String(d.accountNumber || d.account_number || d.rib || d.RIB || d.iban || d.IBAN || d.phone || d.Phone || d['Account Number / RIB / Phone'] || d['RIB / Account Number'] || d['RIB (16 digits)'] || d['RIB (24 digits)'] || d.Details || '').trim(),
+  };
+}
+
 function sanitizeStripeError(err) {
   const code = err?.code || err?.type || 'stripe_transfer_error';
   const message = err?.raw?.message || err?.message || 'Stripe transfer failed';
@@ -951,6 +970,10 @@ router.post('/request', authMiddleware, async (req, res) => {
       });
     }
 
+    const manualAccountDetails = payoutMethod === 'stripe_connect'
+      ? null
+      : normalizeManualAccountDetails(account_details);
+
     if (payoutMethod === 'stripe_connect') {
       if (!employee.stripe_account_id || !stripe) {
         return res.status(400).json({ error: 'Complete Stripe Express setup before requesting payouts.' });
@@ -966,8 +989,8 @@ router.post('/request', authMiddleware, async (req, res) => {
       if (!account_details) {
         return res.status(400).json({ error: 'Account details are required.' });
       }
-      if (!contact_phone || String(contact_phone).trim().length < 6) {
-        return res.status(400).json({ error: 'A valid contact phone number is required.' });
+      if (!manualAccountDetails.fullName || !manualAccountDetails.bankName || !manualAccountDetails.accountNumber) {
+        return res.status(400).json({ error: 'Full legal name, bank name, and account number are required.' });
       }
     }
 
@@ -1031,8 +1054,8 @@ router.post('/request', authMiddleware, async (req, res) => {
 
     const accountJson = payoutMethod === 'stripe_connect'
       ? JSON.stringify({ provider: 'Stripe Express', stripe_account_id: employee.stripe_account_id })
-      : serializeDetails(account_details);
-    const contactPhone = payoutMethod === 'stripe_connect' ? null : String(contact_phone).trim();
+      : serializeDetails(manualAccountDetails);
+    const contactPhone = payoutMethod === 'stripe_connect' ? null : String(contact_phone || manualAccountDetails?.accountNumber || '').trim();
 
     const encKey = getEncryptionKey();
     const dbClient = await pool.connect();

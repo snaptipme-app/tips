@@ -39,6 +39,26 @@ function getTransporter() {
 
 const FROM = () => `SnapTip <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
 
+function parseAccountDetails(details) {
+  if (!details) return null;
+  if (typeof details === 'object') return details;
+  try {
+    return JSON.parse(details);
+  } catch (_) {
+    return { accountNumber: String(details) };
+  }
+}
+
+function normalizeAccountDetails(details) {
+  const d = parseAccountDetails(details);
+  if (!d) return null;
+  return {
+    fullName: String(d.fullName || d.full_name || d.accountHolder || d.account_holder || d['Full Legal Name'] || d['Full Name'] || d['Account Holder'] || '').trim(),
+    bankName: String(d.bankName || d.bank_name || d.bank || d.Bank || d['Bank Name or E-Wallet'] || d['Bank Name'] || '').trim(),
+    accountNumber: String(d.accountNumber || d.account_number || d.rib || d.RIB || d.iban || d.IBAN || d.phone || d.Phone || d['Account Number / RIB / Phone'] || d['RIB / Account Number'] || d['RIB (16 digits)'] || d['RIB (24 digits)'] || d.Details || '').trim(),
+  };
+}
+
 /* ── Email templates ── */
 function buildWithdrawalPaidEmail(employee, withdrawal) {
   let details = withdrawal.account_details || '';
@@ -454,7 +474,7 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       params.push(encKey);
       detailsExpr = decryptedAccountDetailsExpr(1);
     }
-    const { rows: withdrawals } = await pool.query(`
+    const { rows } = await pool.query(`
       WITH payment_rollup AS (
         SELECT employee_id,
           COALESCE(SUM(COALESCE(gross_amount, amount)), 0) AS gross_earned
@@ -490,6 +510,24 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
     `, params);
+    const withdrawals = rows.map((w) => {
+      const accountDetails = normalizeAccountDetails(w.account_details);
+      return {
+        ...w,
+        account_details: accountDetails ? JSON.stringify(accountDetails) : w.account_details,
+        employee: {
+          id: w.employee_id,
+          full_name: w.full_name,
+          first_name: w.first_name,
+          username: w.username,
+          email: w.email,
+          country: w.country,
+          currency: w.currency,
+          balance: w.net_balance,
+          account_details: accountDetails,
+        },
+      };
+    });
     res.json({ withdrawals });
   } catch (err) {
     console.error('[admin/withdrawals GET]', err.message);

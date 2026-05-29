@@ -569,22 +569,22 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
     try{await api().patch('/withdrawals/'+detail.id+'/note',{note:adminNotes});showToast('Note saved!');}catch{showToast('Failed to save note','error');}
   };
 
-  const parseDetails=d=>{if(!d)return{};try{return JSON.parse(d);}catch(_){return{Details:d};}};
+  const parseDetails=d=>{if(!d)return{};if(typeof d==='object')return d;try{return JSON.parse(d);}catch(_){return{Details:d};}};
   const countryCodeFor=w=>COUNTRY_CODES[w?.country]||w?.country||'??';
   const payoutMethodLabel=w=>String(w?.payout_method||w?.method||'Wise Manual').replace(/_/g,' ');
   const getBankSummary=w=>{
-    const d=parseDetails(w?.account_details);
+    const d=parseDetails(w?.employee?.account_details??w?.account_details);
     return {
       bankName:d.bankName||d.bank_name||d.bank||d.Bank||w?.method||'Manual transfer',
       fullName:d.fullName||d.full_name||d.accountHolder||d.account_holder||d.recipientName||w?.full_name,
-      accountNumber:d.rib||d.RIB||d.iban||d.IBAN||d.accountNumber||d.account_number||d.Details||d.raw,
+      accountNumber:d.accountNumber||d.account_number||d.rib||d.RIB||d.iban||d.IBAN||d.phone||d.Phone||d.Details||d.raw,
       phone:d.phone||d.contactPhone||w?.contact_phone,
       swift:d.swift||d.bic||d.SWIFT,
       cin:d.cin||d.CIN,
     };
   };
   const AccountDetailsBlock=({w})=>{
-    const d=parseDetails(w.account_details);
+    const d=parseDetails(w?.employee?.account_details??w.account_details);
     const b=getBankSummary(w);
     const m=(w.method||'').toLowerCase();
     const CopyBtn=({val,label='value'})=>val?<button type="button" title={`Copy ${label}`} onClick={()=>{navigator.clipboard?.writeText(String(val));showToast('Copied!');}} style={{width:30,height:30,display:'inline-flex',alignItems:'center',justifyContent:'center',marginLeft:10,background:'rgba(0,200,150,.12)',border:'1px solid rgba(0,200,150,.25)',color:GREEN,cursor:'pointer',borderRadius:8,flexShrink:0}}><Copy size={15} strokeWidth={2}/></button>:null;
@@ -623,9 +623,9 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
   const exportWiseCSV=()=>{
     const pending=withdrawals.filter(w=>w.status==='pending');
     if(!pending.length){showToast('No pending withdrawals to export','error');return;}
-    const parseD=d=>{if(!d)return{};try{return JSON.parse(d);}catch{return{raw:d}};};
+    const parseD=d=>{if(!d)return{};if(typeof d==='object')return d;try{return JSON.parse(d);}catch{return{raw:d}};};
     const rows=pending.map(w=>{
-      const d=parseD(w.account_details);
+      const d=parseD(w?.employee?.account_details??w.account_details);
       const m=(w.method||'').toLowerCase();
       const name=d.full_name||d.fullName||d.accountHolder||d.account_holder||w.full_name||'';
       const cur=w.currency||'USD';
@@ -640,7 +640,7 @@ function WithdrawalsSection({showToast,onLogout,onUpdate}){
       }else if(m.includes('ewallet')||m.includes('wallet')){
         paymentType='email';detail1Label='email';detail1Val=d.phone||d.email||w.contact_phone||'';
       }else{
-        paymentType='iban';detail1Label='iban';detail1Val=d.rib||d.RIB||d.iban||'';
+        paymentType='iban';detail1Label='iban';detail1Val=d.accountNumber||d.account_number||d.rib||d.RIB||d.iban||'';
       }
       return [name,cur,net,paymentType,detail1Label,detail1Val,detail2Label,detail2Val,w.contact_phone||'',w.username||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
     });
