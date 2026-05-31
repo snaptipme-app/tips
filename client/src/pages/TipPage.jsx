@@ -574,6 +574,14 @@ function PaymentSection({
               buttonHeight: 48,
               buttonTheme: { applePay: 'black', googlePay: 'black' },
               layout: { maxColumns: 2, maxRows: 1 },
+              paymentMethods: {
+                applePay: 'auto',
+                googlePay: 'auto',
+                link: 'never',
+                amazonPay: 'never',
+                paypal: 'never',
+                klarna: 'never',
+              },
             }}
             onConfirm={handleExpressConfirm}
             onReady={(ev) => {
@@ -891,6 +899,7 @@ export default function TipPage() {
     mode: 'payment',
     amount: stripePayment.stripeAmountMinor,
     currency: stripePayment.stripeCurrency.toLowerCase(),
+    paymentMethodTypes: ['card'],
     locale: getLanguageCode(),
     appearance: {
       theme: 'night',
