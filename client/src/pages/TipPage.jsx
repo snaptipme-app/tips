@@ -20,6 +20,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
   PaymentElement,
+  ExpressCheckoutElement,
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js';
@@ -286,57 +287,33 @@ const LockIcon = () => (
     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>
 );
-const CardIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="5" width="20" height="14" rx="2"/>
-    <path d="M2 10h20"/>
-    <path d="M6 15h4"/>
-  </svg>
-);
-
-function PaymentMethodSelector({ activeMethod, onSelect, t }) {
-  const methods = [
-    { id: 'apple_pay', label: 'Apple Pay', disabled: true },
-    { id: 'google_pay', label: 'Google Pay', disabled: true },
-    { id: 'card', label: 'Credit / Debit Card', disabled: false },
-  ];
-
+/* Shown as disabled indicators when wallets are not yet available.
+   Hidden entirely once ExpressCheckoutElement confirms real wallets. */
+function PaymentMethodSelector({ walletsAvailable, t }) {
+  if (walletsAvailable === true) return null;
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        {methods.map(method => {
-          const isActive = activeMethod === method.id;
-          return (
-            <button
-              key={method.id}
-              type="button"
-              disabled={method.disabled}
-              title={method.disabled ? (t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.') : ''}
-              onClick={() => { if (!method.disabled) onSelect(method.id); }}
-              style={{
-                minHeight: 48,
-                gridColumn: method.id === 'card' ? '1 / -1' : 'auto',
-                borderRadius: 14,
-                border: isActive ? '1.5px solid #00ffcc' : '1px solid rgba(255,255,255,0.08)',
-                background: isActive ? 'rgba(0,255,204,0.08)' : 'rgba(255,255,255,0.035)',
-                color: method.disabled ? 'rgba(255,255,255,0.32)' : (isActive ? '#00ffcc' : '#fff'),
-                fontFamily: 'inherit',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: method.disabled ? 'not-allowed' : 'pointer',
-                opacity: method.disabled ? 0.72 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                padding: '0 12px',
-              }}
-            >
-              {method.id === 'card' ? <CardIcon/> : <span style={{ fontSize: 12, fontWeight: 800 }}>{method.id === 'apple_pay' ? 'AP' : 'G'}</span>}
-              <span>{method.label}</span>
-            </button>
-          );
-        })}
+        {[{ label: 'Apple Pay', abbr: 'AP' }, { label: 'Google Pay', abbr: 'G' }].map(({ label, abbr }) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            title={t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
+            style={{
+              minHeight: 48, borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.035)',
+              color: 'rgba(255,255,255,0.32)',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+              cursor: 'not-allowed', opacity: 0.72,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0 12px',
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 800 }}>{abbr}</span>
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
       <p style={{ margin: 0, color: 'rgba(255,255,255,0.42)', fontSize: 12, lineHeight: 1.4, textAlign: 'center' }}>
         {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
@@ -493,16 +470,31 @@ class PaymentErrorBoundary extends Component {
   }
 }
 
+/* ─── Wallet-only boundary: ECE crash hides wallets, card still works ── */
+class WalletSectionBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false }; }
+  static getDerivedStateFromError() { return { crashed: true }; }
+  componentDidCatch(err) {
+    console.error('[TipPage] ExpressCheckoutElement crashed', err);
+    try { if (this.props.onCrash) this.props.onCrash(); } catch { /* ignore */ }
+  }
+  render() {
+    if (this.state.crashed) return null;
+    return this.props.children;
+  }
+}
+
 /* ─── PAYMENT SECTION (inside <Elements> with deferred PI mode) ────────
    Hosts:
-     - ExpressCheckoutElement (Apple Pay / Google Pay / etc., if available)
-     - "or pay with card" divider
-     - PaymentElement (card)
+     - ExpressCheckoutElement (Apple Pay / Google Pay — real when available)
+     - "or pay with card" divider (only when wallets shown)
+     - PaymentElement (card — always visible)
      - the big teal Pay button
    ──────────────────────────────────────────────────────────────────── */
 function PaymentSection({
   amount, currency, employeeId, rating,
   t, onSuccess, onError, sending, onProcessing,
+  onWalletsDetected, walletsAvailable,
 }) {
   const stripe   = useStripe();
   const elements = useElements();
@@ -567,10 +559,48 @@ function PaymentSection({
     }
   }, [stripe, elements, amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
 
+  const handleExpressConfirm = useCallback(async () => {
+    await confirmAndPay();
+  }, [confirmAndPay]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-      {/* Wallet info — static message (Apple Pay / Google Pay require domain registration) */}
+      {/* Express Checkout — real Apple Pay / Google Pay when browser/device supports */}
+      {walletsAvailable !== false && (
+        <WalletSectionBoundary onCrash={() => onWalletsDetected(false)}>
+          <ExpressCheckoutElement
+            options={{
+              buttonHeight: 48,
+              buttonTheme: { applePay: 'black', googlePay: 'black' },
+              layout: { maxColumns: 2, maxRows: 1 },
+            }}
+            onConfirm={handleExpressConfirm}
+            onReady={(ev) => {
+              const available = !!(ev?.availablePaymentMethods &&
+                Object.values(ev.availablePaymentMethods).some(Boolean));
+              onWalletsDetected(available);
+              logPaymentDebug('ExpressCheckoutElement ready', { available, methods: ev?.availablePaymentMethods });
+            }}
+            onLoadError={(ev) => {
+              console.warn('[TipPage] ExpressCheckoutElement load error', ev?.error);
+              onWalletsDetected(false);
+            }}
+          />
+        </WalletSectionBoundary>
+      )}
+
+      {/* Divider — only when real wallets are rendered above the card form */}
+      {walletsAvailable === true && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '10px 0 10px' }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {t.orPayWithCard || 'or pay with card'}
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
+        </div>
+      )}
+
       {/* Card payment area */}
       <div style={{
         background: '#111',
@@ -695,10 +725,10 @@ export default function TipPage() {
   const [customInput,  setCustomInput]  = useState('');
   const [rating,       setRating]       = useState(0);
   const [hoverRating,  setHoverRating]  = useState(0);
-  const [sending,      setSending]      = useState(false);
-  const [showSuccess,  setShowSuccess]  = useState(false);
-  const [paymentError, setPaymentError] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [sending,          setSending]          = useState(false);
+  const [showSuccess,      setShowSuccess]      = useState(false);
+  const [paymentError,     setPaymentError]     = useState('');
+  const [walletsAvailable, setWalletsAvailable] = useState(null); // null=unknown, true/false after ECE onReady
 
   const t   = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -1105,12 +1135,8 @@ export default function TipPage() {
             )}
 
             <PaymentMethodSelector
-              activeMethod={paymentMethod}
+              walletsAvailable={walletsAvailable}
               t={t}
-              onSelect={(method) => {
-                setPaymentError('');
-                setPaymentMethod(method);
-              }}
             />
 
             {stripePromise && !elementsOptions && (
@@ -1153,7 +1179,7 @@ export default function TipPage() {
               </div>
             )}
 
-            {stripePromise && elementsOptions && paymentMethod === 'card' && (
+            {stripePromise && elementsOptions && (
               <PaymentErrorBoundary t={t}>
                 <Elements
                   key={`${employee.id}-${stripePayment.stripeCurrency}-${stripePayment.stripeAmountMinor}`}
@@ -1170,6 +1196,8 @@ export default function TipPage() {
                     onProcessing={setSending}
                     onError={setPaymentError}
                     onSuccess={handleStripeSuccess}
+                    onWalletsDetected={setWalletsAvailable}
+                    walletsAvailable={walletsAvailable}
                   />
                 </Elements>
               </PaymentErrorBoundary>
