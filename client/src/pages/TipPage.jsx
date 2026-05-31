@@ -465,11 +465,6 @@ function PaymentSection({
       onError(t.invalidAmount || 'Choose a valid tip amount before paying.');
       return;
     }
-    if (!paymentElementReady) {
-      onError(t.paymentFormLoading || 'Payment form is still loading. Please try again in a moment.');
-      return;
-    }
-
     onProcessing(true);
     onError('');
 
@@ -570,22 +565,22 @@ function PaymentSection({
       <button
         type="button"
         onClick={confirmAndPay}
-        disabled={sending || !stripe || !elements || !paymentElementReady}
+        disabled={sending || !stripe || !elements}
         className="pay-btn-main"
         style={{
           width: '100%',
-          background: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
+          background: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
           border: 'none', borderRadius: 50, padding: '17px 20px',
           fontSize: 17, fontWeight: 700,
-          color: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.35)' : '#000',
+          color: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.35)' : '#000',
           fontFamily: 'inherit',
-          cursor: (sending || !paymentElementReady) ? 'not-allowed' : 'pointer',
+          cursor: (sending || !stripe || !elements) ? 'not-allowed' : 'pointer',
           letterSpacing: '-0.2px',
-          boxShadow: (sending || !paymentElementReady) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
-          opacity: (sending || !paymentElementReady) ? 0.7 : 1,
+          boxShadow: (sending || !stripe || !elements) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
+          opacity: (sending || !stripe || !elements) ? 0.7 : 1,
           transition: 'opacity .15s, transform .12s, box-shadow .15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          animation: (sending || !paymentElementReady) ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
+          animation: (sending || !stripe || !elements) ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
         }}
       >
         {sending ? (
