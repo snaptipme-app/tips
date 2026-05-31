@@ -949,7 +949,6 @@ export default function TipPage() {
     mode: 'payment',
     amount: stripePayment.stripeAmountMinor,
     currency: stripePayment.stripeCurrency.toLowerCase(),
-    paymentMethodTypes: ['card'],
     locale: getLanguageCode(),
     appearance: {
       theme: 'night',
