@@ -299,40 +299,6 @@ const ChevronDownIcon = ({ open }) => (
     <polyline points="6 9 12 15 18 9"/>
   </svg>
 );
-/* Shown as disabled indicators when wallets are not yet available.
-   Hidden entirely once ExpressCheckoutElement confirms real wallets. */
-function PaymentMethodSelector({ walletsAvailable, t }) {
-  if (walletsAvailable === true) return null;
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        {[{ label: 'Apple Pay', abbr: 'AP' }, { label: 'Google Pay', abbr: 'G' }].map(({ label, abbr }) => (
-          <button
-            key={label}
-            type="button"
-            disabled
-            title={t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
-            style={{
-              minHeight: 48, borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.035)',
-              color: 'rgba(255,255,255,0.32)',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-              cursor: 'not-allowed', opacity: 0.72,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0 12px',
-            }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 800 }}>{abbr}</span>
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-      <p style={{ margin: 0, color: 'rgba(255,255,255,0.42)', fontSize: 12, lineHeight: 1.4, textAlign: 'center' }}>
-        {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
-      </p>
-    </div>
-  );
-}
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 function getPhotoSrc(employee) {
@@ -1191,11 +1157,6 @@ export default function TipPage() {
                 </p>
               </div>
             )}
-
-            <PaymentMethodSelector
-              walletsAvailable={walletsAvailable}
-              t={t}
-            />
 
             {stripePromise && !elementsOptions && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
