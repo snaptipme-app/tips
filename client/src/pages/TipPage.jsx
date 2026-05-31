@@ -545,7 +545,7 @@ function PaymentSection({
         )}
         <PaymentElement
           options={{
-            layout: { type: 'accordion', defaultCollapsed: false, radios: false, spacedAccordionItems: false },
+            layout: { type: 'accordion', defaultCollapsed: false, radios: 'never', spacedAccordionItems: false },
             paymentMethodOrder: ['card'],
           }}
           onReady={() => {
