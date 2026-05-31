@@ -287,6 +287,18 @@ const LockIcon = () => (
     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>
 );
+const CardIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+    <path d="M2 10h20"/>
+    <path d="M6 15h4"/>
+  </svg>
+);
+const ChevronDownIcon = ({ open }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s' }}>
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+);
 /* Shown as disabled indicators when wallets are not yet available.
    Hidden entirely once ExpressCheckoutElement confirms real wallets. */
 function PaymentMethodSelector({ walletsAvailable, t }) {
@@ -500,10 +512,12 @@ function PaymentSection({
   const elements = useElements();
   const [paymentElementReady, setPaymentElementReady] = useState(false);
   const [paymentLoadError, setPaymentLoadError] = useState('');
+  const [cardExpanded, setCardExpanded] = useState(false);
 
   useEffect(() => {
     setPaymentElementReady(false);
     setPaymentLoadError('');
+    setCardExpanded(false);
   }, [amount, currency, employeeId]);
 
   const confirmAndPay = useCallback(async () => {
@@ -573,6 +587,7 @@ function PaymentSection({
             options={{
               buttonHeight: 48,
               buttonTheme: { applePay: 'black', googlePay: 'black' },
+              buttonType: { applePay: 'pay', googlePay: 'pay' },
               layout: { maxColumns: 2, maxRows: 1 },
               paymentMethods: {
                 applePay: 'auto',
@@ -609,71 +624,106 @@ function PaymentSection({
         </div>
       )}
 
-      {/* Card payment area */}
-      <div style={{
-        background: '#111',
-        borderRadius: 14,
-        padding: 14,
-        border: '1px solid rgba(255,255,255,0.08)',
-        marginBottom: 14,
-      }}>
-        {!paymentElementReady && (
-          <div style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>
-            <div style={{ width: 16, height: 16, border: '2px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>
-            {t.loading || 'Loading…'}
-          </div>
-        )}
-        <PaymentElement
-          options={{
-            layout: { type: 'accordion', defaultCollapsed: false, radios: 'never', spacedAccordionItems: false },
-            paymentMethodOrder: ['card'],
-          }}
-          onReady={() => {
-            setPaymentElementReady(true);
-            setPaymentLoadError('');
-          }}
-          onLoadError={(ev) => {
-            const message = ev?.error?.message || 'Payment form could not load. Please refresh and try again.';
-            console.error('[TipPage payment] PaymentElement load error', ev?.error || ev);
-            setPaymentElementReady(false);
-            setPaymentLoadError(message);
-          }}
-        />
-        {paymentLoadError && (
-          <p style={{ margin: '10px 0 0', color: '#fbbf24', fontSize: 12, lineHeight: 1.45, textAlign: 'center' }}>
-            {paymentLoadError}
-          </p>
-        )}
-      </div>
-
-      {/* Pay button */}
+      {/* Credit / Debit Card — custom SnapTip selector button, click to expand card form */}
       <button
         type="button"
-        onClick={confirmAndPay}
-        disabled={sending || !stripe || !elements}
-        className="pay-btn-main"
+        onClick={() => setCardExpanded(v => !v)}
         style={{
           width: '100%',
-          background: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
-          border: 'none', borderRadius: 50, padding: '17px 20px',
-          fontSize: 17, fontWeight: 700,
-          color: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.35)' : '#000',
+          minHeight: 52,
+          borderRadius: 14,
+          border: cardExpanded ? '1.5px solid #00ffcc' : '1px solid rgba(255,255,255,0.08)',
+          background: cardExpanded ? 'rgba(0,255,204,0.06)' : 'rgba(255,255,255,0.035)',
+          color: cardExpanded ? '#00ffcc' : '#fff',
+          cursor: 'pointer',
+          fontSize: 14,
+          fontWeight: 700,
           fontFamily: 'inherit',
-          cursor: (sending || !stripe || !elements) ? 'not-allowed' : 'pointer',
-          letterSpacing: '-0.2px',
-          boxShadow: (sending || !stripe || !elements) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
-          opacity: (sending || !stripe || !elements) ? 0.7 : 1,
-          transition: 'opacity .15s, transform .12s, box-shadow .15s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          animation: (sending || !stripe || !elements) ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          marginBottom: cardExpanded ? 12 : 14,
+          transition: 'border-color .15s, background .15s, color .15s',
         }}
       >
-        {sending ? (
-          <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>{t.processing || 'Processing…'}</>
-        ) : (
-          `${t.payButton || 'Pay'} ${amount} ${currency}`
-        )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <CardIcon/>
+          Credit / Debit Card
+        </span>
+        <ChevronDownIcon open={cardExpanded}/>
       </button>
+
+      {/* Card form — only when expanded */}
+      {cardExpanded && (
+        <>
+          <div style={{
+            background: '#111',
+            borderRadius: 14,
+            padding: 14,
+            border: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: 14,
+          }}>
+            {!paymentElementReady && (
+              <div style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>
+                <div style={{ width: 16, height: 16, border: '2px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>
+                {t.loading || 'Loading…'}
+              </div>
+            )}
+            <PaymentElement
+              options={{
+                layout: { type: 'accordion', defaultCollapsed: false, radios: 'never', spacedAccordionItems: false },
+                paymentMethodOrder: ['card'],
+                wallets: { applePay: 'never', googlePay: 'never' },
+              }}
+              onReady={() => {
+                setPaymentElementReady(true);
+                setPaymentLoadError('');
+              }}
+              onLoadError={(ev) => {
+                const message = ev?.error?.message || 'Payment form could not load. Please refresh and try again.';
+                console.error('[TipPage payment] PaymentElement load error', ev?.error || ev);
+                setPaymentElementReady(false);
+                setPaymentLoadError(message);
+              }}
+            />
+            {paymentLoadError && (
+              <p style={{ margin: '10px 0 0', color: '#fbbf24', fontSize: 12, lineHeight: 1.45, textAlign: 'center' }}>
+                {paymentLoadError}
+              </p>
+            )}
+          </div>
+
+          {/* Pay button — only when card form is open */}
+          <button
+            type="button"
+            onClick={confirmAndPay}
+            disabled={sending || !stripe || !elements}
+            className="pay-btn-main"
+            style={{
+              width: '100%',
+              background: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
+              border: 'none', borderRadius: 50, padding: '17px 20px',
+              fontSize: 17, fontWeight: 700,
+              color: (sending || !stripe || !elements) ? 'rgba(255,255,255,0.35)' : '#000',
+              fontFamily: 'inherit',
+              cursor: (sending || !stripe || !elements) ? 'not-allowed' : 'pointer',
+              letterSpacing: '-0.2px',
+              boxShadow: (sending || !stripe || !elements) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
+              opacity: (sending || !stripe || !elements) ? 0.7 : 1,
+              transition: 'opacity .15s, transform .12s, box-shadow .15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              animation: (sending || !stripe || !elements) ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
+            }}
+          >
+            {sending ? (
+              <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>{t.processing || 'Processing…'}</>
+            ) : (
+              `${t.payButton || 'Pay'} ${amount} ${currency}`
+            )}
+          </button>
+        </>
+      )}
     </div>
   );
 }
