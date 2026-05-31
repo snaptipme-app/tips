@@ -1,7 +1,29 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   SnapTip — Tourist Tip Page
+
+   Payment flow uses Stripe deferred PaymentIntent:
+     1. Elements mounts with mode='payment' + amount + currency upfront
+     2. ExpressCheckoutElement shows Apple Pay / Google Pay if available
+     3. PaymentElement shows card form
+     4. On confirm (wallet or card): elements.submit() → POST /payment/create-intent
+        → stripe.confirmPayment({ elements, clientSecret, ... })
+
+   Important production note for Apple Pay / Google Pay via Stripe Elements:
+   the production domain MUST be registered under Stripe Dashboard →
+   Settings → Payment method domains. Wallets won't render otherwise even on
+   supported devices.
+   ────────────────────────────────────────────────────────────────────────── */
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  ExpressCheckoutElement,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js';
 import api from '../api';
 import { getTranslation, getLanguageCode, isRTL } from '../i18n/translations';
 
@@ -13,7 +35,18 @@ function logPaymentDebug(message, details = {}) {
   console.log(`[TipPage payment] ${message}`, details);
 }
 
-/* ─── Suggested tip presets per currency ─────────────────────────────────── */
+/* ─── Stripe zero-decimal currencies ──────────────────────────────────── */
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  'BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG',
+  'RWF','UGX','VND','VUV','XAF','XOF','XPF',
+]);
+function toStripeMinorUnits(amount, currency) {
+  const code = (currency || 'USD').toUpperCase();
+  if (ZERO_DECIMAL_CURRENCIES.has(code)) return Math.max(1, Math.round(Number(amount) || 0));
+  return Math.max(1, Math.round((Number(amount) || 0) * 100));
+}
+
+/* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
   USD: [2,    5,     10,    20    ],
   EUR: [2,    5,     10,    20    ],
@@ -38,10 +71,10 @@ const SUGGESTED_TIPS = {
   IDR: [20000, 50000, 100000, 200000],
 };
 
-/* ─── Quick chips for custom amount input ───────────────────────────────── */
+/* ─── Quick chips for custom amount input ─────────────────────────────── */
 const QUICK_CHIPS = {
-  USD: [3,   7,    15,   25,   50   ],
-  EUR: [3,   7,    15,   25,   50   ],
+  USD: [3,   5,    10,   20,   50   ],
+  EUR: [3,   5,    10,   20,   50   ],
   GBP: [3,   7,    15,   20,   50   ],
   CAD: [5,   10,   15,   25,   50   ],
   AUD: [5,   10,   15,   25,   50   ],
@@ -56,18 +89,21 @@ const QUICK_CHIPS = {
   MXN: [20,  50,   100,  200,  500  ],
   MAD: [30,  50,   100,  200,  500  ],
   AED: [10,  20,   50,   100,  200  ],
-  JPY: [500, 1000, 2000, 5000, 10000],
+  JPY: [300, 500,  1000, 2000, 5000 ],
   HKD: [20,  50,   100,  200,  500  ],
   PHP: [50,  100,  200,  500,  1000 ],
   THB: [50,  100,  200,  500,  1000 ],
   IDR: [20000, 50000, 100000, 200000, 500000],
 };
 
-function getQuickChips(currency) {
-  return QUICK_CHIPS[currency] ?? QUICK_CHIPS.USD;
+function getTipPresets(currency)  { return SUGGESTED_TIPS[currency] ?? SUGGESTED_TIPS.USD; }
+function getQuickChips(currency)  { return QUICK_CHIPS[currency]    ?? QUICK_CHIPS.USD; }
+function formatCurrency(amount, currency) {
+  if (amount == null) return '';
+  return `${amount} ${currency || 'MAD'}`;
 }
 
-/* ─── Tier icons (stroke-based, 38px viewBox to match prototype) ────────── */
+/* ─── Tier icons (38px viewBox, prototype style) ──────────────────────── */
 const TierIconCoffee = ({ color = '#6b7280' }) => (
   <svg width="36" height="36" viewBox="0 0 38 38" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M13 8 C13 6 14 5 13 3"/>
@@ -78,13 +114,11 @@ const TierIconCoffee = ({ color = '#6b7280' }) => (
     <path d="M16 19.5 C16 18 17 17 18.5 18 C19 18.3 19 18.5 19 18.5 C19 18.5 19 18.3 19.5 18 C21 17 22 18 22 19.5 C22 21 19 23 19 23 C19 23 16 21 16 19.5 Z"/>
   </svg>
 );
-
 const TierIconStar = ({ color = '#6b7280' }) => (
   <svg width="36" height="36" viewBox="0 0 38 38" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 5 L22.5 13.5 L32 14.3 L25.5 20.2 L27.5 30 L19 25.2 L10.5 30 L12.5 20.2 L6 14.3 L15.5 13.5 Z"/>
   </svg>
 );
-
 const TierIconGift = ({ color = '#6b7280' }) => (
   <svg width="36" height="36" viewBox="0 0 38 38" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <rect x="7" y="19" width="24" height="14" rx="1.5"/>
@@ -95,7 +129,6 @@ const TierIconGift = ({ color = '#6b7280' }) => (
     <path d="M19 13 C21 10 25 9 26 11 C27 13 23 13 19 13 Z"/>
   </svg>
 );
-
 const TierIconDiamond = ({ color = '#6b7280' }) => (
   <svg width="36" height="36" viewBox="0 0 38 38" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 5 L33 16 L19 34 L5 16 Z"/>
@@ -106,42 +139,31 @@ const TierIconDiamond = ({ color = '#6b7280' }) => (
   </svg>
 );
 
-const TIER_META = [
-  { Icon: TierIconCoffee,  label: 'Quick Thanks',  popular: false },
-  { Icon: TierIconStar,    label: 'Great Service', popular: true  },
-  { Icon: TierIconGift,    label: 'Excellent',     popular: false },
-  { Icon: TierIconDiamond, label: 'Outstanding',   popular: false },
+/* ─── Tier metadata (Popular always on index 1 = default selected) ────── */
+const TIER_BASE = [
+  { Icon: TierIconCoffee,  key: 'quickThanks',  popular: false },
+  { Icon: TierIconStar,    key: 'greatService', popular: true  },
+  { Icon: TierIconGift,    key: 'excellent',    popular: false },
+  { Icon: TierIconDiamond, key: 'outstanding',  popular: false },
 ];
 
-function getTipPresets(currency) {
-  return SUGGESTED_TIPS[currency] ?? SUGGESTED_TIPS.USD;
-}
-
-function formatCurrency(amount, currency) {
-  if (amount == null) return '';
-  return `${amount} ${currency || 'MAD'}`;
-}
-
-/* ─── SVG components ─────────────────────────────────────────────────────── */
+/* ─── SVG components ──────────────────────────────────────────────────── */
 const SnapTipBolt = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" style={{ display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,255,204,0.6))' }}>
     <path d="M14 2L4 14h7l-1 8 10-12h-7l1-8z" fill="#00ffcc" stroke="#00ffcc" strokeWidth="0.5" strokeLinejoin="round"/>
   </svg>
 );
-
 const VerifiedBadge = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
     <circle cx="12" cy="12" r="11" fill="#00ffcc"/>
     <path d="M7 12.5l3.5 3.5 6.5-7" stroke="#000" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-
 const RestaurantIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
   </svg>
 );
-
 const StarIcon = ({ filled, size = 30 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24"
     fill={filled ? '#00ffcc' : 'none'}
@@ -152,7 +174,6 @@ const StarIcon = ({ filled, size = 30 }) => (
     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
   </svg>
 );
-
 const LockIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -160,7 +181,7 @@ const LockIcon = () => (
   </svg>
 );
 
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+/* ─── Helpers ─────────────────────────────────────────────────────────── */
 function getPhotoSrc(employee) {
   if (!employee) return '';
   if (employee.photo_base64) return employee.photo_base64;
@@ -171,17 +192,16 @@ function getPhotoSrc(employee) {
   if (employee.photo_url) return employee.photo_url;
   return '';
 }
-
 function AvatarFallback({ name }) {
   const letter = (name || 'U').charAt(0).toUpperCase();
   return (
     <div style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,200,150,0.15)' }}>
-      <span style={{ fontSize: '42px', fontWeight: 700, color: '#00C896' }}>{letter}</span>
+      <span style={{ fontSize: '34px', fontWeight: 700, color: '#00C896' }}>{letter}</span>
     </div>
   );
 }
 
-/* ─── Coin SVG for rain effect ────────────────────────────────────────────── */
+/* ─── Coin rain (success overlay) ─────────────────────────────────────── */
 function CoinIcon({ size = 28, symbol = '$', color = '#00C896' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
@@ -191,7 +211,6 @@ function CoinIcon({ size = 28, symbol = '$', color = '#00C896' }) {
     </svg>
   );
 }
-
 const COINS = [
   { left: '8%',  size: 24, delay: 0.1, duration: 2.2, symbol: '$', color: '#00C896' },
   { left: '18%', size: 20, delay: 0.4, duration: 2.6, symbol: '€', color: '#818cf8' },
@@ -215,12 +234,7 @@ function AnimatedCheckmark() {
       animation: 'checkScaleIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards',
       position: 'relative', zIndex: 2,
     }}>
-      <div style={{
-        position: 'absolute', inset: -8, borderRadius: '50%',
-        border: '2px solid rgba(0,200,150,0.3)',
-        animation: 'ringExpand 0.8s ease-out 0.3s forwards',
-        opacity: 0,
-      }}/>
+      <div style={{ position: 'absolute', inset: -8, borderRadius: '50%', border: '2px solid rgba(0,200,150,0.3)', animation: 'ringExpand 0.8s ease-out 0.3s forwards', opacity: 0 }}/>
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
         <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.5s ease 0.4s forwards' }}/>
@@ -228,7 +242,6 @@ function AnimatedCheckmark() {
     </div>
   );
 }
-
 function SuccessStars({ rating }) {
   if (!rating || rating <= 0) return null;
   return (
@@ -246,7 +259,6 @@ function SuccessStars({ rating }) {
     </div>
   );
 }
-
 function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, rating, onClose, t }) {
   return (
     <div style={{
@@ -267,10 +279,12 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
       <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: 360, width: '100%' }}>
         <AnimatedCheckmark/>
         <h2 style={{ fontSize: 30, fontWeight: 800, color: '#fff', marginTop: 24, marginBottom: 8, textAlign: 'center', letterSpacing: '-0.02em', animation: 'fadeInUp 0.5s ease-out 0.5s both' }}>
-          Tip Sent! 🎉
+          {t.successTitle || 'Tip Sent!'}
         </h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginBottom: 4, lineHeight: 1.6, animation: 'fadeInUp 0.5s ease-out 0.7s both' }}>
-          Your tip of <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span> has been sent to{' '}
+          {t.yourTipOf || 'Your tip of'}{' '}
+          <span style={{ color: '#00C896', fontWeight: 700 }}>{formatCurrency(amount, currency)}</span>{' '}
+          {t.sentTo || 'has been sent to'}{' '}
           <span style={{ color: '#fff', fontWeight: 600 }}>{employeeName}</span>
         </p>
         <SuccessStars rating={rating}/>
@@ -280,7 +294,7 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
           </div>
         )}
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 16, fontWeight: 500, animation: 'fadeInUp 0.4s ease-out 1.2s both' }}>
-          Thank you for your generosity!
+          {t.successMessage || 'Thank you for your generosity!'}
         </p>
         <button onClick={onClose} style={{
           width: '100%', height: 56, borderRadius: 50,
@@ -295,133 +309,203 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
   );
 }
 
-/* ─── Stripe checkout form (logic fully preserved) ───────────────────────── */
-function StripeCheckoutForm({ amount, currency, clientSecret, onSuccess, onError, onProcessing, sending, t }) {
+/* ─── PAYMENT SECTION (inside <Elements> with deferred PI mode) ────────
+   Hosts:
+     - ExpressCheckoutElement (Apple Pay / Google Pay / etc., if available)
+     - "or pay with card" divider
+     - PaymentElement (card)
+     - the big teal Pay button
+   ──────────────────────────────────────────────────────────────────── */
+function PaymentSection({
+  amount, currency, employeeId, rating,
+  t, onSuccess, onError, sending, onProcessing,
+}) {
   const stripe   = useStripe();
   const elements = useElements();
-  const [paymentElementReady, setPaymentElementReady] = useState(false);
+  const [walletsAvailable,     setWalletsAvailable] = useState(null); // null=unknown, true/false once onReady fires
+  const [paymentElementReady,  setPaymentElementReady] = useState(false);
 
-  const handleConfirmPayment = async (event) => {
-    event.preventDefault();
+  /* ── Shared confirm function used by both Express Checkout and card ── */
+  const confirmAndPay = useCallback(async () => {
     if (!stripe || !elements) {
-      onError('Payment form is still loading. Please try again.');
+      onError(t.paymentFailed || 'Payment failed. Please try again.');
       return;
     }
+    if (amount <= 0 || !employeeId) {
+      onError(t.invalidAmount || 'Choose a valid tip amount before paying.');
+      return;
+    }
+
     onProcessing(true);
     onError('');
+
     try {
+      logPaymentDebug('elements.submit()');
       const submitResult = await elements.submit();
       if (submitResult.error) {
-        onError(submitResult.error.message || 'Please check your payment details and try again.');
+        onError(submitResult.error.message || t.paymentFailed);
         return;
       }
+
+      logPaymentDebug('POST /payment/create-intent', { employeeId, amount, currency, rating: rating > 0 ? rating : null });
+      const response = await api.post('/payment/create-intent', {
+        employeeId, amount, currency,
+        rating: rating > 0 ? rating : null,
+      });
+
+      if (!response.data?.success || !response.data?.clientSecret) {
+        onError(response.data?.error || t.paymentFailed);
+        return;
+      }
+
+      const clientSecret = response.data.clientSecret;
+      logPaymentDebug('stripe.confirmPayment()');
       const result = await stripe.confirmPayment({
         elements,
         clientSecret,
         confirmParams: { return_url: window.location.href },
         redirect: 'if_required',
       });
+
       if (result.error) {
-        onError(result.error.message || 'Payment failed. Please try again.');
+        onError(result.error.message || t.paymentFailed);
         return;
       }
       onSuccess();
     } catch (err) {
-      onError(err?.message || 'Payment failed. Please try again.');
+      console.error('[TipPage payment] confirm exception', err);
+      onError(err?.response?.data?.error || err?.message || t.paymentFailed);
     } finally {
       onProcessing(false);
     }
-  };
+  }, [stripe, elements, amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
+
+  /* ── ExpressCheckoutElement onConfirm → reuse same flow ── */
+  const handleExpressConfirm = useCallback(async () => {
+    await confirmAndPay();
+  }, [confirmAndPay]);
 
   return (
-    <form onSubmit={handleConfirmPayment} style={{
-      background: '#111', borderRadius: 16, padding: 16,
-      border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14, animation: 'fadeIn 0.3s ease-out',
-    }}>
-      {!paymentElementReady && (
-        <div style={{ minHeight: 92, borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14, color: 'rgba(255,255,255,0.58)', fontSize: 13, fontWeight: 600 }}>
-          <div style={{ width: 16, height: 16, border: '2px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>
-          Loading secure payment form...
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* Express Checkout (Apple Pay / Google Pay) */}
+      <div style={{ minHeight: walletsAvailable === false ? 0 : 48 }}>
+        <ExpressCheckoutElement
+          options={{
+            buttonHeight: 48,
+            buttonTheme: { applePay: 'black', googlePay: 'black' },
+            layout: { maxColumns: 2, maxRows: 1 },
+          }}
+          onConfirm={handleExpressConfirm}
+          onReady={(ev) => {
+            const available = !!(ev?.availablePaymentMethods && Object.values(ev.availablePaymentMethods).some(Boolean));
+            setWalletsAvailable(available);
+            logPaymentDebug('ExpressCheckoutElement ready', { available, methods: ev?.availablePaymentMethods });
+          }}
+          onLoadError={(ev) => {
+            setWalletsAvailable(false);
+            console.warn('[TipPage payment] ExpressCheckoutElement load error', ev?.error);
+          }}
+        />
+      </div>
+
+      {/* Fallback message when no wallets */}
+      {walletsAvailable === false && (
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 12, padding: '10px 14px',
+          marginBottom: 12,
+        }}>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+            {t.walletsFallback}
+          </p>
         </div>
       )}
-      <PaymentElement
-        options={{ layout: { type: 'tabs', defaultCollapsed: false }, paymentMethodOrder: ['apple_pay', 'google_pay', 'card'] }}
-        onLoaderStart={() => console.log('[TipPage payment] PaymentElement loader started')}
-        onReady={() => { console.log('[TipPage payment] PaymentElement ready'); setPaymentElementReady(true); }}
-        onLoadError={(event) => { setPaymentElementReady(false); onError(event?.error?.message || 'Stripe payment form failed to load. Please refresh and try again.'); }}
-      />
+
+      {/* Divider "or pay with card" — only when wallets actually rendered */}
+      {walletsAvailable === true && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '14px 0 12px' }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {t.orPayWithCard || 'or pay with card'}
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
+        </div>
+      )}
+
+      {/* Card payment area */}
+      <div style={{
+        background: '#111',
+        borderRadius: 14,
+        padding: 14,
+        border: '1px solid rgba(255,255,255,0.08)',
+        marginBottom: 14,
+      }}>
+        {!paymentElementReady && (
+          <div style={{ minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600 }}>
+            <div style={{ width: 16, height: 16, border: '2px solid #00C896', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>
+            {t.loading || 'Loading…'}
+          </div>
+        )}
+        <PaymentElement
+          options={{
+            layout: { type: 'accordion', defaultCollapsed: false, radios: false, spacedAccordionItems: false },
+            paymentMethodOrder: ['card'],
+          }}
+          onReady={() => setPaymentElementReady(true)}
+          onLoadError={(ev) => { setPaymentElementReady(false); onError(ev?.error?.message || t.paymentFailed); }}
+        />
+      </div>
+
+      {/* Pay button */}
       <button
-        type="submit"
+        type="button"
+        onClick={confirmAndPay}
         disabled={sending || !stripe || !elements || !paymentElementReady}
+        className="pay-btn-main"
         style={{
-          width: '100%', height: 56, borderRadius: 50, border: 'none',
+          width: '100%',
           background: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
-          boxShadow: (sending || !paymentElementReady) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
-          color: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.35)' : '#000',
+          border: 'none', borderRadius: 50, padding: '17px 20px',
           fontSize: 17, fontWeight: 700,
-          opacity: (sending || !paymentElementReady) ? 0.7 : 1,
+          color: (sending || !paymentElementReady) ? 'rgba(255,255,255,0.35)' : '#000',
+          fontFamily: 'inherit',
           cursor: (sending || !paymentElementReady) ? 'not-allowed' : 'pointer',
-          transition: 'all 250ms ease',
+          letterSpacing: '-0.2px',
+          boxShadow: (sending || !paymentElementReady) ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
+          opacity: (sending || !paymentElementReady) ? 0.7 : 1,
+          transition: 'opacity .15s, transform .12s, box-shadow .15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          marginTop: 16, letterSpacing: '-0.2px',
+          animation: (sending || !paymentElementReady) ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
         }}
       >
         {sending ? (
-          <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>Processing...</>
+          <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>{t.processing || 'Processing…'}</>
         ) : (
-          `${t.confirmPayment || 'Confirm payment'} ${formatCurrency(amount, currency)}`
+          `${t.payButton || 'Pay'} ${amount} ${currency}`
         )}
       </button>
-    </form>
+    </div>
   );
 }
 
-/* ─── Inline keyframes ───────────────────────────────────────────────────── */
+/* ─── Inline styles + keyframes ─────────────────────────────────────── */
 const inlineStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; }
   body { font-family: 'DM Sans', system-ui, sans-serif; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes scaleIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes checkScaleIn {
-    0%   { transform: scale(0); opacity: 0; }
-    60%  { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes ringExpand {
-    0%   { transform: scale(0.8); opacity: 0.6; }
-    100% { transform: scale(1.5); opacity: 0; }
-  }
+  @keyframes checkScaleIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes ringExpand { 0% { transform: scale(0.8); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
   @keyframes drawCheck { to { stroke-dashoffset: 0; } }
-  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes fadeInUp {
-    from { transform: translateY(14px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes slideUpBtn {
-    from { transform: translateY(30px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes coinFall {
-    0%   { transform: translateY(0); opacity: 0; }
-    8%   { opacity: 0.85; }
-    90%  { opacity: 0.6; }
-    100% { transform: translateY(105vh); opacity: 0; }
-  }
-  @keyframes coinSpin {
-    0%   { transform: rotateY(0deg) rotateZ(0deg); }
-    100% { transform: rotateY(360deg) rotateZ(25deg); }
-  }
-  @keyframes starPop {
-    0%   { transform: scale(0); opacity: 0; }
-    60%  { transform: scale(1.3); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 4px 24px rgba(0,255,204,0.28); }
-    50%      { box-shadow: 0 6px 40px rgba(0,255,204,0.48); }
-  }
+  @keyframes fadeInUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slideUpBtn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes coinFall { 0% { transform: translateY(0); opacity: 0; } 8% { opacity: 0.85; } 90% { opacity: 0.6; } 100% { transform: translateY(105vh); opacity: 0; } }
+  @keyframes coinSpin { 0% { transform: rotateY(0deg) rotateZ(0deg); } 100% { transform: rotateY(360deg) rotateZ(25deg); } }
+  @keyframes starPop { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.3); } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes pulseGlow { 0%, 100% { box-shadow: 0 4px 24px rgba(0,255,204,0.28); } 50% { box-shadow: 0 6px 40px rgba(0,255,204,0.48); } }
 
   .tip-card-v2 { -webkit-tap-highlight-color: transparent; user-select: none; }
   .tip-card-v2:active { transform: scale(0.97); }
@@ -430,11 +514,25 @@ const inlineStyles = `
   .quick-chip:hover { border-color: #00ffcc !important; color: #00ffcc !important; background: rgba(0,255,204,0.06) !important; }
   .s-btn-v2 { -webkit-tap-highlight-color: transparent; }
   .s-btn-v2:active { transform: scale(0.82); }
+
+  /* Quick chips: horizontal scroll on tiny screens, no page overflow */
+  .quick-chips-row {
+    display: flex; gap: 7px; flex-wrap: wrap;
+  }
+  @media (max-width: 360px) {
+    .quick-chips-row {
+      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .quick-chips-row::-webkit-scrollbar { display: none; }
+    .quick-chip { flex-shrink: 0; }
+  }
 `;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   TipPage — Tourist-facing payment page
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   TipPage — main component
+   ═══════════════════════════════════════════════════════════════════════ */
 export default function TipPage() {
   const { username } = useParams();
   const [employee,   setEmployee]   = useState(null);
@@ -444,14 +542,12 @@ export default function TipPage() {
   const [error,      setError]      = useState('');
 
   const [amount,       setAmount]       = useState(0);
-  const [customInput,  setCustomInput]  = useState('');   // text value for input field
+  const [customInput,  setCustomInput]  = useState('');
   const [rating,       setRating]       = useState(0);
   const [hoverRating,  setHoverRating]  = useState(0);
   const [sending,      setSending]      = useState(false);
   const [showSuccess,  setShowSuccess]  = useState(false);
-  const [tipAmount,    setTipAmount]    = useState(0);
   const [paymentError, setPaymentError] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
 
   const t   = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -478,7 +574,7 @@ export default function TipPage() {
             emp.rating_avg   = ratingRes.data.average_rating;
             emp.rating_count = ratingRes.data.total_ratings;
             emp.rating_breakdown = ratingRes.data.rating_breakdown;
-          } catch { /* keep whatever the employee endpoint returned */ }
+          } catch { /* ignore */ }
           setEmployee(emp);
         } else {
           const status = empRes.reason?.response?.status;
@@ -496,11 +592,11 @@ export default function TipPage() {
     return () => controller.abort();
   }, [username]);
 
-  const currency    = employee?.currency || 'MAD';
-  const tipPresets  = useMemo(() => getTipPresets(currency), [currency]);
-  const quickChips  = useMemo(() => getQuickChips(currency), [currency]);
+  const currency   = employee?.currency || 'MAD';
+  const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
+  const quickChips = useMemo(() => getQuickChips(currency), [currency]);
 
-  // Default to "Great Service" once presets are known
+  // Default to "Great Service" (index 1) once presets are known — also Popular
   useEffect(() => {
     if (employee && amount === 0) {
       const def = tipPresets[1];
@@ -509,63 +605,14 @@ export default function TipPage() {
     }
   }, [employee, tipPresets, amount]);
 
-  useEffect(() => {
-    setClientSecret('');
-    setPaymentError('');
-  }, [amount, currency, rating]);
-
-  /* Custom input change: update amount + sync with preset cards */
   const handleCustomInput = (val) => {
     setCustomInput(val);
     const parsed = parseFloat(val);
     if (!isNaN(parsed) && parsed > 0) setAmount(parsed);
     else if (val === '' || val === '0') setAmount(0);
   };
-
-  /* Preset card click: update both amount and input field */
-  const handlePresetSelect = (amt) => {
-    setAmount(amt);
-    setCustomInput(String(amt));
-  };
-
-  /* Quick chip click */
-  const handleChipSelect = (chip) => {
-    setAmount(chip);
-    setCustomInput(String(chip));
-  };
-
-  /* ─── Payment logic (fully preserved) ──────────────────────────────── */
-  const handlePay = async () => {
-    logPaymentDebug('Pay clicked', { amount, currency, employeeId: employee?.id, hasUsableStripePublishableKey });
-    if (amount <= 0 || !employee?.id) {
-      setPaymentError('Choose a valid tip amount before paying.');
-      return;
-    }
-    if (!hasUsableStripePublishableKey || !stripePromise) {
-      setPaymentError('Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.');
-      return;
-    }
-    setSending(true);
-    setPaymentError('');
-    setClientSecret('');
-    try {
-      logPaymentDebug('Creating PaymentIntent', { employeeId: employee.id, amount, currency, rating: rating > 0 ? rating : null });
-      const response = await api.post('/payment/create-intent', {
-        employeeId: employee.id, amount, currency, rating: rating > 0 ? rating : null,
-      });
-      logPaymentDebug('PaymentIntent response received', { status: response.status, success: response.data?.success, hasClientSecret: Boolean(response.data?.clientSecret) });
-      if (response.data?.success && response.data?.clientSecret) {
-        setTipAmount(Number(response.data.amount || amount));
-        setClientSecret(response.data.clientSecret);
-      } else {
-        setPaymentError(response.data?.error || 'Payment failed. Please try again.');
-      }
-    } catch (err) {
-      setPaymentError(err?.response?.data?.error || err?.message || 'Payment failed. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  };
+  const handlePresetSelect = (amt) => { setAmount(amt); setCustomInput(String(amt)); };
+  const handleChipSelect   = (chip) => { setAmount(chip); setCustomInput(String(chip)); };
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
@@ -573,16 +620,13 @@ export default function TipPage() {
     setAmount(def);
     setCustomInput(String(def));
     setRating(0);
-    setClientSecret('');
   };
-
   const handleStripeSuccess = useCallback(() => {
     setPaymentError('');
-    setClientSecret('');
     setShowSuccess(true);
   }, []);
 
-  /* ─── Loading ─────────────────────────────────────────────────────────── */
+  /* ─── Loading ────────────────────────────────────────────────────── */
   if (loading) {
     return (
       <>
@@ -594,7 +638,7 @@ export default function TipPage() {
     );
   }
 
-  /* ─── Not Found ───────────────────────────────────────────────────────── */
+  /* ─── Not Found ──────────────────────────────────────────────────── */
   if (notFound) {
     return (
       <>
@@ -607,7 +651,7 @@ export default function TipPage() {
               </svg>
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>{t.notFoundTitle || 'User Not Found'}</h2>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>This profile does not exist or may have been removed.</p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 20 }}>{t.notFoundBody}</p>
             <Link to="/login" style={{ fontSize: 13, color: '#00C896', fontWeight: 600, textDecoration: 'underline' }}>{t.employeeLogin}</Link>
           </div>
         </div>
@@ -615,7 +659,7 @@ export default function TipPage() {
     );
   }
 
-  /* ─── Error ───────────────────────────────────────────────────────────── */
+  /* ─── Error ──────────────────────────────────────────────────────── */
   if (error) {
     return (
       <>
@@ -631,14 +675,36 @@ export default function TipPage() {
     );
   }
 
-  /* ─── Main render ─────────────────────────────────────────────────────── */
-  const photoSrc     = getPhotoSrc(employee);
-  const payDisabled  = sending || amount <= 0;
-  const tipCount     = employee.tip_count || 0;
-  const ratingAvg    = employee.rating_avg;
-  const ratingCount  = employee.rating_count || 0;
-  const hasRatings   = ratingAvg != null && ratingCount > 0;
+  /* ─── Main render ────────────────────────────────────────────────── */
+  const photoSrc    = getPhotoSrc(employee);
+  const tipCount    = employee.tip_count || 0;
+  const ratingAvg   = employee.rating_avg;
+  const ratingCount = employee.rating_count || 0;
+  const hasRatings  = ratingAvg != null && ratingCount > 0;
   const ratingDisplay = hasRatings ? Number(ratingAvg).toFixed(1) : null;
+
+  /* Elements options — deferred PaymentIntent */
+  const elementsOptions = amount > 0 ? {
+    mode: 'payment',
+    amount: toStripeMinorUnits(amount, currency),
+    currency: (currency || 'USD').toLowerCase(),
+    locale: getLanguageCode(),
+    appearance: {
+      theme: 'night',
+      variables: {
+        colorPrimary: '#00C896',
+        colorBackground: '#111111',
+        colorText: '#ffffff',
+        colorDanger: '#ef4444',
+        borderRadius: '12px',
+        fontFamily: 'DM Sans, -apple-system, BlinkMacSystemFont, Inter, sans-serif',
+      },
+      rules: {
+        '.Input': { backgroundColor: '#161616', border: '1px solid rgba(255,255,255,0.08)' },
+        '.Tab':   { backgroundColor: '#161616', border: '1px solid rgba(255,255,255,0.08)' },
+      },
+    },
+  } : null;
 
   return (
     <>
@@ -648,31 +714,35 @@ export default function TipPage() {
 
         {showSuccess && (
           <SuccessOverlay
-            amount={tipAmount} currency={currency} employeeName={employee.full_name}
+            amount={amount} currency={currency} employeeName={employee.full_name}
             thankYouMessage={business?.thank_you_message} rating={rating}
             onClose={handleCloseSuccess} t={t}
           />
         )}
 
-        <div style={{ width: '100%', maxWidth: 430, minHeight: '100dvh', background: '#000', display: 'flex', flexDirection: 'column', paddingBottom: 40 }}>
+        <div style={{
+          width: '100%', maxWidth: 430, minHeight: '100dvh', background: '#000',
+          display: 'flex', flexDirection: 'column',
+          /* extra bottom padding for mobile browser bars + safe-area */
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)',
+        }}>
 
           {/* ── ① Header ── */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '16px 20px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', gap: 7,
+            padding: '10px 20px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', gap: 7,
           }}>
             <SnapTipBolt/>
             <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>SnapTip</span>
           </div>
 
-          {/* ── ② Profile (centered, no card bg) ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '30px 20px 20px', textAlign: 'center' }}>
-            {/* Avatar with conic-gradient teal ring */}
+          {/* ── ② Profile ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 20px 12px', textAlign: 'center' }}>
             <div style={{
-              width: 100, height: 100, borderRadius: '50%', padding: 3,
+              width: 80, height: 80, borderRadius: '50%', padding: 3,
               background: 'conic-gradient(#00ffcc, #00C896, #00ffcc)',
-              boxShadow: '0 0 24px rgba(0,255,204,0.3)',
-              marginBottom: 16, flexShrink: 0,
+              boxShadow: '0 0 20px rgba(0,255,204,0.25)',
+              marginBottom: 12, flexShrink: 0,
             }}>
               <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: '#1c2333' }}>
                 {photoSrc
@@ -681,18 +751,15 @@ export default function TipPage() {
               </div>
             </div>
 
-            {/* Name + verified */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 5 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.3px' }}>{employee.full_name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '-0.3px' }}>{employee.full_name}</h1>
               <VerifiedBadge/>
             </div>
 
-            {/* Role */}
             {employee.job_title && (
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 5, marginTop: 0 }}>{employee.job_title}</p>
             )}
 
-            {/* Business pill */}
             {business && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 50, padding: '4px 12px', marginBottom: 9, border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>
                 <RestaurantIcon/>
@@ -700,7 +767,6 @@ export default function TipPage() {
               </div>
             )}
 
-            {/* Rating + tips row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
               {hasRatings ? (
                 <>
@@ -708,14 +774,14 @@ export default function TipPage() {
                   <span style={{ fontWeight: 600, color: '#fff' }}>{ratingDisplay}</span>
                   <span style={{ color: 'rgba(255,255,255,0.3)' }}>({ratingCount})</span>
                   <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', display: 'inline-block' }}/>
-                  <span>{tipCount} tips</span>
+                  <span>{tipCount} {t.tips || 'tips'}</span>
                 </>
               ) : (
                 <>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="#00ffcc"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <span>No ratings yet</span>
+                  <span>{t.noRatingsYet || 'No ratings yet'}</span>
                   {tipCount > 0 && (
-                    <><span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', display: 'inline-block' }}/><span>{tipCount} tips</span></>
+                    <><span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', display: 'inline-block' }}/><span>{tipCount} {t.tips || 'tips'}</span></>
                   )}
                 </>
               )}
@@ -723,13 +789,13 @@ export default function TipPage() {
           </div>
 
           {/* ── ③ Tip card grid ── */}
-          <div style={{ padding: '6px 20px 0' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 12, margin: '0 0 12px' }}>
-              Choose your tip
+          <div style={{ padding: '4px 20px 0' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', margin: '0 0 10px' }}>
+              {t.chooseTip || 'Choose your tip'}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {tipPresets.map((amt, i) => {
-                const { Icon, label, popular } = TIER_META[i];
+                const { Icon, key, popular } = TIER_BASE[i];
                 const isSelected = amount === amt;
                 return (
                   <button
@@ -740,17 +806,11 @@ export default function TipPage() {
                       background: isSelected ? 'rgba(0,255,204,0.06)' : '#111',
                       border: isSelected ? '1.5px solid #00ffcc' : '1.5px solid rgba(255,255,255,0.08)',
                       boxShadow: isSelected ? '0 0 0 1px rgba(0,255,204,0.1)' : 'none',
-                      borderRadius: 16,
-                      padding: '16px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 13,
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'hidden',
+                      borderRadius: 14, padding: '12px 12px',
+                      display: 'flex', alignItems: 'center', gap: 13,
+                      cursor: 'pointer', position: 'relative', overflow: 'hidden',
                       transition: 'border-color .18s, background .18s, box-shadow .18s',
-                      fontFamily: 'inherit',
-                      textAlign: 'left',
+                      fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
                     {popular && (
@@ -760,21 +820,16 @@ export default function TipPage() {
                         fontSize: 9, fontWeight: 700, letterSpacing: '.7px',
                         textTransform: 'uppercase', padding: '4px 9px',
                         borderRadius: '0 16px 0 9px',
-                      }}>Popular</span>
+                      }}>{t.popular || 'Popular'}</span>
                     )}
-                    {/* Icon */}
-                    <div style={{
-                      width: 44, height: 44, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
+                    <div style={{ width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Icon color={isSelected ? '#00ffcc' : '#6b7280'}/>
                     </div>
-                    {/* Info */}
                     <div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-                        {amt} <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>{currency}</span>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+                        {amt} <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)' }}>{currency}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{label}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{t[key] || key}</div>
                     </div>
                   </button>
                 );
@@ -783,42 +838,31 @@ export default function TipPage() {
           </div>
 
           {/* ── ④ Custom amount input + chips ── */}
-          <div style={{ padding: '22px 20px 0' }}>
+          <div style={{ padding: '14px 20px 0' }}>
             <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-              Custom Amount
+              {t.customAmount || 'Custom Amount'}
             </p>
-            {/* Currency tag + input */}
-            <div style={{
-              display: 'flex', alignItems: 'stretch', background: '#111',
-              border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden',
-            }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#00ffcc'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,255,204,0.1)'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
+            <div style={{ display: 'flex', alignItems: 'stretch', background: '#111', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{
                 background: 'rgba(0,255,204,0.1)', borderRight: '1px solid rgba(255,255,255,0.08)',
                 padding: '0 16px', display: 'flex', alignItems: 'center',
                 fontSize: 13, fontWeight: 700, color: '#00ffcc', letterSpacing: '.5px',
                 flexShrink: 0, whiteSpace: 'nowrap',
-              }}>
-                {currency}
-              </div>
+              }}>{currency}</div>
               <input
-                type="number"
-                min="0"
-                step="0.5"
+                type="number" min="0" step="0.5"
                 value={customInput}
                 onChange={e => handleCustomInput(e.target.value)}
                 placeholder="0.00"
+                inputMode="decimal"
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  padding: '0 16px', height: 54, fontSize: 24, fontWeight: 600,
+                  padding: '0 16px', height: 48, fontSize: 22, fontWeight: 600,
                   color: '#fff', fontFamily: 'inherit', minWidth: 0,
                 }}
               />
             </div>
-            {/* Quick chips */}
-            <div style={{ display: 'flex', gap: 7, marginTop: 10, flexWrap: 'wrap' }}>
+            <div className="quick-chips-row" style={{ marginTop: 10 }}>
               {quickChips.map(chip => {
                 const isOn = amount === chip;
                 return (
@@ -834,22 +878,20 @@ export default function TipPage() {
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'border-color .15s, color .15s, background .15s',
                     }}
-                  >
-                    {chip} {currency}
-                  </button>
+                  >{chip} {currency}</button>
                 );
               })}
             </div>
           </div>
 
-          {/* ── ⑤ Rating ── */}
-          <div style={{ padding: '22px 20px 0' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-              Rating
+          {/* ── ⑤ Rating (compact) ── */}
+          <div style={{ padding: '14px 20px 0' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', margin: '0 0 8px' }}>
+              {t.rating || 'Rating'}
             </p>
-            <div style={{ background: '#161616', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '18px 16px 16px', textAlign: 'center' }}>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#fff', marginBottom: 14, margin: '0 0 14px' }}>How was your experience?</p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ background: '#161616', border: '1.5px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '10px 14px 8px', textAlign: 'center' }}>
+              <p style={{ fontSize: 12, fontWeight: 500, color: '#fff', margin: '0 0 8px' }}>{t.ratingQuestion || 'How was your experience?'}</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
                 {[0,1,2,3,4].map(i => (
                   <button
                     key={i}
@@ -859,90 +901,60 @@ export default function TipPage() {
                     onMouseLeave={() => setHoverRating(0)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, borderRadius: 6, transition: 'transform .12s' }}
                   >
-                    <StarIcon filled={i < (hoverRating || rating)} size={30}/>
+                    <StarIcon filled={i < (hoverRating || rating)} size={26}/>
                   </button>
                 ))}
               </div>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
-                {rating > 0 ? `${rating} / 5` : 'Optional'}
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
+                {rating > 0 ? `${rating} / 5` : (t.optional || 'Optional')}
               </p>
             </div>
           </div>
 
-          {/* ── ⑥ Payment section ── */}
-          <div style={{ padding: '22px 20px 0' }}>
+          {/* ── ⑥ Payment ── */}
+          <div style={{ padding: '14px 20px 0' }}>
             <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-              Payment
+              {t.payment || 'Payment'}
             </p>
 
-            {/* Stripe PaymentElement (handles Apple Pay / Google Pay / Card automatically) */}
-            {clientSecret && stripePromise && (
-              <Elements
-                key={clientSecret}
-                stripe={stripePromise}
-                options={{
-                  clientSecret,
-                  appearance: {
-                    theme: 'night',
-                    variables: {
-                      colorPrimary: '#00C896',
-                      colorBackground: '#111111',
-                      colorText: '#ffffff',
-                      colorDanger: '#ef4444',
-                      borderRadius: '12px',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, DM Sans, Inter, sans-serif',
-                    },
-                  },
-                }}
-              >
-                <StripeCheckoutForm
-                  amount={tipAmount || amount} currency={currency} clientSecret={clientSecret}
-                  sending={sending} t={t}
-                  onProcessing={setSending} onError={setPaymentError} onSuccess={handleStripeSuccess}
-                />
-              </Elements>
-            )}
-
-            {/* Payment error */}
             {paymentError && (
               <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 12, textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
                 <p style={{ color: '#ef4444', fontSize: 14, fontWeight: 600, margin: 0 }}>{paymentError}</p>
               </div>
             )}
 
-            {/* ── ⑦ Pay button ── */}
-            {!clientSecret && (
-              <button
-                className="pay-btn-main"
-                onClick={handlePay}
-                disabled={payDisabled}
-                style={{
-                  width: '100%',
-                  background: payDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
-                  border: 'none', borderRadius: 50, padding: '17px 20px',
-                  fontSize: 17, fontWeight: 700,
-                  color: payDisabled ? 'rgba(255,255,255,0.3)' : '#000',
-                  fontFamily: 'inherit', cursor: payDisabled ? 'not-allowed' : 'pointer',
-                  letterSpacing: '-0.2px',
-                  boxShadow: payDisabled ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
-                  opacity: payDisabled ? 0.5 : 1,
-                  transition: 'opacity .15s, transform .12s, box-shadow .15s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  animation: payDisabled ? 'none' : 'pulseGlow 2.4s ease-in-out 1.5s infinite',
-                }}
-              >
-                {sending ? (
-                  <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>Processing...</>
-                ) : (
-                  `Pay ${amount} ${currency}`
-                )}
-              </button>
+            {!stripePromise && (
+              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 12, textAlign: 'center' }}>
+                <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, margin: 0 }}>
+                  Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.
+                </p>
+              </div>
             )}
 
-            {/* ── ⑧ Secure footer ── */}
+            {stripePromise && elementsOptions && (
+              <Elements
+                key={`${currency}`}
+                stripe={stripePromise}
+                options={elementsOptions}
+              >
+                <PaymentSection
+                  amount={amount}
+                  currency={currency}
+                  employeeId={employee.id}
+                  rating={rating}
+                  t={t}
+                  sending={sending}
+                  onProcessing={setSending}
+                  onError={setPaymentError}
+                  onSuccess={handleStripeSuccess}
+                />
+              </Elements>
+            )}
+
+            {/* ── ⑦ Secure footer ── */}
             <div style={{ textAlign: 'center', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: 'rgba(255,255,255,0.3)' }}>
               <LockIcon/>
-              <span style={{ fontSize: 12 }}>Secure payment · Powered by Stripe</span>
+              <span style={{ fontSize: 12 }}>{t.securePayment || 'Secure payment · Powered by Stripe'}</span>
             </div>
           </div>
 
