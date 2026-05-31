@@ -565,21 +565,24 @@ const LANG_ALIASES = {
 
 /* ── Detect language using full navigator.languages priority list ────── */
 function detectLang() {
-  if (typeof navigator === 'undefined') return 'en';
-  const langs = navigator.languages && navigator.languages.length
-    ? Array.from(navigator.languages)
-    : [navigator.language || 'en'];
+  try {
+    if (typeof navigator === 'undefined') return 'en';
+    const langs = navigator.languages && navigator.languages.length
+      ? Array.from(navigator.languages)
+      : [navigator.language || 'en'];
 
-  for (const tag of langs) {
-    const lower = tag.toLowerCase();
-    // Full regional tag → normalised base code (e.g. zh-CN → zh)
-    const regional = REGION_NORMALIZE[lower];
-    if (regional && translations[regional]) return regional;
-    // 2-char base code + alias (e.g. tl → fil, iw → he)
-    const code2 = lower.slice(0, 2);
-    const aliased = LANG_ALIASES[code2] || code2;
-    if (translations[aliased]) return aliased;
-  }
+    for (const tag of langs) {
+      if (!tag || typeof tag !== 'string') continue;
+      const lower = tag.toLowerCase();
+      // Full regional tag → normalised base code (e.g. zh-CN → zh)
+      const regional = REGION_NORMALIZE[lower];
+      if (regional && translations[regional]) return regional;
+      // 2-char base code + alias (e.g. tl → fil, iw → he)
+      const code2 = lower.slice(0, 2);
+      const aliased = LANG_ALIASES[code2] || code2;
+      if (translations[aliased]) return aliased;
+    }
+  } catch { /* ignore — always fall through to English */ }
   return 'en';
 }
 

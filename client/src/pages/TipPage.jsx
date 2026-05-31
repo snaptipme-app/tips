@@ -14,13 +14,12 @@
    supported devices.
    ────────────────────────────────────────────────────────────────────────── */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Component, useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
   PaymentElement,
-  ExpressCheckoutElement,
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js';
@@ -309,6 +308,26 @@ function SuccessOverlay({ amount, currency, employeeName, thankYouMessage, ratin
   );
 }
 
+/* ─── Error boundary: catches any Stripe/React render crash ────────── */
+class PaymentErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false }; }
+  static getDerivedStateFromError() { return { crashed: true }; }
+  componentDidCatch(err) { console.error('[TipPage] PaymentSection crashed', err); }
+  render() {
+    if (this.state.crashed) {
+      const t = this.props.t || {};
+      return (
+        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
+          <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, margin: 0 }}>
+            {t.paymentFailed || 'Payment section failed to load. Please refresh the page.'}
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ─── PAYMENT SECTION (inside <Elements> with deferred PI mode) ────────
    Hosts:
      - ExpressCheckoutElement (Apple Pay / Google Pay / etc., if available)
@@ -322,10 +341,8 @@ function PaymentSection({
 }) {
   const stripe   = useStripe();
   const elements = useElements();
-  const [walletsAvailable,     setWalletsAvailable] = useState(null); // null=unknown, true/false once onReady fires
-  const [paymentElementReady,  setPaymentElementReady] = useState(false);
+  const [paymentElementReady, setPaymentElementReady] = useState(false);
 
-  /* ── Shared confirm function used by both Express Checkout and card ── */
   const confirmAndPay = useCallback(async () => {
     if (!stripe || !elements) {
       onError(t.paymentFailed || 'Payment failed. Please try again.');
@@ -380,59 +397,20 @@ function PaymentSection({
     }
   }, [stripe, elements, amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
 
-  /* ── ExpressCheckoutElement onConfirm → reuse same flow ── */
-  const handleExpressConfirm = useCallback(async () => {
-    await confirmAndPay();
-  }, [confirmAndPay]);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-      {/* Express Checkout (Apple Pay / Google Pay) */}
-      <div style={{ minHeight: walletsAvailable === false ? 0 : 48 }}>
-        <ExpressCheckoutElement
-          options={{
-            buttonHeight: 48,
-            buttonTheme: { applePay: 'black', googlePay: 'black' },
-            layout: { maxColumns: 2, maxRows: 1 },
-          }}
-          onConfirm={handleExpressConfirm}
-          onReady={(ev) => {
-            const available = !!(ev?.availablePaymentMethods && Object.values(ev.availablePaymentMethods).some(Boolean));
-            setWalletsAvailable(available);
-            logPaymentDebug('ExpressCheckoutElement ready', { available, methods: ev?.availablePaymentMethods });
-          }}
-          onLoadError={(ev) => {
-            setWalletsAvailable(false);
-            console.warn('[TipPage payment] ExpressCheckoutElement load error', ev?.error);
-          }}
-        />
+      {/* Wallet info — static message (Apple Pay / Google Pay require domain registration) */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 12, padding: '10px 14px',
+        marginBottom: 12,
+      }}>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
+          {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
+        </p>
       </div>
-
-      {/* Fallback message when no wallets */}
-      {walletsAvailable === false && (
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 12, padding: '10px 14px',
-          marginBottom: 12,
-        }}>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
-            {t.walletsFallback}
-          </p>
-        </div>
-      )}
-
-      {/* Divider "or pay with card" — only when wallets actually rendered */}
-      {walletsAvailable === true && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '14px 0 12px' }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {t.orPayWithCard || 'or pay with card'}
-          </span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
-        </div>
-      )}
 
       {/* Card payment area */}
       <div style={{
@@ -932,23 +910,25 @@ export default function TipPage() {
             )}
 
             {stripePromise && elementsOptions && (
-              <Elements
-                key={`${currency}`}
-                stripe={stripePromise}
-                options={elementsOptions}
-              >
-                <PaymentSection
-                  amount={amount}
-                  currency={currency}
-                  employeeId={employee.id}
-                  rating={rating}
-                  t={t}
-                  sending={sending}
-                  onProcessing={setSending}
-                  onError={setPaymentError}
-                  onSuccess={handleStripeSuccess}
-                />
-              </Elements>
+              <PaymentErrorBoundary t={t}>
+                <Elements
+                  key={`${currency}`}
+                  stripe={stripePromise}
+                  options={elementsOptions}
+                >
+                  <PaymentSection
+                    amount={amount}
+                    currency={currency}
+                    employeeId={employee.id}
+                    rating={rating}
+                    t={t}
+                    sending={sending}
+                    onProcessing={setSending}
+                    onError={setPaymentError}
+                    onSuccess={handleStripeSuccess}
+                  />
+                </Elements>
+              </PaymentErrorBoundary>
             )}
 
             {/* ── ⑦ Secure footer ── */}
