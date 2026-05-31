@@ -45,6 +45,113 @@ function toStripeMinorUnits(amount, currency) {
   return Math.max(1, Math.round((Number(amount) || 0) * 100));
 }
 
+const LOCAL_TO_USD_RATE = 10;
+const WISE_MANUAL_COUNTRIES = new Set(['MA', 'PH', 'ID', 'TH', 'AE', 'MY']);
+const COUNTRY_NAME_TO_CODE = {
+  'united states': 'US',
+  usa: 'US',
+  us: 'US',
+  canada: 'CA',
+  'united kingdom': 'GB',
+  uk: 'GB',
+  gb: 'GB',
+  australia: 'AU',
+  'new zealand': 'NZ',
+  singapore: 'SG',
+  'hong kong': 'HK',
+  japan: 'JP',
+  france: 'FR',
+  germany: 'DE',
+  spain: 'ES',
+  italy: 'IT',
+  netherlands: 'NL',
+  portugal: 'PT',
+  belgium: 'BE',
+  austria: 'AT',
+  ireland: 'IE',
+  finland: 'FI',
+  sweden: 'SE',
+  denmark: 'DK',
+  norway: 'NO',
+  poland: 'PL',
+  switzerland: 'CH',
+  morocco: 'MA',
+  'united arab emirates': 'AE',
+  uae: 'AE',
+  philippines: 'PH',
+  indonesia: 'ID',
+  thailand: 'TH',
+  malaysia: 'MY',
+};
+const STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY = {
+  US: 'USD',
+  CA: 'CAD',
+  GB: 'GBP',
+  AU: 'AUD',
+  NZ: 'NZD',
+  SG: 'SGD',
+  HK: 'HKD',
+  JP: 'JPY',
+  FR: 'EUR',
+  DE: 'EUR',
+  ES: 'EUR',
+  IT: 'EUR',
+  NL: 'EUR',
+  PT: 'EUR',
+  BE: 'EUR',
+  AT: 'EUR',
+  IE: 'EUR',
+  FI: 'EUR',
+  SE: 'SEK',
+  DK: 'DKK',
+  NO: 'NOK',
+  PL: 'PLN',
+  CH: 'CHF',
+};
+
+function normalizeCountryCode(value) {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
+  return COUNTRY_NAME_TO_CODE[raw.toLowerCase()] || '';
+}
+
+function getEmployeeCountryCode(employee) {
+  return normalizeCountryCode(
+    employee?.country_code ||
+    employee?.countryCode ||
+    employee?.payout_country ||
+    employee?.country
+  );
+}
+
+function getStripeProcessingPayment({ amount, currency, employee }) {
+  const originalAmount = Number(amount) || 0;
+  if (originalAmount <= 0) return null;
+
+  const countryCode = getEmployeeCountryCode(employee);
+  const originalCurrency = (currency || employee?.currency || 'USD').toUpperCase();
+  const payoutMethod = String(employee?.payout_method || '').toLowerCase();
+  const isStripeConnect = payoutMethod === 'stripe_connect' ||
+    (!payoutMethod && !!STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY[countryCode]);
+  const isWiseManual = payoutMethod === 'wise_manual' ||
+    WISE_MANUAL_COUNTRIES.has(countryCode) ||
+    !isStripeConnect;
+
+  const stripeCurrency = isWiseManual
+    ? 'USD'
+    : (STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY[countryCode] || originalCurrency || 'USD');
+  const stripeMajorAmount = isWiseManual
+    ? originalAmount / LOCAL_TO_USD_RATE
+    : originalAmount;
+
+  return {
+    stripeCurrency,
+    stripeMajorAmount,
+    stripeAmountMinor: toStripeMinorUnits(stripeMajorAmount, stripeCurrency),
+  };
+}
+
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
   USD: [2,    5,     10,    20    ],
@@ -342,6 +449,12 @@ function PaymentSection({
   const stripe   = useStripe();
   const elements = useElements();
   const [paymentElementReady, setPaymentElementReady] = useState(false);
+  const [paymentLoadError, setPaymentLoadError] = useState('');
+
+  useEffect(() => {
+    setPaymentElementReady(false);
+    setPaymentLoadError('');
+  }, [amount, currency, employeeId]);
 
   const confirmAndPay = useCallback(async () => {
     if (!stripe || !elements) {
@@ -350,6 +463,10 @@ function PaymentSection({
     }
     if (amount <= 0 || !employeeId) {
       onError(t.invalidAmount || 'Choose a valid tip amount before paying.');
+      return;
+    }
+    if (!paymentElementReady) {
+      onError(t.paymentFormLoading || 'Payment form is still loading. Please try again in a moment.');
       return;
     }
 
@@ -395,7 +512,7 @@ function PaymentSection({
     } finally {
       onProcessing(false);
     }
-  }, [stripe, elements, amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
+  }, [stripe, elements, amount, currency, employeeId, rating, t, paymentElementReady, onError, onSuccess, onProcessing]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -431,9 +548,22 @@ function PaymentSection({
             layout: { type: 'accordion', defaultCollapsed: false, radios: false, spacedAccordionItems: false },
             paymentMethodOrder: ['card'],
           }}
-          onReady={() => setPaymentElementReady(true)}
-          onLoadError={(ev) => { setPaymentElementReady(false); onError(ev?.error?.message || t.paymentFailed); }}
+          onReady={() => {
+            setPaymentElementReady(true);
+            setPaymentLoadError('');
+          }}
+          onLoadError={(ev) => {
+            const message = ev?.error?.message || 'Payment form could not load. Please refresh and try again.';
+            console.error('[TipPage payment] PaymentElement load error', ev?.error || ev);
+            setPaymentElementReady(false);
+            setPaymentLoadError(message);
+          }}
         />
+        {paymentLoadError && (
+          <p style={{ margin: '10px 0 0', color: '#fbbf24', fontSize: 12, lineHeight: 1.45, textAlign: 'center' }}>
+            {paymentLoadError}
+          </p>
+        )}
       </div>
 
       {/* Pay button */}
@@ -573,6 +703,10 @@ export default function TipPage() {
   const currency   = employee?.currency || 'MAD';
   const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
   const quickChips = useMemo(() => getQuickChips(currency), [currency]);
+  const stripePayment = useMemo(
+    () => getStripeProcessingPayment({ amount, currency, employee }),
+    [amount, currency, employee]
+  );
 
   // Default to "Great Service" (index 1) once presets are known — also Popular
   useEffect(() => {
@@ -583,14 +717,20 @@ export default function TipPage() {
     }
   }, [employee, tipPresets, amount]);
 
+  useEffect(() => {
+    setPaymentError('');
+    setSending(false);
+  }, [amount, currency, employee?.id]);
+
   const handleCustomInput = (val) => {
+    setPaymentError('');
     setCustomInput(val);
     const parsed = parseFloat(val);
     if (!isNaN(parsed) && parsed > 0) setAmount(parsed);
     else if (val === '' || val === '0') setAmount(0);
   };
-  const handlePresetSelect = (amt) => { setAmount(amt); setCustomInput(String(amt)); };
-  const handleChipSelect   = (chip) => { setAmount(chip); setCustomInput(String(chip)); };
+  const handlePresetSelect = (amt) => { setPaymentError(''); setAmount(amt); setCustomInput(String(amt)); };
+  const handleChipSelect   = (chip) => { setPaymentError(''); setAmount(chip); setCustomInput(String(chip)); };
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
@@ -662,10 +802,10 @@ export default function TipPage() {
   const ratingDisplay = hasRatings ? Number(ratingAvg).toFixed(1) : null;
 
   /* Elements options — deferred PaymentIntent */
-  const elementsOptions = amount > 0 ? {
+  const elementsOptions = stripePayment?.stripeAmountMinor > 0 ? {
     mode: 'payment',
-    amount: toStripeMinorUnits(amount, currency),
-    currency: (currency || 'USD').toLowerCase(),
+    amount: stripePayment.stripeAmountMinor,
+    currency: stripePayment.stripeCurrency.toLowerCase(),
     locale: getLanguageCode(),
     appearance: {
       theme: 'night',
@@ -912,7 +1052,7 @@ export default function TipPage() {
             {stripePromise && elementsOptions && (
               <PaymentErrorBoundary t={t}>
                 <Elements
-                  key={`${currency}`}
+                  key={`${employee.id}-${stripePayment.stripeCurrency}-${stripePayment.stripeAmountMinor}`}
                   stripe={stripePromise}
                   options={elementsOptions}
                 >
