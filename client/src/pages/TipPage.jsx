@@ -286,6 +286,64 @@ const LockIcon = () => (
     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>
 );
+const CardIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+    <path d="M2 10h20"/>
+    <path d="M6 15h4"/>
+  </svg>
+);
+
+function PaymentMethodSelector({ activeMethod, onSelect, t }) {
+  const methods = [
+    { id: 'apple_pay', label: 'Apple Pay', disabled: true },
+    { id: 'google_pay', label: 'Google Pay', disabled: true },
+    { id: 'card', label: 'Credit / Debit Card', disabled: false },
+  ];
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+        {methods.map(method => {
+          const isActive = activeMethod === method.id;
+          return (
+            <button
+              key={method.id}
+              type="button"
+              disabled={method.disabled}
+              title={method.disabled ? (t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.') : ''}
+              onClick={() => { if (!method.disabled) onSelect(method.id); }}
+              style={{
+                minHeight: 48,
+                gridColumn: method.id === 'card' ? '1 / -1' : 'auto',
+                borderRadius: 14,
+                border: isActive ? '1.5px solid #00ffcc' : '1px solid rgba(255,255,255,0.08)',
+                background: isActive ? 'rgba(0,255,204,0.08)' : 'rgba(255,255,255,0.035)',
+                color: method.disabled ? 'rgba(255,255,255,0.32)' : (isActive ? '#00ffcc' : '#fff'),
+                fontFamily: 'inherit',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: method.disabled ? 'not-allowed' : 'pointer',
+                opacity: method.disabled ? 0.72 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '0 12px',
+              }}
+            >
+              {method.id === 'card' ? <CardIcon/> : <span style={{ fontSize: 12, fontWeight: 800 }}>{method.id === 'apple_pay' ? 'AP' : 'G'}</span>}
+              <span>{method.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ margin: 0, color: 'rgba(255,255,255,0.42)', fontSize: 12, lineHeight: 1.4, textAlign: 'center' }}>
+        {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
+      </p>
+    </div>
+  );
+}
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 function getPhotoSrc(employee) {
@@ -507,23 +565,12 @@ function PaymentSection({
     } finally {
       onProcessing(false);
     }
-  }, [stripe, elements, amount, currency, employeeId, rating, t, paymentElementReady, onError, onSuccess, onProcessing]);
+  }, [stripe, elements, amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
       {/* Wallet info — static message (Apple Pay / Google Pay require domain registration) */}
-      <div style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 12, padding: '10px 14px',
-        marginBottom: 12,
-      }}>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, textAlign: 'center', lineHeight: 1.4 }}>
-          {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
-        </p>
-      </div>
-
       {/* Card payment area */}
       <div style={{
         background: '#111',
@@ -651,6 +698,7 @@ export default function TipPage() {
   const [sending,      setSending]      = useState(false);
   const [showSuccess,  setShowSuccess]  = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
 
   const t   = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -719,10 +767,22 @@ export default function TipPage() {
 
   const handleCustomInput = (val) => {
     setPaymentError('');
-    setCustomInput(val);
-    const parsed = parseFloat(val);
-    if (!isNaN(parsed) && parsed > 0) setAmount(parsed);
-    else if (val === '' || val === '0') setAmount(0);
+    const next = String(val || '').replace(',', '.').trim();
+    if (next === '') {
+      setCustomInput('');
+      setAmount(null);
+      return;
+    }
+    if (!/^\d*\.?\d{0,2}$/.test(next)) return;
+    if (next === '.') {
+      setCustomInput(next);
+      setAmount(null);
+      return;
+    }
+    const parsed = Number(next);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    setCustomInput(next);
+    setAmount(parsed > 0 ? parsed : null);
   };
   const handlePresetSelect = (amt) => { setPaymentError(''); setAmount(amt); setCustomInput(String(amt)); };
   const handleChipSelect   = (chip) => { setPaymentError(''); setAmount(chip); setCustomInput(String(chip)); };
@@ -963,7 +1023,7 @@ export default function TipPage() {
                 flexShrink: 0, whiteSpace: 'nowrap',
               }}>{currency}</div>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={customInput}
                 onChange={e => handleCustomInput(e.target.value)}
                 placeholder="0.00"
@@ -1044,7 +1104,56 @@ export default function TipPage() {
               </div>
             )}
 
-            {stripePromise && elementsOptions && (
+            <PaymentMethodSelector
+              activeMethod={paymentMethod}
+              t={t}
+              onSelect={(method) => {
+                setPaymentError('');
+                setPaymentMethod(method);
+              }}
+            />
+
+            {stripePromise && !elementsOptions && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{
+                  background: '#111',
+                  borderRadius: 14,
+                  padding: '18px 16px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.48)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}>
+                  {t.enterAmount || 'Enter an amount to load the secure card form.'}
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="pay-btn-main"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.08)',
+                    border: 'none',
+                    borderRadius: 50,
+                    padding: '17px 20px',
+                    fontSize: 17,
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,0.35)',
+                    fontFamily: 'inherit',
+                    cursor: 'not-allowed',
+                    letterSpacing: '-0.2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {t.enterAmount || 'Enter amount'}
+                </button>
+              </div>
+            )}
+
+            {stripePromise && elementsOptions && paymentMethod === 'card' && (
               <PaymentErrorBoundary t={t}>
                 <Elements
                   key={`${employee.id}-${stripePayment.stripeCurrency}-${stripePayment.stripeAmountMinor}`}
