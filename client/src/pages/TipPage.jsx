@@ -300,6 +300,42 @@ const ChevronDownIcon = ({ open }) => (
   </svg>
 );
 
+function WalletUnavailableFallback({ t }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+        {['Apple Pay', 'Google Pay'].map(label => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            style={{
+              minHeight: 48,
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.035)',
+              color: 'rgba(255,255,255,0.32)',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 12px',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p style={{ margin: 0, color: 'rgba(255,255,255,0.42)', fontSize: 12, lineHeight: 1.4, textAlign: 'center' }}>
+        {t.walletsFallback || 'Apple Pay and Google Pay appear when available on your device.'}
+      </p>
+    </div>
+  );
+}
+
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 function getPhotoSrc(employee) {
   if (!employee) return '';
@@ -565,10 +601,11 @@ function PaymentSection({
             }}
             onConfirm={handleExpressConfirm}
             onReady={(ev) => {
-              const available = !!(ev?.availablePaymentMethods &&
-                Object.values(ev.availablePaymentMethods).some(Boolean));
+              const methods = ev?.availablePaymentMethods || null;
+              const available = !!(methods && Object.values(methods).some(Boolean));
               onWalletsDetected(available);
-              logPaymentDebug('ExpressCheckoutElement ready', { available, methods: ev?.availablePaymentMethods });
+              logPaymentDebug('ExpressCheckoutElement ready', { available, methods });
+              console.log('[TipPage payment] ExpressCheckoutElement availablePaymentMethods', JSON.stringify(methods));
             }}
             onLoadError={(ev) => {
               console.warn('[TipPage] ExpressCheckoutElement load error', ev?.error);
@@ -579,6 +616,8 @@ function PaymentSection({
       )}
 
       {/* Divider — only when real wallets are rendered above the card form */}
+      {walletsAvailable === false && <WalletUnavailableFallback t={t}/>}
+
       {walletsAvailable === true && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '10px 0 10px' }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }}/>
