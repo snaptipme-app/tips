@@ -553,7 +553,6 @@ function PaymentSection({
             options={{
               buttonHeight: 48,
               buttonTheme: { applePay: 'black', googlePay: 'black' },
-              buttonType: { applePay: 'pay', googlePay: 'pay' },
               layout: { maxColumns: 2, maxRows: 1 },
               paymentMethods: {
                 applePay: 'auto',
