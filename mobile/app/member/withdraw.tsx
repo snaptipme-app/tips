@@ -60,7 +60,7 @@ interface SubMethod {
    ====================================================================== */
 const getPayoutMethod = (_country: string, minAmount: number): SubMethod => {
   return {
-    id: 'wise_manual', label: 'Manual bank transfer', sublabel: 'via Wise Business',
+    id: 'wise_manual', label: 'Bank transfer', sublabel: 'Processing: 1-3 business days',
     fee: 0, min: minAmount, processingTime: '1-3 business days',
     fields: [],
   };
@@ -110,6 +110,12 @@ interface PayoutDetailsStatus {
     detailsLast4?: string;
     isComplete?: boolean;
   } | null;
+}
+
+function getEmployeePayoutLabel(method?: string) {
+  const normalized = String(method || '').toLowerCase();
+  if (normalized.includes('stripe')) return 'Stripe Express';
+  return 'Bank transfer';
 }
 
 /* ======================================================================
@@ -665,10 +671,10 @@ export default function MemberWithdraw() {
                   <Text style={{ fontSize: 13, fontWeight: '700', color: YELLOW }}>Payouts under review</Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.48)', lineHeight: 18 }}>
-                  Automatic payouts are not available for this country yet. You can continue with manual payout review.
+                  Automatic payouts are not available for this country yet. You can continue with bank transfer review.
                 </Text>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
-                  Manual payouts are processed after review.
+                  Payouts are processed after review.
                 </Text>
                 {payoutSchedule !== 'manual' && (
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
@@ -683,7 +689,7 @@ export default function MemberWithdraw() {
                   <Ionicons name="document-text-outline" size={26} color={YELLOW} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Manual payout review</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Bank transfer review</Text>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{payoutMethod.label}  -  {t('min')} {payoutMethod.min} {cur}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
@@ -695,14 +701,14 @@ export default function MemberWithdraw() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Ionicons name="bulb-outline" size={16} color={ACCENT} />
                   <Text style={{ fontSize: 13, fontWeight: '700', color: ACCENT }}>
-                    Manual bank transfer
+                    Bank transfer
                   </Text>
                 </View>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 }}>
-                  Manual payouts are processed via Wise Business. Processing: {payoutMethod.processingTime}.
+                  Processing: {payoutMethod.processingTime}.
                 </Text>
                 <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
-                  Manual payouts are reviewed and processed by SnapTip.
+                  Payouts are reviewed and processed by SnapTip.
                 </Text>
                 {payoutSchedule !== 'manual' && (
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6 }}>
@@ -737,19 +743,19 @@ export default function MemberWithdraw() {
             <View style={{ backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' }}>
               {withdrawals.map((w, idx) => {
                 const s = STATUS_STYLES[w.status] || STATUS_STYLES.pending;
+                const displayAmount = Number(w.net_amount || w.amount || 0);
+                const displayMethod = getEmployeePayoutLabel(w.method);
                 return (
                   <View key={w.id} style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: idx < withdrawals.length - 1 ? 1 : 0, borderBottomColor: BORDER }}>
                     <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: s.bg, justifyContent: 'center', alignItems: 'center', marginRight: 14 }}>
                       <Ionicons name="arrow-up-outline" size={18} color={s.color} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{w.method}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{displayMethod}</Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{formatDate(w.created_at)}</Text>
-                      {Number(w.platform_fee_amount || w.fee) > 0 && <Text style={{ fontSize: 11, color: YELLOW, marginTop: 1 }}>SnapTip fee: {Number(w.platform_fee_amount || w.fee).toFixed(2)} {cur}</Text>}
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>-{Number(w.amount).toFixed(2)} {cur}</Text>
-                      {Number(w.net_amount) > 0 && Number(w.net_amount) !== Number(w.amount) && <Text style={{ fontSize: 11, color: GREEN }}>{'->'} {Number(w.net_amount).toFixed(2)} {cur}</Text>}
+                      <Text style={{ fontSize: 15, fontWeight: '900', color: GREEN }}>{displayAmount.toFixed(2)} {cur}</Text>
                       <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 50, backgroundColor: s.bg }}>
                         <Text style={{ fontSize: 10, fontWeight: '700', color: s.color }}>{t(s.label)}</Text>
                       </View>
@@ -801,7 +807,7 @@ export default function MemberWithdraw() {
               })}
 
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 18, marginTop: 6, marginBottom: 16 }}>
-                SnapTip fee is applied only when a withdrawal is processed.
+                You can update this preference anytime.
               </Text>
 
               <HapticButton onPress={saveWithdrawalPreferences} disabled={savingPreferences}>
@@ -867,14 +873,10 @@ export default function MemberWithdraw() {
                         <Text style={summaryLabelStyle}>Withdraw</Text>
                         <Text style={summaryValueStyle}>{parseFloat(amount || '0').toFixed(2)} {cur}</Text>
                       </View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <Text style={summaryLabelStyle}>SnapTip fee (10%)</Text>
-                        <Text style={[summaryValueStyle, { color: YELLOW }]}>-{effectiveFee.toFixed(2)} {cur}</Text>
-                      </View>
                       <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10 }} />
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                         <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>You receive</Text>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: GREEN }}>{receiveAmount.toFixed(2)} {cur}</Text>
+                        <Text style={{ fontSize: 18, fontWeight: '900', color: GREEN }}>{receiveAmount.toFixed(2)} {cur}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={summaryLabelStyle}>{t('payment_method_label')}</Text>
@@ -884,7 +886,6 @@ export default function MemberWithdraw() {
                         <Text style={summaryLabelStyle}>{t('processing_time')}</Text>
                         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>{activeMethod.processingTime}</Text>
                       </View>
-                      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 8, textAlign: 'center', fontStyle: 'italic' }}>Your full withdrawal amount is deducted from balance.</Text>
                     </View>
                   )}
 
@@ -928,19 +929,18 @@ export default function MemberWithdraw() {
             {lastResult && (
               <>
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 20, lineHeight: 20 }}>
-                  {tx('withdrawal_success_body', { amount: lastResult.amount.toFixed(2), currency: lastResult.currency, time: lastResult.processingTime })}
+                  {tx('withdrawal_success_body', { amount: lastResult.net.toFixed(2), currency: lastResult.currency, time: lastResult.processingTime })}
                 </Text>
                 <View style={{ backgroundColor: 'rgba(0,200,150,0.06)', borderRadius: 16, padding: 20, width: '100%', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(0,200,150,0.15)' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={summaryLabelStyle}>{t('requested')}</Text><Text style={summaryValueStyle}>{lastResult.amount.toFixed(2)} {lastResult.currency}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{t('you_receive')}</Text><Text style={{ fontSize: 18, fontWeight: '900', color: GREEN }}>{lastResult.net.toFixed(2)} {lastResult.currency}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={summaryLabelStyle}>SnapTip fee (10%)</Text><Text style={[summaryValueStyle, { color: YELLOW }]}>{lastResult.fee.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={summaryLabelStyle}>{t('payment_method_label')}</Text><Text style={summaryValueStyle}>{getEmployeePayoutLabel(lastResult.method)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: GREEN }}>{t('you_receive')}</Text><Text style={{ fontSize: 15, fontWeight: '800', color: GREEN }}>{lastResult.net.toFixed(2)} {lastResult.currency}</Text>
+                    <Text style={summaryLabelStyle}>{t('processing_time')}</Text><Text style={summaryValueStyle}>{lastResult.processingTime}</Text>
                   </View>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 12, textAlign: 'center' }}>{tx('via_method', { method: lastResult.method })}</Text>
                 </View>
               </>
             )}
