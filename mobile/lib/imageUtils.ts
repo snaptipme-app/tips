@@ -10,17 +10,18 @@ const API_BASE = 'https://snaptip.me';
  *   - Relative path (/uploads/…)→  { uri: API_BASE + path }
  */
 export function getImageSource(url: string | null | undefined): { uri: string } | null {
-  if (!url || url.trim() === '') return null;
+  const cleanUrl = url?.trim();
+  if (!cleanUrl) return null;
   // Data URI or full URL — use as-is
-  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
-    return { uri: url };
+  if (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+    return { uri: cleanUrl };
   }
   // Relative path from server
-  if (url.startsWith('/')) {
-    return { uri: `${API_BASE}${url}` };
+  if (cleanUrl.startsWith('/')) {
+    return { uri: `${API_BASE}${cleanUrl}` };
   }
   // Fallback — treat as-is
-  return { uri: url };
+  return { uri: cleanUrl };
 }
 
 /**
@@ -28,8 +29,9 @@ export function getImageSource(url: string | null | undefined): { uri: string } 
  * Useful for places that need a raw string rather than { uri }.
  */
 export function getFullImageUrl(url: string | null | undefined): string | null {
-  if (!url || url.trim() === '') return null;
-  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) return `${API_BASE}${url}`;
-  return url;
+  const cleanUrl = url?.trim();
+  if (!cleanUrl) return null;
+  if (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) return cleanUrl;
+  if (cleanUrl.startsWith('/')) return `${API_BASE}${cleanUrl}`;
+  return cleanUrl;
 }

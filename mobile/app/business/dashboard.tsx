@@ -78,7 +78,7 @@ export default function BusinessDashboard() {
   const currency        = user?.currency || 'MAD';
   const initials        = (user?.full_name || 'B').charAt(0).toUpperCase();
   const photoSrc        = getImageSource(user?.photo_base64 || user?.profile_image_url);
-  const businessLogoSrc = getImageSource(business?.logo_url || '');
+  const businessLogoSrc = getImageSource(business?.logo_url?.trim() || '');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -89,6 +89,8 @@ export default function BusinessDashboard() {
       ]);
       setStats(statsRes.data);
       setTransactions(txRes.data.transactions || []);
+      console.log('[DEBUG logo_url]', bizRes.data?.business?.logo_url);
+      console.log('[DEBUG businessLogoSrc]', getImageSource(bizRes.data?.business?.logo_url?.trim() || ''));
       setBusiness(bizRes.data.business || null);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to load dashboard.', 'error');
