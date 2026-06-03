@@ -12,6 +12,7 @@ import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
+import { uploadBusinessLogo } from '../../lib/uploadImage';
 
 const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
@@ -77,12 +78,10 @@ export default function BusinessProfileSettings() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setLocalLogoUri(asset.uri);
-      setLogoBase64(`data:image/jpeg;base64,${asset.base64}`);
     }
   };
 
@@ -99,10 +98,18 @@ export default function BusinessProfileSettings() {
         address: address.trim(),
         thank_you_message: thankYou.trim(),
       };
-      if (logoBase64 && logoBase64.startsWith('data:image')) {
-        payload.logo_base64 = logoBase64;
+      const { data } = await api.patch('/business/update', payload);
+      if (localLogoUri) {
+        const uploadResult = await uploadBusinessLogo(localLogoUri);
+        if (!uploadResult.success || !uploadResult.logo_url) {
+          throw new Error(uploadResult.error || 'Failed to upload logo.');
+        }
+        setBusiness({ ...(data.business || business), logo_url: uploadResult.logo_url });
+        setLogoBase64('');
+        setLocalLogoUri('');
+      } else {
+        setBusiness(data.business || business);
       }
-      await api.patch('/business/update', payload);
       showToast('Business settings saved!', 'success');
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to save.', 'error');

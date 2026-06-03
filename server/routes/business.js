@@ -714,16 +714,19 @@ router.post('/upload-logo', authMiddleware, upload.single('logo'), multerErrorHa
     const logoUrl = `https://snaptip.me/uploads/${req.file.filename}`;
     console.log(`[upload-logo] Saved: ${logoUrl} (${req.file.size} bytes) for owner_id=${req.employee.id}`);
 
-    await pool.query(
-      'UPDATE businesses SET logo_url = $1, logo_base64 = NULL WHERE owner_id = $2',
+    const { rows } = await pool.query(
+      `UPDATE businesses
+       SET logo_url = $1, logo_base64 = NULL
+       WHERE owner_id = $2
+       RETURNING id, business_name, business_type, logo_url, address`,
       [logoUrl, req.employee.id]
     );
 
-    const { rows } = await pool.query(
-      'SELECT id, business_name, business_type, logo_url, address FROM businesses WHERE owner_id = $1',
-      [req.employee.id]
-    );
-    res.json({ success: true, logo_url: logoUrl, business: rows[0] || {} });
+    if (rows.length === 0) {
+      return res.status(403).json({ error: 'You do not own a business.' });
+    }
+
+    res.json({ success: true, logo_url: rows[0].logo_url, business: rows[0] });
   } catch (err) {
     console.error('[upload-logo] Error:', err.message);
     res.status(500).json({ error: 'Failed to save logo.' });

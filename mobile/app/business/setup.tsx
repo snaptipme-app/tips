@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import api from '../../lib/api';
 import { Toast, useToast } from '../../components/Toast';
 import HapticButton from '../../components/HapticButton';
+import { uploadBusinessLogo } from '../../lib/uploadImage';
 
 const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
@@ -45,6 +46,12 @@ export default function BusinessSetup() {
     setLoading(true);
     try {
       await api.post('/business/create', { business_name: name.trim(), business_type: finalType, address: address.trim(), logo_url: '' });
+      if (logoUri) {
+        const uploadResult = await uploadBusinessLogo(logoUri);
+        if (!uploadResult.success || !uploadResult.logo_url) {
+          throw new Error(uploadResult.error || 'Business created, but logo upload failed.');
+        }
+      }
       showToast('Business created!', 'success');
       setTimeout(() => router.replace('/business/team'), 500);
     } catch (e: any) {
