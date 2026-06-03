@@ -135,7 +135,7 @@ router.post('/create-intent', async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: stripePaymentAmount,
       currency: stripePaymentCurrency.toLowerCase(),
-      payment_method_types: ['card'],
+      automatic_payment_methods: { enabled: true },
       description: `SnapTip for ${employee.full_name || employee.username || `employee ${employee.id}`}`,
       receipt_email: tourist_email || undefined,
       metadata: {
