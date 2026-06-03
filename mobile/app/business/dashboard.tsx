@@ -60,7 +60,6 @@ interface Transaction {
 interface BusinessInfo {
   id: number;
   business_name: string;
-  logo_base64?: string;
   logo_url?: string;
 }
 
@@ -79,7 +78,7 @@ export default function BusinessDashboard() {
   const currency        = user?.currency || 'MAD';
   const initials        = (user?.full_name || 'B').charAt(0).toUpperCase();
   const photoSrc        = getImageSource(user?.photo_base64 || user?.profile_image_url);
-  const businessLogoSrc = getImageSource(business?.logo_base64 || business?.logo_url);
+  const businessLogoSrc = getImageSource(business?.logo_url || '');
 
   const fetchAll = useCallback(async () => {
     try {
