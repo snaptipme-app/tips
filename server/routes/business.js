@@ -315,6 +315,29 @@ router.get('/invite-info/:token', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/business/join/:token
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /api/business/join-session
+// Validates the current web JWT before the join page shows an accept button.
+router.get('/join-session', authMiddleware, async (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+    const { rows } = await pool.query(
+      `SELECT id, username, full_name, email, account_type, business_id
+       FROM employees
+       WHERE id = $1`,
+      [employeeId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Employee account not found.' });
+    }
+
+    res.json({ employee: rows[0] });
+  } catch (err) {
+    console.error('[business/join-session]', err.message);
+    res.status(500).json({ error: 'Server error checking session.' });
+  }
+});
+
 router.post('/join/:token', authMiddleware, async (req, res) => {
   try {
     const { token } = req.params;

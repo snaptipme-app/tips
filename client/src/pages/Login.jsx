@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const PersonIcon = () => (
@@ -95,13 +95,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     const result = await login(email, password);
     if (result.success) {
-      navigate('/dashboard');
+      const redirect = new URLSearchParams(location.search).get('redirect');
+      navigate(redirect && redirect.startsWith('/') ? redirect : '/dashboard');
     } else {
       setError(result.error);
     }

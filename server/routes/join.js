@@ -268,8 +268,29 @@ router.get('/:token', (req, res) => {
     function getStoredToken() {
       try { return localStorage.getItem('snaptip_token'); } catch { return null; }
     }
-    function getStoredUser() {
-      try { const u = localStorage.getItem('snaptip_user'); return u ? JSON.parse(u) : null; } catch { return null; }
+    function clearStoredSession() {
+      try {
+        localStorage.removeItem('snaptip_token');
+        localStorage.removeItem('snaptip_user');
+      } catch {}
+    }
+    async function getValidSession() {
+      const jwt = getStoredToken();
+      if (!jwt) return null;
+
+      try {
+        const res = await fetch(API + '/business/join-session', {
+          headers: { 'Authorization': 'Bearer ' + jwt },
+        });
+        if (!res.ok) {
+          clearStoredSession();
+          return null;
+        }
+        const data = await res.json();
+        return data.employee || null;
+      } catch {
+        return null;
+      }
     }
 
     async function init() {
@@ -287,7 +308,8 @@ router.get('/:token', (req, res) => {
         $('biz-name').textContent = data.business_name || 'Unknown Business';
         $('biz-type').textContent = data.business_type || '';
 
-        renderActions(data.business_name);
+        const sessionUser = await getValidSession();
+        renderActions(data.business_name, sessionUser);
         show('preview');
       } catch (e) {
         $('error-msg').textContent = e.message;
@@ -295,15 +317,14 @@ router.get('/:token', (req, res) => {
       }
     }
 
-    function renderActions(bizName) {
+    function renderActions(bizName, sessionUser) {
       const jwt = getStoredToken();
-      const user = getStoredUser();
       const acts = $('actions');
 
-      if (jwt && user) {
+      if (jwt && sessionUser) {
         // Logged in
         acts.innerHTML = 
-          '<div class="joining-as">Joining as <strong>' + (user.full_name || user.username || '') + '</strong></div>' +
+          '<div class="joining-as">Joining as <strong>' + (sessionUser.full_name || sessionUser.username || '') + '</strong></div>' +
           '<button class="btn btn-primary" id="join-btn">&#10003; Join ' + (bizName || 'Team') + '</button>' +
           '<a href="/" class="btn btn-outline">Decline</a>';
 
@@ -321,7 +342,7 @@ router.get('/:token', (req, res) => {
     async function handleJoin() {
       const btn = $('join-btn');
       const jwt = getStoredToken();
-      if (!jwt) { renderActions($('biz-name').textContent); return; }
+      if (!jwt) { renderActions($('biz-name').textContent, null); return; }
 
       btn.disabled = true;
       btn.textContent = 'Joining...';
@@ -332,6 +353,11 @@ router.get('/:token', (req, res) => {
           headers: { 'Authorization': 'Bearer ' + jwt, 'Content-Type': 'application/json' },
         });
         const data = await res.json();
+        if (res.status === 401) {
+          clearStoredSession();
+          renderActions($('biz-name').textContent, null);
+          throw new Error('Please log in again to accept this invitation.');
+        }
         if (!res.ok) throw new Error(data.error || 'Failed to join.');
 
         $('success-biz-name').textContent = data.business_name || $('biz-name').textContent;
