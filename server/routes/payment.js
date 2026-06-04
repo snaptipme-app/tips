@@ -16,10 +16,94 @@ const { getStripeSettlementDetails } = require('../lib/stripeSettlementLedger');
 
 const router = express.Router();
 
-const LOCAL_TO_USD_RATE = 10;
+const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
+const FALLBACK_USD_RATES = {
+  MAD: 10,
+  AED: 3.67,
+  GBP: 0.79,
+  EUR: 0.92,
+  CAD: 1.36,
+  AUD: 1.53,
+  SGD: 1.34,
+  JPY: 149,
+  HKD: 7.82,
+  CHF: 0.90,
+  NOK: 10.5,
+  DKK: 6.9,
+  SEK: 10.4,
+  PLN: 4.0,
+  NZD: 1.63,
+  THB: 35,
+  PHP: 56,
+  IDR: 15600,
+};
+
+let exchangeRateCache = {
+  fetchedAt: 0,
+  rates: null,
+};
 
 function normalizeCurrency(currency) {
   return String(currency || 'MAD').trim().toUpperCase();
+}
+
+async function getUsdExchangeRates() {
+  const now = Date.now();
+  if (
+    exchangeRateCache.rates &&
+    now - exchangeRateCache.fetchedAt < EXCHANGE_RATE_CACHE_TTL_MS
+  ) {
+    return exchangeRateCache.rates;
+  }
+
+  try {
+    const response = await fetch(EXCHANGE_RATE_API_URL);
+    if (!response.ok) {
+      throw new Error(`Exchange rate API returned HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data?.result !== 'success' || !data?.rates || typeof data.rates !== 'object') {
+      throw new Error('Exchange rate API returned an invalid payload');
+    }
+
+    exchangeRateCache = {
+      fetchedAt: now,
+      rates: data.rates,
+    };
+    return data.rates;
+  } catch (err) {
+    console.warn('[payment] exchange rate API unavailable, using fallback rates', {
+      message: err?.message,
+    });
+    exchangeRateCache = {
+      fetchedAt: now,
+      rates: FALLBACK_USD_RATES,
+    };
+    return FALLBACK_USD_RATES;
+  }
+}
+
+async function convertLocalAmountToUsd(amount, currency) {
+  const normalizedCurrency = normalizeCurrency(currency);
+  if (normalizedCurrency === 'USD') {
+    return {
+      usdAmount: amount,
+      exchangeRate: 1,
+    };
+  }
+
+  const rates = await getUsdExchangeRates();
+  const exchangeRate = Number(rates[normalizedCurrency]);
+  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
+    throw new Error(`No USD exchange rate available for ${normalizedCurrency}`);
+  }
+
+  return {
+    usdAmount: amount / exchangeRate,
+    exchangeRate,
+  };
 }
 
 function parseRating(value) {
@@ -102,11 +186,20 @@ router.post('/create-intent', async (req, res) => {
     const stripePaymentCurrency = payoutMethod === 'stripe_connect'
       ? getStripePaymentCurrency(payoutConfig.code)
       : 'USD';
+    const conversion = payoutMethod === 'stripe_connect'
+      ? { usdAmount: originalAmount, exchangeRate: 1 }
+      : await convertLocalAmountToUsd(originalAmount, originalCurrency);
     const stripePaymentMajorAmount = payoutMethod === 'stripe_connect'
       ? originalAmount
-      : originalAmount / LOCAL_TO_USD_RATE;
+      : conversion.usdAmount;
     const stripePaymentAmount = toStripeMinorUnit(stripePaymentMajorAmount, stripePaymentCurrency);
-    const exchangeRateUsed = payoutMethod === 'stripe_connect' ? 1 : LOCAL_TO_USD_RATE;
+    const exchangeRateUsed = conversion.exchangeRate;
+
+    if (stripePaymentCurrency === 'USD') {
+      console.log(
+        `[payment] converting ${originalAmount} ${originalCurrency} → ${stripePaymentMajorAmount.toFixed(2)} USD at rate ${exchangeRateUsed}`
+      );
+    }
 
     if (!stripePaymentAmount || stripePaymentAmount < 1) {
       console.warn(`[payment/create-intent:${requestId}] amount too small`, {
