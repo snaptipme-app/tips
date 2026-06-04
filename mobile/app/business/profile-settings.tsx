@@ -13,6 +13,7 @@ import { Toast, useToast } from '../../components/Toast';
 import SkeletonLoader from '../../components/SkeletonLoader';
 import HapticButton from '../../components/HapticButton';
 import { uploadBusinessLogo } from '../../lib/uploadImage';
+import { getImageSource } from '../../lib/imageUtils';
 
 const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
@@ -118,7 +119,7 @@ export default function BusinessProfileSettings() {
     }
   };
 
-  const logoSrc = localLogoUri || logoBase64 || business?.logo_url || '';
+  const logoSrc = getImageSource(localLogoUri || logoBase64 || business?.logo_url || '');
 
   if (loading) {
     return (
@@ -152,7 +153,7 @@ export default function BusinessProfileSettings() {
           <TouchableOpacity onPress={pickLogo} activeOpacity={0.85}>
             <View style={{ width: 100, height: 100, borderRadius: 50, overflow: 'hidden', borderWidth: 3, borderColor: ACCENT, backgroundColor: 'rgba(0,255,204,0.12)', justifyContent: 'center', alignItems: 'center' }}>
               {logoSrc ? (
-                <Image source={{ uri: logoSrc }} style={{ width: 100, height: 100 }} />
+                <Image source={logoSrc} style={{ width: 100, height: 100 }} />
               ) : (
                 <Ionicons name="business-outline" size={36} color="rgba(0,255,204,0.5)" />
               )}

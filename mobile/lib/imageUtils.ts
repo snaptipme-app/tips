@@ -20,6 +20,9 @@ export function getImageSource(url: string | null | undefined): { uri: string } 
   if (cleanUrl.startsWith('/')) {
     return { uri: `${API_BASE}${cleanUrl}` };
   }
+  if (cleanUrl.startsWith('uploads/')) {
+    return { uri: `${API_BASE}/${cleanUrl}` };
+  }
   // Fallback — treat as-is
   return { uri: cleanUrl };
 }
@@ -33,5 +36,6 @@ export function getFullImageUrl(url: string | null | undefined): string | null {
   if (!cleanUrl) return null;
   if (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) return cleanUrl;
   if (cleanUrl.startsWith('/')) return `${API_BASE}${cleanUrl}`;
+  if (cleanUrl.startsWith('uploads/')) return `${API_BASE}/${cleanUrl}`;
   return cleanUrl;
 }

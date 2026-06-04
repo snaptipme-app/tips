@@ -155,28 +155,27 @@ function getStripeProcessingPayment({ amount, currency, employee }) {
 
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
-  USD: [2,    5,     10,    20    ],
-  EUR: [2,    5,     10,    20    ],
-  GBP: [1,    2,     5,     10    ],
-  CAD: [2,    5,     10,    20    ],
-  AUD: [2,    5,     10,    20    ],
-  NZD: [2,    5,     10,    20    ],
-  SGD: [2,    5,     10,    20    ],
-  CHF: [2,    5,     10,    20    ],
-  DKK: [20,   50,    100,   200   ],
-  NOK: [20,   50,    100,   200   ],
-  SEK: [20,   50,    100,   200   ],
-  PLN: [10,   20,    50,    100   ],
-  MYR: [10,   20,    50,    100   ],
-  MXN: [20,   50,    100,   200   ],
-  MAD: [20,   50,    100,   200   ],
-  AED: [10,   20,    50,    100   ],
-  JPY: [200,  500,   1000,  2000  ],
-  HKD: [20,   50,    100,   200   ],
-  PHP: [50,   100,   200,   500   ],
-  THB: [50,   100,   200,   500   ],
-  IDR: [20000, 50000, 100000, 200000],
+  USD: [2, 5, 10],
+  EUR: [2, 5, 10],
+  GBP: [2, 5, 10],
+  CHF: [2, 5, 10],
+  CAD: [2, 5, 10],
+  AUD: [2, 5, 10],
+  SGD: [2, 5, 10],
+  NZD: [2, 5, 10],
+  AED: [10, 50, 100],
+  PLN: [10, 50, 100],
+  HKD: [10, 50, 100],
+  MAD: [20, 50, 100],
+  NOK: [20, 50, 100],
+  DKK: [20, 50, 100],
+  SEK: [20, 50, 100],
+  THB: [50, 100, 500],
+  PHP: [50, 100, 500],
+  JPY: [500, 1000, 2000],
+  IDR: [20000, 50000, 100000],
 };
+const DEFAULT_TIP_PRESETS = [5, 10, 20];
 
 /* ─── Quick chips for custom amount input ─────────────────────────────── */
 const QUICK_CHIPS = {
@@ -203,7 +202,7 @@ const QUICK_CHIPS = {
   IDR: [20000, 50000, 100000, 200000, 500000],
 };
 
-function getTipPresets(currency)  { return SUGGESTED_TIPS[currency] ?? SUGGESTED_TIPS.USD; }
+function getTipPresets(currency)  { return SUGGESTED_TIPS[String(currency || '').trim().toUpperCase()] ?? DEFAULT_TIP_PRESETS; }
 function getQuickChips(currency)  { return QUICK_CHIPS[currency]    ?? QUICK_CHIPS.USD; }
 function formatCurrency(amount, currency) {
   if (amount == null) return '';
