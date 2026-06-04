@@ -46,105 +46,67 @@ function toStripeMinorUnits(amount, currency) {
   return Math.max(1, Math.round((Number(amount) || 0) * 100));
 }
 
-const LOCAL_TO_USD_RATE = 10;
-const WISE_MANUAL_COUNTRIES = new Set(['MA', 'PH', 'ID', 'TH', 'AE', 'MY']);
-const COUNTRY_NAME_TO_CODE = {
-  'united states': 'US',
-  usa: 'US',
-  us: 'US',
-  canada: 'CA',
-  'united kingdom': 'GB',
-  uk: 'GB',
-  gb: 'GB',
-  australia: 'AU',
-  'new zealand': 'NZ',
-  singapore: 'SG',
-  'hong kong': 'HK',
-  japan: 'JP',
-  france: 'FR',
-  germany: 'DE',
-  spain: 'ES',
-  italy: 'IT',
-  netherlands: 'NL',
-  portugal: 'PT',
-  belgium: 'BE',
-  austria: 'AT',
-  ireland: 'IE',
-  finland: 'FI',
-  sweden: 'SE',
-  denmark: 'DK',
-  norway: 'NO',
-  poland: 'PL',
-  switzerland: 'CH',
-  morocco: 'MA',
-  'united arab emirates': 'AE',
-  uae: 'AE',
-  philippines: 'PH',
-  indonesia: 'ID',
-  thailand: 'TH',
-  malaysia: 'MY',
-};
-const STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY = {
-  US: 'USD',
-  CA: 'CAD',
-  GB: 'GBP',
-  AU: 'AUD',
-  NZ: 'NZD',
-  SG: 'SGD',
-  HK: 'HKD',
-  JP: 'JPY',
-  FR: 'EUR',
-  DE: 'EUR',
-  ES: 'EUR',
-  IT: 'EUR',
-  NL: 'EUR',
-  PT: 'EUR',
-  BE: 'EUR',
-  AT: 'EUR',
-  IE: 'EUR',
-  FI: 'EUR',
-  SE: 'SEK',
-  DK: 'DKK',
-  NO: 'NOK',
-  PL: 'PLN',
-  CH: 'CHF',
+const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
+const FALLBACK_USD_RATES = {
+  USD: 1,
+  AED: 3.67,
+  MAD: 10.0,
+  GBP: 0.79,
+  EUR: 0.92,
+  THB: 36.5,
+  PHP: 58.0,
+  JPY: 155.0,
+  IDR: 16000,
 };
 
-function normalizeCountryCode(value) {
-  if (!value) return '';
-  const raw = String(value).trim();
-  if (/^[a-z]{2}$/i.test(raw)) return raw.toUpperCase();
-  return COUNTRY_NAME_TO_CODE[raw.toLowerCase()] || '';
+let exchangeRateCache = {
+  fetchedAt: 0,
+  rates: null,
+};
+
+async function getUsdExchangeRates() {
+  const now = Date.now();
+  if (
+    exchangeRateCache.rates &&
+    now - exchangeRateCache.fetchedAt < EXCHANGE_RATE_CACHE_TTL_MS
+  ) {
+    return exchangeRateCache.rates;
+  }
+
+  try {
+    const response = await fetch(EXCHANGE_RATE_API_URL);
+    if (!response.ok) throw new Error(`Exchange rate API returned HTTP ${response.status}`);
+    const data = await response.json();
+    if (data?.result !== 'success' || !data?.rates || typeof data.rates !== 'object') {
+      throw new Error('Exchange rate API returned an invalid payload');
+    }
+    exchangeRateCache = { fetchedAt: now, rates: data.rates };
+    return data.rates;
+  } catch (err) {
+    console.warn('[TipPage payment] exchange rate API unavailable, using fallback rates', {
+      message: err?.message,
+    });
+    exchangeRateCache = { fetchedAt: now, rates: FALLBACK_USD_RATES };
+    return FALLBACK_USD_RATES;
+  }
 }
 
-function getEmployeeCountryCode(employee) {
-  return normalizeCountryCode(
-    employee?.country_code ||
-    employee?.countryCode ||
-    employee?.payout_country ||
-    employee?.country
-  );
+function getUsdRate(currency, rates) {
+  const normalizedCurrency = String(currency || 'USD').trim().toUpperCase();
+  if (normalizedCurrency === 'USD') return 1;
+  const rate = Number(rates?.[normalizedCurrency] ?? FALLBACK_USD_RATES[normalizedCurrency]);
+  return Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
-function getStripeProcessingPayment({ amount, currency, employee }) {
+function getStripeProcessingPayment({ amount, currency, employee, usdRates }) {
   const originalAmount = Number(amount) || 0;
   if (originalAmount <= 0) return null;
 
-  const countryCode = getEmployeeCountryCode(employee);
   const originalCurrency = (currency || employee?.currency || 'USD').toUpperCase();
-  const payoutMethod = String(employee?.payout_method || '').toLowerCase();
-  const isStripeConnect = payoutMethod === 'stripe_connect' ||
-    (!payoutMethod && !!STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY[countryCode]);
-  const isWiseManual = payoutMethod === 'wise_manual' ||
-    WISE_MANUAL_COUNTRIES.has(countryCode) ||
-    !isStripeConnect;
-
-  const stripeCurrency = isWiseManual
-    ? 'USD'
-    : (STRIPE_CONNECT_PAYMENT_CURRENCY_BY_COUNTRY[countryCode] || originalCurrency || 'USD');
-  const stripeMajorAmount = isWiseManual
-    ? originalAmount / LOCAL_TO_USD_RATE
-    : originalAmount;
+  const exchangeRate = getUsdRate(originalCurrency, usdRates);
+  const stripeCurrency = 'USD';
+  const stripeMajorAmount = originalAmount / exchangeRate;
 
   return {
     stripeCurrency,
@@ -790,6 +752,7 @@ export default function TipPage() {
   const [showSuccess,      setShowSuccess]      = useState(false);
   const [paymentError,     setPaymentError]     = useState('');
   const [walletsAvailable, setWalletsAvailable] = useState(null); // null=unknown, true/false after ECE onReady
+  const [usdRates,         setUsdRates]         = useState(FALLBACK_USD_RATES);
 
   const t   = useMemo(() => getTranslation(), []);
   const rtl = useMemo(() => isRTL(), []);
@@ -800,6 +763,14 @@ export default function TipPage() {
     if (rtl) document.documentElement.dir = 'rtl';
     return () => { document.documentElement.dir = 'ltr'; document.documentElement.lang = 'en'; };
   }, [rtl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getUsdExchangeRates().then((rates) => {
+      if (!cancelled) setUsdRates(rates);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -838,8 +809,8 @@ export default function TipPage() {
   const tipPresets = useMemo(() => getTipPresets(currency), [currency]);
   const quickChips = useMemo(() => getQuickChips(currency), [currency]);
   const stripePayment = useMemo(
-    () => getStripeProcessingPayment({ amount, currency, employee }),
-    [amount, currency, employee]
+    () => getStripeProcessingPayment({ amount, currency, employee, usdRates }),
+    [amount, currency, employee, usdRates]
   );
 
   // Default to "Great Service" (index 1) once presets are known — also Popular

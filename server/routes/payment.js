@@ -8,7 +8,6 @@ const {
   getEffectivePayoutMethod,
 } = require('../lib/countryPayoutConfig');
 const {
-  getStripePaymentCurrency,
   toStripeMinorUnit,
   fromStripeMinorUnit,
 } = require('../lib/stripeCurrency');
@@ -19,24 +18,14 @@ const router = express.Router();
 const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
 const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 const FALLBACK_USD_RATES = {
-  MAD: 10,
   AED: 3.67,
+  MAD: 10.0,
   GBP: 0.79,
   EUR: 0.92,
-  CAD: 1.36,
-  AUD: 1.53,
-  SGD: 1.34,
-  JPY: 149,
-  HKD: 7.82,
-  CHF: 0.90,
-  NOK: 10.5,
-  DKK: 6.9,
-  SEK: 10.4,
-  PLN: 4.0,
-  NZD: 1.63,
-  THB: 35,
-  PHP: 56,
-  IDR: 15600,
+  THB: 36.5,
+  PHP: 58.0,
+  JPY: 155.0,
+  IDR: 16000,
 };
 
 let exchangeRateCache = {
@@ -183,23 +172,15 @@ router.post('/create-intent', async (req, res) => {
       ? employee.payout_method
       : null;
     const payoutMethod = storedPayoutMethod || getEffectivePayoutMethod(payoutConfig);
-    const stripePaymentCurrency = payoutMethod === 'stripe_connect'
-      ? getStripePaymentCurrency(payoutConfig.code)
-      : 'USD';
-    const conversion = payoutMethod === 'stripe_connect'
-      ? { usdAmount: originalAmount, exchangeRate: 1 }
-      : await convertLocalAmountToUsd(originalAmount, originalCurrency);
-    const stripePaymentMajorAmount = payoutMethod === 'stripe_connect'
-      ? originalAmount
-      : conversion.usdAmount;
+    const stripePaymentCurrency = 'USD';
+    const conversion = await convertLocalAmountToUsd(originalAmount, originalCurrency);
+    const stripePaymentMajorAmount = conversion.usdAmount;
     const stripePaymentAmount = toStripeMinorUnit(stripePaymentMajorAmount, stripePaymentCurrency);
     const exchangeRateUsed = conversion.exchangeRate;
 
-    if (stripePaymentCurrency === 'USD') {
-      console.log(
-        `[payment] converting ${originalAmount} ${originalCurrency} → ${stripePaymentMajorAmount.toFixed(2)} USD at rate ${exchangeRateUsed}`
-      );
-    }
+    console.log(
+      `Converted ${originalAmount} ${originalCurrency} to ${stripePaymentAmount} USD cents using rate ${exchangeRateUsed}`
+    );
 
     if (!stripePaymentAmount || stripePaymentAmount < 1) {
       console.warn(`[payment/create-intent:${requestId}] amount too small`, {
@@ -227,7 +208,7 @@ router.post('/create-intent', async (req, res) => {
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: stripePaymentAmount,
-      currency: stripePaymentCurrency.toLowerCase(),
+      currency: 'usd',
       automatic_payment_methods: { enabled: true },
       description: `SnapTip for ${employee.full_name || employee.username || `employee ${employee.id}`}`,
       receipt_email: tourist_email || undefined,
