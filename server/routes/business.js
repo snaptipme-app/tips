@@ -85,7 +85,8 @@ router.get('/me', authMiddleware, async (req, res) => {
       `SELECT COALESCE(SUM(p.amount), 0) as total
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = $1`,
+       WHERE tm.business_id = $1
+         AND p.business_id = $1`,
       [business.id]
     );
     const total_tips = Number(tipsRows[0]?.total) || 0;
@@ -243,20 +244,22 @@ router.get('/members', authMiddleware, async (req, res) => {
          e.username,
          e.full_name,
          e.email,
-         e.balance,
          e.job_title,
          e.photo_url,
          e.photo_base64,
          e.profile_image_url,
-         COALESCE((SELECT SUM(amount) FROM payments WHERE employee_id = e.id), 0) as total_tips,
+         COALESCE(SUM(p.amount), 0) as total_tips,
+         COALESCE(SUM(p.amount), 0) as balance,
          COALESCE(ROUND(AVG(p.rating)::NUMERIC, 1), 0)::FLOAT AS average_rating,
          COUNT(p.rating)::INT AS total_ratings
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
-       LEFT JOIN payments p ON p.employee_id = e.id AND p.rating IS NOT NULL AND p.status = 'completed'
+       LEFT JOIN payments p ON p.employee_id = e.id
+        AND p.business_id = tm.business_id
+        AND p.status = 'completed'
        WHERE tm.business_id = $1
        GROUP BY tm.id, tm.role, tm.joined_at, e.id, e.username, e.full_name, e.email,
-                e.balance, e.job_title, e.photo_url, e.photo_base64, e.profile_image_url
+                e.job_title, e.photo_url, e.photo_base64, e.profile_image_url
        ORDER BY tm.joined_at DESC`,
       [business.id]
     );
@@ -514,7 +517,8 @@ router.get('/stats', authMiddleware, async (req, res) => {
       `SELECT COALESCE(SUM(p.amount), 0) as total
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = $1`,
+       WHERE tm.business_id = $1
+         AND p.business_id = $1`,
       [business.id]
     );
 
@@ -522,7 +526,8 @@ router.get('/stats', authMiddleware, async (req, res) => {
       `SELECT COUNT(*) as count
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = $1`,
+       WHERE tm.business_id = $1
+         AND p.business_id = $1`,
       [business.id]
     );
 
@@ -539,6 +544,8 @@ router.get('/stats', authMiddleware, async (req, res) => {
        FROM team_members tm
        INNER JOIN employees e ON e.id = tm.employee_id
        LEFT JOIN payments p ON p.employee_id = e.id
+        AND p.business_id = tm.business_id
+        AND p.status = 'completed'
        WHERE tm.business_id = $1
        GROUP BY e.id
        ORDER BY total_tips DESC
@@ -553,7 +560,10 @@ router.get('/stats', authMiddleware, async (req, res) => {
          COUNT(p.rating)::INT AS team_total_ratings
        FROM payments p
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
-       WHERE tm.business_id = $1 AND p.rating IS NOT NULL AND p.status = 'completed'`,
+       WHERE tm.business_id = $1
+         AND p.business_id = $1
+         AND p.rating IS NOT NULL
+         AND p.status = 'completed'`,
       [business.id]
     );
     const tr = teamRatingRows[0] || {};
@@ -594,6 +604,7 @@ router.get('/transactions', authMiddleware, async (req, res) => {
        INNER JOIN team_members tm ON tm.employee_id = p.employee_id
        INNER JOIN employees e ON e.id = p.employee_id
        WHERE tm.business_id = $1
+         AND p.business_id = $1
        ORDER BY p.created_at DESC
        LIMIT 200`,
       [business.id]
