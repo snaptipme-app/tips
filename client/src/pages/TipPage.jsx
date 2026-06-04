@@ -198,9 +198,9 @@ const TierIconGift = ({ color = '#6b7280' }) => (
   </svg>
 );
 const TierIconCrown = ({ color = '#6b7280' }) => (
-  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color }}>
-    <path d="M2 20h20"/>
-    <path d="M2 20l2.5-12.5L9 12l3-6 3 6 4.5-4.5L22 20"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color }}>
+    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+    <path d="M5 21h14" />
   </svg>
 );
 
