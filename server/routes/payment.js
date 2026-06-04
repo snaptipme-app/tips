@@ -15,11 +15,11 @@ const { getStripeSettlementDetails } = require('../lib/stripeSettlementLedger');
 
 const router = express.Router();
 
-const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
 const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 const FALLBACK_USD_RATES = {
   AED: 3.67,
-  MAD: 10.0,
+  MAD: 9.19,
   GBP: 0.79,
   EUR: 0.92,
   THB: 36.5,
@@ -53,7 +53,7 @@ async function getUsdExchangeRates() {
     }
 
     const data = await response.json();
-    if (data?.result !== 'success' || !data?.rates || typeof data.rates !== 'object') {
+    if (!data?.rates || typeof data.rates !== 'object') {
       throw new Error('Exchange rate API returned an invalid payload');
     }
 
@@ -63,13 +63,12 @@ async function getUsdExchangeRates() {
     };
     return data.rates;
   } catch (err) {
-    console.warn('[payment] exchange rate API unavailable, using fallback rates', {
-      message: err?.message,
-    });
-    exchangeRateCache = {
-      fetchedAt: now,
-      rates: FALLBACK_USD_RATES,
-    };
+    console.error('Exchange API Error:', err?.message || err);
+    if (exchangeRateCache.rates) {
+      console.warn('[payment] exchange rate API unavailable, using stale cached live rates');
+      return exchangeRateCache.rates;
+    }
+    console.warn('[payment] exchange rate API unavailable, using fallback rates');
     return FALLBACK_USD_RATES;
   }
 }

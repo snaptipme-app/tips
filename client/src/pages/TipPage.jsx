@@ -46,12 +46,12 @@ function toStripeMinorUnits(amount, currency) {
   return Math.max(1, Math.round((Number(amount) || 0) * 100));
 }
 
-const EXCHANGE_RATE_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
 const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 const FALLBACK_USD_RATES = {
   USD: 1,
   AED: 3.67,
-  MAD: 10.0,
+  MAD: 9.19,
   GBP: 0.79,
   EUR: 0.92,
   THB: 36.5,
@@ -78,16 +78,18 @@ async function getUsdExchangeRates() {
     const response = await fetch(EXCHANGE_RATE_API_URL);
     if (!response.ok) throw new Error(`Exchange rate API returned HTTP ${response.status}`);
     const data = await response.json();
-    if (data?.result !== 'success' || !data?.rates || typeof data.rates !== 'object') {
+    if (!data?.rates || typeof data.rates !== 'object') {
       throw new Error('Exchange rate API returned an invalid payload');
     }
     exchangeRateCache = { fetchedAt: now, rates: data.rates };
     return data.rates;
   } catch (err) {
-    console.warn('[TipPage payment] exchange rate API unavailable, using fallback rates', {
-      message: err?.message,
-    });
-    exchangeRateCache = { fetchedAt: now, rates: FALLBACK_USD_RATES };
+    console.error('Exchange API Error:', err?.message || err);
+    if (exchangeRateCache.rates) {
+      console.warn('[TipPage payment] exchange rate API unavailable, using stale cached live rates');
+      return exchangeRateCache.rates;
+    }
+    console.warn('[TipPage payment] exchange rate API unavailable, using fallback rates');
     return FALLBACK_USD_RATES;
   }
 }
