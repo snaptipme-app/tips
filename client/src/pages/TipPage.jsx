@@ -117,27 +117,27 @@ function getStripeProcessingPayment({ amount, currency, employee, usdRates }) {
 
 /* ─── Suggested tip presets per currency ──────────────────────────────── */
 const SUGGESTED_TIPS = {
-  USD: [2, 5, 10],
-  EUR: [2, 5, 10],
-  GBP: [2, 5, 10],
-  CHF: [2, 5, 10],
-  CAD: [2, 5, 10],
-  AUD: [2, 5, 10],
-  SGD: [2, 5, 10],
-  NZD: [2, 5, 10],
-  AED: [10, 50, 100],
-  PLN: [10, 50, 100],
-  HKD: [10, 50, 100],
-  MAD: [20, 50, 100],
-  NOK: [20, 50, 100],
-  DKK: [20, 50, 100],
-  SEK: [20, 50, 100],
-  THB: [50, 100, 500],
-  PHP: [50, 100, 500],
-  JPY: [500, 1000, 2000],
-  IDR: [20000, 50000, 100000],
+  USD: [2, 5, 10, 20],
+  EUR: [2, 5, 10, 20],
+  GBP: [2, 5, 10, 20],
+  CHF: [2, 5, 10, 20],
+  CAD: [2, 5, 10, 20],
+  AUD: [2, 5, 10, 20],
+  SGD: [2, 5, 10, 20],
+  NZD: [2, 5, 10, 20],
+  AED: [10, 50, 100, 200],
+  PLN: [10, 50, 100, 200],
+  HKD: [10, 50, 100, 200],
+  MAD: [20, 50, 100, 200],
+  NOK: [20, 50, 100, 200],
+  DKK: [20, 50, 100, 200],
+  SEK: [20, 50, 100, 200],
+  THB: [50, 100, 500, 1000],
+  PHP: [50, 100, 500, 1000],
+  JPY: [500, 1000, 2000, 5000],
+  IDR: [20000, 50000, 100000, 200000],
 };
-const DEFAULT_TIP_PRESETS = [5, 10, 20];
+const DEFAULT_TIP_PRESETS = [5, 10, 20, 50];
 
 /* ─── Quick chips for custom amount input ─────────────────────────────── */
 const QUICK_CHIPS = {
@@ -197,13 +197,10 @@ const TierIconGift = ({ color = '#6b7280' }) => (
     <path d="M19 13 C21 10 25 9 26 11 C27 13 23 13 19 13 Z"/>
   </svg>
 );
-const TierIconDiamond = ({ color = '#6b7280' }) => (
-  <svg width="36" height="36" viewBox="0 0 38 38" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 5 L33 16 L19 34 L5 16 Z"/>
-    <path d="M5 16 L12 9 L19 5"/>
-    <path d="M19 5 L26 9 L33 16"/>
-    <line x1="5" y1="16" x2="33" y2="16"/>
-    <path d="M12 9 L19 16 L26 9"/>
+const TierIconCrown = ({ color = '#6b7280' }) => (
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color }}>
+    <path d="M2 20h20"/>
+    <path d="M2 20l2.5-12.5L9 12l3-6 3 6 4.5-4.5L22 20"/>
   </svg>
 );
 
@@ -212,7 +209,7 @@ const TIER_BASE = [
   { Icon: TierIconCoffee,  key: 'quickThanks',  popular: false },
   { Icon: TierIconStar,    key: 'greatService', popular: true  },
   { Icon: TierIconGift,    key: 'excellent',    popular: false },
-  { Icon: TierIconDiamond, key: 'outstanding',  popular: false },
+  { Icon: TierIconCrown,   key: 'outstanding',  popular: false },
 ];
 
 /* ─── SVG components ──────────────────────────────────────────────────── */
