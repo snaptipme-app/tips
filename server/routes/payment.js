@@ -12,87 +12,12 @@ const {
   fromStripeMinorUnit,
 } = require('../lib/stripeCurrency');
 const { getStripeSettlementDetails } = require('../lib/stripeSettlementLedger');
+const {
+  convertLocalAmountToUsd,
+  normalizeCurrency,
+} = require('../lib/exchangeRates');
 
 const router = express.Router();
-
-const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
-const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
-const FALLBACK_USD_RATES = {
-  AED: 3.67,
-  MAD: 9.19,
-  GBP: 0.79,
-  EUR: 0.92,
-  THB: 36.5,
-  PHP: 58.0,
-  JPY: 155.0,
-  IDR: 16000,
-};
-
-let exchangeRateCache = {
-  fetchedAt: 0,
-  rates: null,
-};
-
-function normalizeCurrency(currency) {
-  return String(currency || 'MAD').trim().toUpperCase();
-}
-
-async function getUsdExchangeRates() {
-  const now = Date.now();
-  if (
-    exchangeRateCache.rates &&
-    now - exchangeRateCache.fetchedAt < EXCHANGE_RATE_CACHE_TTL_MS
-  ) {
-    return exchangeRateCache.rates;
-  }
-
-  try {
-    const response = await fetch(EXCHANGE_RATE_API_URL);
-    if (!response.ok) {
-      throw new Error(`Exchange rate API returned HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (!data?.rates || typeof data.rates !== 'object') {
-      throw new Error('Exchange rate API returned an invalid payload');
-    }
-
-    exchangeRateCache = {
-      fetchedAt: now,
-      rates: data.rates,
-    };
-    return data.rates;
-  } catch (err) {
-    console.error('Exchange API Error:', err?.message || err);
-    if (exchangeRateCache.rates) {
-      console.warn('[payment] exchange rate API unavailable, using stale cached live rates');
-      return exchangeRateCache.rates;
-    }
-    console.warn('[payment] exchange rate API unavailable, using fallback rates');
-    return FALLBACK_USD_RATES;
-  }
-}
-
-async function convertLocalAmountToUsd(amount, currency) {
-  const normalizedCurrency = normalizeCurrency(currency);
-  if (normalizedCurrency === 'USD') {
-    return {
-      usdAmount: amount,
-      exchangeRate: 1,
-    };
-  }
-
-  const rates = await getUsdExchangeRates();
-  const exchangeRate = Number(rates[normalizedCurrency]);
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
-    throw new Error(`No USD exchange rate available for ${normalizedCurrency}`);
-  }
-
-  return {
-    usdAmount: amount / exchangeRate,
-    exchangeRate,
-  };
-}
 
 function parseRating(value) {
   const rating = Number(value);

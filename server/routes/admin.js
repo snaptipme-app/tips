@@ -16,6 +16,11 @@ const {
   maskEmail,
   maskPhone,
 } = require('../lib/wisePayoutDetails');
+const {
+  convertLocalAmountToUsdWithRates,
+  getUsdExchangeRates,
+  normalizeCurrency,
+} = require('../lib/exchangeRates');
 
 const ADMIN_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -75,6 +80,29 @@ function maskNormalizedAccountDetails(details) {
     contactEmail: details.contactEmail ? maskEmail(details.contactEmail) : '',
     address: details.address ? 'Saved' : '',
   };
+}
+
+function roundMoney(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric * 100) / 100 : null;
+}
+
+function safeWithdrawalUsdConversion(amount, currency, rates) {
+  try {
+    const conversion = convertLocalAmountToUsdWithRates(Number(amount || 0), currency, rates);
+    return {
+      usdAmount: roundMoney(conversion.usdAmount),
+      exchangeRate: conversion.exchangeRate,
+      currency: normalizeCurrency(currency),
+    };
+  } catch (err) {
+    return {
+      usdAmount: null,
+      exchangeRate: null,
+      currency: normalizeCurrency(currency),
+      error: err?.message || 'USD conversion unavailable',
+    };
+  }
 }
 
 function decryptedPayoutDetailsExpr(column, keyParamIndex, alias = 'epd') {
@@ -561,6 +589,13 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
       WHERE (e.is_suspended = 0 OR e.is_suspended IS NULL)
       ORDER BY w.created_at DESC
     `, params);
+    const rates = await getUsdExchangeRates();
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let totalPendingPayoutsUsd = 0;
+    let totalPaidThisMonthUsd = 0;
+
     const withdrawals = rows.map((w) => {
       const accountDetails = normalizeAccountDetails(w.account_details);
       const maskedAccountDetails = maskNormalizedAccountDetails(accountDetails);
@@ -591,8 +626,41 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
         payout_details_address,
         ...safeWithdrawal
       } = w;
+      const withdrawalCurrency = normalizeCurrency(w.currency || 'USD');
+      const requestedAmountLocal = Number(w.gross_requested_amount ?? w.amount ?? 0) || 0;
+      const feeAmountLocal = Number(w.platform_fee_amount ?? w.fee ?? 0) || 0;
+      const netPayoutLocal = Number(
+        w.net_payout_amount ?? w.net_amount ?? Math.max(0, requestedAmountLocal - feeAmountLocal)
+      ) || 0;
+      const requestedUsd = safeWithdrawalUsdConversion(requestedAmountLocal, withdrawalCurrency, rates);
+      const feeUsd = safeWithdrawalUsdConversion(feeAmountLocal, withdrawalCurrency, rates);
+      const netUsd = safeWithdrawalUsdConversion(netPayoutLocal, withdrawalCurrency, rates);
+      const status = String(w.status || w.payout_status || '').toLowerCase();
+      const processedDate = new Date(w.processed_at || w.created_at || 0);
+
+      if (status === 'pending' && Number.isFinite(netUsd.usdAmount)) {
+        totalPendingPayoutsUsd += netUsd.usdAmount;
+      }
+      if (
+        ['paid', 'completed'].includes(status) &&
+        processedDate.getFullYear() === currentYear &&
+        processedDate.getMonth() === currentMonth &&
+        Number.isFinite(netUsd.usdAmount)
+      ) {
+        totalPaidThisMonthUsd += netUsd.usdAmount;
+      }
+
       return {
         ...safeWithdrawal,
+        requested_amount_local: requestedAmountLocal,
+        snaptip_fee_local: feeAmountLocal,
+        net_payout_local: netPayoutLocal,
+        requested_amount_usd: requestedUsd.usdAmount,
+        snaptip_fee_usd: feeUsd.usdAmount,
+        net_payout_usd: netUsd.usdAmount,
+        withdrawal_exchange_rate_used: netUsd.exchangeRate,
+        withdrawal_exchange_rate_currency: netUsd.currency,
+        withdrawal_usd_conversion_error: netUsd.error || null,
         account_details: maskedAccountDetails ? JSON.stringify(maskedAccountDetails) : w.account_details,
         payout_details: payoutDetails,
         employee: {
@@ -609,7 +677,14 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
         },
       };
     });
-    res.json({ withdrawals });
+    res.json({
+      withdrawals,
+      usdSummary: {
+        totalPendingPayoutsUsd: roundMoney(totalPendingPayoutsUsd) || 0,
+        totalPaidThisMonthUsd: roundMoney(totalPaidThisMonthUsd) || 0,
+        baseCurrency: 'USD',
+      },
+    });
   } catch (err) {
     console.error('[admin/withdrawals GET]', err.message);
     res.status(500).json({ error: 'Server error.' });

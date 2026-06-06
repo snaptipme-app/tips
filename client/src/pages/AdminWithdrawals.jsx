@@ -251,6 +251,18 @@ function toNumber(value, fallback = 0) {
   return Number(value ?? fallback ?? 0);
 }
 
+function fmtUsd(amount) {
+  const numeric = Number(amount);
+  return Number.isFinite(numeric) ? `$${numeric.toFixed(2)}` : '-';
+}
+
+function fmtRate(rate, currency) {
+  const numeric = Number(rate);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 'Rate unavailable';
+  const cleanRate = numeric.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+  return `1 USD = ${cleanRate} ${currency || ''}`.trim();
+}
+
 function appendNote(existing, addition) {
   const current = String(existing || '').trim();
   const next = String(addition || '').trim();
@@ -288,6 +300,7 @@ function lastFour(value) {
 
 export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate }) {
   const [withdrawals, setWithdrawals] = useState([]);
+  const [usdSummary, setUsdSummary] = useState({ totalPendingPayoutsUsd: 0, totalPaidThisMonthUsd: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
@@ -305,7 +318,10 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
     setLoading(true);
     api()
       .get('/withdrawals')
-      .then((response) => setWithdrawals(response.data.withdrawals || []))
+      .then((response) => {
+        setWithdrawals(response.data.withdrawals || []);
+        setUsdSummary(response.data.usdSummary || { totalPendingPayoutsUsd: 0, totalPaidThisMonthUsd: 0 });
+      })
       .catch((error) => {
         if (error.response?.status === 401) {
           clearAdminToken();
@@ -335,6 +351,14 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
   const feeAmount = (withdrawal) => toNumber(withdrawal?.platform_fee_amount, withdrawal?.fee);
   const netPayout = (withdrawal) =>
     toNumber(withdrawal?.net_payout_amount, withdrawal?.net_amount ?? Math.max(0, grossRequested(withdrawal) - feeAmount(withdrawal)));
+  const netPayoutUsd = (withdrawal) => {
+    const amount = Number(withdrawal?.net_payout_usd);
+    return Number.isFinite(amount) ? amount : null;
+  };
+  const exchangeRateUsed = (withdrawal) => {
+    const rate = Number(withdrawal?.withdrawal_exchange_rate_used);
+    return Number.isFinite(rate) && rate > 0 ? rate : null;
+  };
   const grossEarned = (withdrawal) => toNumber(withdrawal?.gross_earned, withdrawal?.total_earned);
   const availableBalance = (withdrawal) => toNumber(withdrawal?.net_balance, withdrawal?.available_balance ?? withdrawal?.balance);
 
@@ -447,6 +471,8 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
         `Gross amount: ${fmtMoney(grossRequested(withdrawal), withdrawal.currency)}`,
         `SnapTip fee: ${fmtMoney(feeAmount(withdrawal), withdrawal.currency)}`,
         `Net payout: ${fmtMoney(netPayout(withdrawal), withdrawal.currency)}`,
+        `Net payout USD: ${fmtUsd(netPayoutUsd(withdrawal))}`,
+        `Exchange rate: ${fmtRate(exchangeRateUsed(withdrawal), withdrawal.currency)}`,
         '',
         `Bank name: ${details.bankName}`,
         `Account holder: ${details.accountHolder}`,
@@ -463,7 +489,7 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
 
       return lines.join('\n');
     },
-    [feeAmount, getPayoutDetails, grossRequested, netPayout]
+    [exchangeRateUsed, feeAmount, getPayoutDetails, grossRequested, netPayout, netPayoutUsd]
   );
 
   const revealPayoutDetails = async () => {
@@ -604,8 +630,26 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
     const currencies = new Set(pending.map((withdrawal) => withdrawal.currency).filter(Boolean));
     const pendingCurrency = currencies.size === 1 ? [...currencies][0] : 'mixed';
     const pendingTotal = pending.reduce((sum, withdrawal) => sum + grossRequested(withdrawal), 0);
-    return { pending, manualPending, rejected, paidToday, pendingCurrency, pendingTotal };
-  }, [withdrawals]);
+    const pendingUsdFallback = pending.reduce((sum, withdrawal) => sum + (netPayoutUsd(withdrawal) || 0), 0);
+    const paidMonthFallback = withdrawals
+      .filter((withdrawal) => {
+        if (!['paid', 'completed'].includes(statusKey(withdrawal))) return false;
+        const date = new Date(withdrawal.processed_at || withdrawal.created_at || 0);
+        const now = new Date();
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, withdrawal) => sum + (netPayoutUsd(withdrawal) || 0), 0);
+    return {
+      pending,
+      manualPending,
+      rejected,
+      paidToday,
+      pendingCurrency,
+      pendingTotal,
+      pendingUsdTotal: toNumber(usdSummary.totalPendingPayoutsUsd, pendingUsdFallback),
+      paidMonthUsdTotal: toNumber(usdSummary.totalPaidThisMonthUsd, paidMonthFallback),
+    };
+  }, [usdSummary, withdrawals]);
 
   const exportWiseCSV = () => {
     const pending = withdrawals.filter(isManualPending);
@@ -620,6 +664,8 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
         employeeName(withdrawal),
         withdrawal.currency,
         Number(netPayout(withdrawal)).toFixed(2),
+        netPayoutUsd(withdrawal) === null ? '' : Number(netPayoutUsd(withdrawal)).toFixed(2),
+        exchangeRateUsed(withdrawal) || '',
         payout.bankName,
         payout.accountHolder,
         maskVisibleValue(payout.accountNumber, 'account'),
@@ -631,7 +677,7 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
     });
 
     const csv = [
-      'employee,currency,net_payout,bank_name,account_holder,account_or_rib,contact_email,reference',
+      'employee,currency,net_payout_local,net_payout_usd,exchange_rate_used,bank_name,account_holder,account_or_rib,contact_email,reference',
       ...rows,
     ].join('\n');
 
@@ -861,6 +907,8 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
                 <DetailField label="Gross withdrawal" value={fmtMoney(grossRequested(withdrawal), withdrawal.currency)} />
                 <DetailField label="SnapTip fee" value={fmtMoney(feeAmount(withdrawal), withdrawal.currency)} />
                 <DetailField label="Net payout" value={fmtMoney(netPayout(withdrawal), withdrawal.currency)} allowCopy />
+                <DetailField label="Net payout USD" value={fmtUsd(netPayoutUsd(withdrawal))} allowCopy />
+                <DetailField label="Exchange rate" value={fmtRate(exchangeRateUsed(withdrawal), withdrawal.currency)} />
                 <DetailField label="Account last 4" value={accountTail} />
               </div>
 
@@ -1082,6 +1130,8 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
                 <MoneyCell label="Gross request" value={grossRequested(detail)} currency={detail.currency} />
                 <MoneyCell label="SnapTip fee" value={feeAmount(detail)} currency={detail.currency} color={YELLOW} />
                 <MoneyCell label="Net payout" value={netPayout(detail)} currency={detail.currency} color={GREEN} copyValueText={fmtMoney(netPayout(detail), detail.currency)} />
+                <DetailField label="Net payout USD" value={fmtUsd(netPayoutUsd(detail))} allowCopy />
+                <DetailField label="Exchange rate" value={fmtRate(exchangeRateUsed(detail), detail.currency)} />
                 <MoneyCell label="Available balance" value={availableBalance(detail)} currency={detail.currency} muted />
                 <div style={{ background: 'rgba(255,255,255,.035)', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 13 }}>
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)', fontWeight: 850, textTransform: 'uppercase', letterSpacing: 0.4 }}>Requested at</div>
@@ -1270,8 +1320,10 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
         ) : null}
       </div>
 
-      <div className="withdrawals-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(160px,1fr))', gap: 12, marginBottom: 18 }}>
+      <div className="withdrawals-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(160px,1fr))', gap: 12, marginBottom: 18 }}>
         <SummaryCard title="Pending Requests" value={summary.pending.length} sub={`${summary.manualPending.length} Wise Manual`} color={YELLOW} />
+        <SummaryCard title="Pending Payouts USD" value={fmtUsd(summary.pendingUsdTotal)} sub="Net amount to send" color={BLUE} />
+        <SummaryCard title="Paid This Month USD" value={fmtUsd(summary.paidMonthUsdTotal)} sub="Net payouts marked paid" color={GREEN} />
         <SummaryCard
           title="Total Pending Amount"
           value={summary.pendingCurrency === 'mixed' ? Number(summary.pendingTotal || 0).toFixed(2) : fmtMoney(summary.pendingTotal, summary.pendingCurrency)}
@@ -1294,7 +1346,7 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
           <div style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,.48)' }}>Loading withdrawal requests...</div>
         ) : (
           <div style={{ overflow: 'auto', padding: 12 }}>
-            <table style={{ minWidth: 1260, borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+            <table style={{ minWidth: 1400, borderCollapse: 'separate', borderSpacing: '0 8px' }}>
               <thead>
                 <tr>
                   <th style={{ borderBottom: 'none' }}>Employee</th>
@@ -1303,6 +1355,7 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
                   <th style={{ borderBottom: 'none' }}>Gross Earned</th>
                   <th style={{ borderBottom: 'none' }}>SnapTip Fee</th>
                   <th style={{ borderBottom: 'none' }}>Net Payout</th>
+                  <th style={{ borderBottom: 'none' }}>USD Payout</th>
                   <th style={{ borderBottom: 'none' }}>Available Balance</th>
                   <th style={{ borderBottom: 'none' }}>Requested Amount</th>
                   <th style={{ borderBottom: 'none' }}>Status</th>
@@ -1313,6 +1366,8 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
               <tbody>
                 {filtered.map((withdrawal) => {
                   const pendingManual = isManualPending(withdrawal);
+                  const usdPayout = netPayoutUsd(withdrawal);
+                  const rate = exchangeRateUsed(withdrawal);
                   return (
                     <tr
                       key={withdrawal.id}
@@ -1351,7 +1406,18 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
                       </td>
                       <td style={{ borderBottom: 'none' }}>{fmtMoney(grossEarned(withdrawal), withdrawal.currency)}</td>
                       <td style={{ borderBottom: 'none', color: YELLOW }}>{fmtMoney(feeAmount(withdrawal), withdrawal.currency)}</td>
-                      <td style={{ borderBottom: 'none', color: GREEN }}>{fmtMoney(netPayout(withdrawal), withdrawal.currency)}</td>
+                      <td style={{ borderBottom: 'none', color: GREEN }}>
+                        <div style={{ fontWeight: 850 }}>{fmtMoney(netPayout(withdrawal), withdrawal.currency)}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', marginTop: 4 }}>
+                          {usdPayout === null ? 'USD unavailable' : `≈ ${fmtUsd(usdPayout)}`}
+                        </div>
+                      </td>
+                      <td style={{ borderBottom: 'none', color: BLUE }}>
+                        <div style={{ fontWeight: 950 }}>{fmtUsd(usdPayout)}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.42)', marginTop: 4 }}>
+                          {fmtRate(rate, withdrawal.currency)}
+                        </div>
+                      </td>
                       <td style={{ borderBottom: 'none', color: 'rgba(255,255,255,.72)' }}>{fmtMoney(availableBalance(withdrawal), withdrawal.currency)}</td>
                       <td style={{ borderBottom: 'none', color: '#fff', fontWeight: 800 }}>{fmtMoney(grossRequested(withdrawal), withdrawal.currency)}</td>
                       <td style={{ borderBottom: 'none' }}>
@@ -1370,7 +1436,7 @@ export default function WithdrawalsSectionPro({ showToast, onLogout, onUpdate })
                 })}
                 {!filtered.length ? (
                   <tr>
-                    <td colSpan={11} style={{ borderBottom: 'none', padding: 54, textAlign: 'center', color: 'rgba(255,255,255,.45)' }}>
+                    <td colSpan={12} style={{ borderBottom: 'none', padding: 54, textAlign: 'center', color: 'rgba(255,255,255,.45)' }}>
                       No withdrawal requests match these filters.
                     </td>
                   </tr>
