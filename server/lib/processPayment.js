@@ -118,6 +118,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
   const stripePaymentCurrency = options.stripePaymentCurrency || null;
   const stripePaymentAmount = options.stripePaymentAmount || null;
   const exchangeRateUsed = options.exchangeRateUsed || null;
+  const usdAmount = options.usdAmount ?? null;
   const employeeBalanceCurrency = options.employeeBalanceCurrency || currency;
   const stripeChargeId = options.stripeChargeId || null;
   const stripeBalanceTransactionId = options.stripeBalanceTransactionId || null;
@@ -136,7 +137,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
     `INSERT INTO payments (
        employee_id, business_id, amount, gross_amount, platform_fee_amount,
        platform_fee_percent, net_amount, currency, original_currency, original_amount,
-       stripe_payment_currency, stripe_payment_amount, exchange_rate_used, employee_balance_currency,
+       stripe_payment_currency, stripe_payment_amount, exchange_rate_used, usd_amount, employee_balance_currency,
        payment_method, status, stripe_payment_id, stripe_payment_intent_id, stripe_charge_id,
        stripe_balance_transaction_id, stripe_fee_amount, net_platform_received_amount,
        settlement_status, available_on, amount_available_for_employee,
@@ -145,11 +146,11 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
      VALUES (
        $1, $2, $3::real, $4::numeric, $5::numeric,
        $6::numeric, $7::numeric, $8, $9, $10::numeric,
-       $11, $12::numeric, $13::numeric, $14,
-       $15, 'completed', $16, $16, $17,
-       $18, $19::numeric, $20::numeric,
-       $21, $22::timestamp, $23::numeric,
-       $24, $25, $26, $27::real
+       $11, $12::numeric, $13::numeric, $14::numeric, $15,
+       $16, 'completed', $17, $17, $18,
+       $19, $20::numeric, $21::numeric,
+       $22, $23::timestamp, $24::numeric,
+       $25, $26, $27, $28::real
      ) RETURNING *`,
     [
       employeeId,
@@ -165,6 +166,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       stripePaymentCurrency,
       stripePaymentAmount,
       exchangeRateUsed,
+      usdAmount,
       employeeBalanceCurrency,
       method,
       transactionId || null,

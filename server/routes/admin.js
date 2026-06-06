@@ -301,9 +301,14 @@ router.get('/stats', adminAuth, async (req, res) => {
     const commission = Number(commissionRows[0]?.sum) || 0;
 
     const { rows: recentPayments } = await pool.query(`
-      SELECT p.id, COALESCE(p.gross_amount, p.amount) AS amount,
+      SELECT p.id,
+        COALESCE(p.original_amount, p.gross_amount, p.amount) AS amount,
+        COALESCE(p.original_amount, p.gross_amount, p.amount) AS original_amount,
+        COALESCE(p.original_currency, p.currency, e.currency, 'USD') as original_currency,
+        p.usd_amount, p.exchange_rate_used,
+        p.stripe_payment_currency, p.stripe_payment_amount,
         p.platform_fee_amount, p.net_amount, p.payment_method, p.created_at,
-        COALESCE(p.currency, e.currency, 'USD') as currency,
+        COALESCE(p.original_currency, p.currency, e.currency, 'USD') as currency,
         e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
@@ -879,10 +884,15 @@ router.get('/transactions', adminAuth, async (req, res) => {
     else if (range === 'month') dateFilter = "AND p.created_at >= CURRENT_DATE - INTERVAL '30 days'";
 
     const { rows: transactions } = await pool.query(`
-      SELECT p.id, COALESCE(p.gross_amount, p.amount) AS amount,
+      SELECT p.id,
+        COALESCE(p.original_amount, p.gross_amount, p.amount) AS amount,
+        COALESCE(p.original_amount, p.gross_amount, p.amount) AS original_amount,
+        COALESCE(p.original_currency, p.currency, e.currency, 'MAD') as original_currency,
+        p.usd_amount, p.exchange_rate_used,
+        p.stripe_payment_currency, p.stripe_payment_amount,
         p.platform_fee_amount, p.net_amount, p.payout_method,
         p.payment_method, p.created_at,
-        COALESCE(p.currency, e.currency, 'MAD') as currency,
+        COALESCE(p.original_currency, p.currency, e.currency, 'MAD') as currency,
         e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id

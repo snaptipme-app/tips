@@ -213,6 +213,7 @@ async function initDB() {
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_currency TEXT",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_amount NUMERIC(18,0)",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS exchange_rate_used NUMERIC(18,8)",
+      "ALTER TABLE payments ADD COLUMN IF NOT EXISTS usd_amount NUMERIC(12,2)",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS employee_balance_currency TEXT",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT",
       "ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_charge_id TEXT",
@@ -261,6 +262,15 @@ async function initDB() {
     for (const ddl of otherAlterTables) {
       try { await pool.query(ddl); } catch (e) { /* column already exists */ }
     }
+    try {
+      await pool.query(`
+        UPDATE payments
+        SET usd_amount = ROUND((stripe_payment_amount::numeric / 100), 2)
+        WHERE usd_amount IS NULL
+          AND stripe_payment_amount IS NOT NULL
+          AND UPPER(COALESCE(stripe_payment_currency, '')) = 'USD'
+      `);
+    } catch (_) {}
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS withdrawal_payment_allocations (

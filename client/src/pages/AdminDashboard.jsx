@@ -69,6 +69,15 @@ const CURRENCIES=[
   {code:'IDR',label:'IDR — Indonesian Rupiah',sym:'IDR',pre:false},
 ];
 const fmtCur=(n,code)=>{const c=CURRENCIES.find(x=>x.code===code)||CURRENCIES[0];const v=Number(n||0).toFixed(2);return c.pre?`${c.sym}${v}`:`${v} ${c.sym}`;};
+const fmtUSD=n=>{const v=Number(n);return Number.isFinite(v)?`$${v.toFixed(2)}`:'-';};
+const fmtRate=n=>{const v=Number(n);return Number.isFinite(v)&&v>0?v.toFixed(4).replace(/0+$/,'').replace(/\.$/,''):'-';};
+const txLocalCurrency=t=>t?.original_currency||t?.currency||'MAD';
+const txLocalAmount=t=>t?.original_amount??t?.amount;
+const txUsdAmount=t=>{
+  if(t?.usd_amount!==null&&t?.usd_amount!==undefined&&t?.usd_amount!==''){const v=Number(t.usd_amount);if(Number.isFinite(v))return v;}
+  if(String(t?.stripe_payment_currency||'').toUpperCase()==='USD'){const cents=Number(t?.stripe_payment_amount);if(Number.isFinite(cents)&&cents>0)return cents/100;}
+  return null;
+};
 // SVG country flags via flagcdn.com.
 const CountryFlag=({isoCode,size=18})=>{
   const code=String(isoCode||'').toLowerCase();
@@ -239,13 +248,13 @@ function OverviewSection({showToast,onLogout,onNavigate,selectedCurrency,onCurre
       .finally(()=>setLoading(false));
   },[]);
 
-  const weekTxns=useMemo(()=>(weekData?.transactions||[]).filter(t=>t.currency===selectedCurrency),[weekData,selectedCurrency]);
-  const monthTxns=useMemo(()=>(monthData?.transactions||[]).filter(t=>t.currency===selectedCurrency),[monthData,selectedCurrency]);
+  const weekTxns=useMemo(()=>(weekData?.transactions||[]).filter(t=>txLocalCurrency(t)===selectedCurrency),[weekData,selectedCurrency]);
+  const monthTxns=useMemo(()=>(monthData?.transactions||[]).filter(t=>txLocalCurrency(t)===selectedCurrency),[monthData,selectedCurrency]);
 
   const chartData=useMemo(()=>{
     const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
     const grouped={};
-    weekTxns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+Number(t.amount);});
+    weekTxns.forEach(t=>{const day=t.created_at?.slice(0,10);if(day)grouped[day]=(grouped[day]||0)+Number(txLocalAmount(t));});
     return days.map(day=>({label:new Date(day+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),amount:Number((grouped[day]||0).toFixed(2))}));
   },[weekTxns]);
 
@@ -267,8 +276,8 @@ function OverviewSection({showToast,onLogout,onNavigate,selectedCurrency,onCurre
 
   if(loading)return<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading dashboard...</p>;
 
-  const weekVol=weekTxns.reduce((a,t)=>a+Number(t.amount),0);
-  const monthVol=monthTxns.reduce((a,t)=>a+Number(t.amount),0);
+  const weekVol=weekTxns.reduce((a,t)=>a+Number(txLocalAmount(t)),0);
+  const monthVol=monthTxns.reduce((a,t)=>a+Number(txLocalAmount(t)),0);
   const weekCount=weekTxns.length;
   const weekCommission=weekVol*0.1;
   const monthCommission=monthVol*0.1;
@@ -276,15 +285,15 @@ function OverviewSection({showToast,onLogout,onNavigate,selectedCurrency,onCurre
 
   const todayStr=new Date().toISOString().slice(0,10);
   const todayTxns=weekTxns.filter(t=>t.created_at?.slice(0,10)===todayStr);
-  const todayVol=todayTxns.reduce((a,t)=>a+Number(t.amount),0);
+  const todayVol=todayTxns.reduce((a,t)=>a+Number(txLocalAmount(t)),0);
 
   const hourAgo=Date.now()-3600000;
   const hourTxns=weekTxns.filter(t=>new Date(t.created_at).getTime()>=hourAgo);
-  const hourVol=hourTxns.reduce((a,t)=>a+Number(t.amount),0);
+  const hourVol=hourTxns.reduce((a,t)=>a+Number(txLocalAmount(t)),0);
 
   const days7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
-  const oldVol=weekTxns.filter(t=>days7.slice(0,3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(t.amount),0);
-  const newVol=weekTxns.filter(t=>days7.slice(3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(t.amount),0);
+  const oldVol=weekTxns.filter(t=>days7.slice(0,3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(txLocalAmount(t)),0);
+  const newVol=weekTxns.filter(t=>days7.slice(3).includes(t.created_at?.slice(0,10))).reduce((a,t)=>a+Number(txLocalAmount(t)),0);
   const weekPct=oldVol>0?Math.round(((newVol-oldVol)/oldVol)*100):(newVol>0?100:0);
 
   const currencyStats=(stats?.tipsByCurrency||[]).find(c=>c.currency===selectedCurrency)||{total:0,count:0};
@@ -800,15 +809,21 @@ function BusinessesSection({showToast,onLogout}){
 
 /* ═══ TRANSACTIONS ═══ */
 function TransactionsSection({showToast,onLogout,selectedCurrency}){
-  const[data,setData]=useState({transactions:[],totalVolume:0,totalCommission:0,totalCount:0});const[loading,setLoading]=useState(true);const[range,setRange]=useState('all');
+  const[data,setData]=useState({transactions:[],totalVolume:0,totalCommission:0,totalCount:0});
+  const[loading,setLoading]=useState(true);
+  const[range,setRange]=useState('all');
   const fetchT=useCallback(()=>{setLoading(true);api().get('/transactions',{params:{range}}).then(r=>setData(r.data)).catch(e=>{if(e.response?.status===401){clearAdminToken();onLogout()}}).finally(()=>setLoading(false))},[range,onLogout]);
   useEffect(()=>{fetchT()},[fetchT]);
-  const filtered=useMemo(()=>(data.transactions||[]).filter(t=>t.currency===selectedCurrency),[data.transactions,selectedCurrency]);
-  const exportCSV=()=>{const h='Date,Employee,Username,Gross,Currency,Payout Method,Method\n';const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(t.amount).toFixed(2)},${t.currency||'MAD'},${t.payout_method||''},${t.payment_method}`).join('\n');const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')};
+  const filtered=useMemo(()=>(data.transactions||[]).filter(t=>txLocalCurrency(t)===selectedCurrency),[data.transactions,selectedCurrency]);
+  const exportCSV=()=>{
+    const h='Date,Employee,Username,Original Amount,Original Currency,USD Charged,Exchange Rate,Payout Method,Method\n';
+    const rows=filtered.map(t=>`"${fmtDate(t.created_at)}","${t.full_name}","${t.username}",${Number(txLocalAmount(t)).toFixed(2)},${txLocalCurrency(t)},${txUsdAmount(t)===null?'':Number(txUsdAmount(t)).toFixed(2)},${fmtRate(t.exchange_rate_used)},${t.payout_method||''},${t.payment_method}`).join('\n');
+    const b=new Blob([h+rows],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`snaptip_${selectedCurrency}_${range}.csv`;a.click();showToast('CSV exported!')
+  };
   return(<>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}><h1 style={{fontSize:26,fontWeight:800,color:'#fff'}}>Transactions</h1><span style={{background:'rgba(0,255,204,.1)',border:'1px solid rgba(0,255,204,.3)',borderRadius:50,padding:'5px 14px',fontSize:13,fontWeight:700,color:ACCENT}}>{selectedCurrency} Market</span></div>
     <div style={{display:'flex',gap:14,marginBottom:20,flexWrap:'wrap'}}>
-      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>VOLUME ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtCur(filtered.reduce((a,t)=>a+Number(t.amount),0),selectedCurrency)}</p></div>
+      <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>VOLUME ({selectedCurrency})</p><p style={{fontSize:20,fontWeight:800,color:GREEN}}>{fmtCur(filtered.reduce((a,t)=>a+Number(txLocalAmount(t)),0),selectedCurrency)}</p></div>
       <div style={{background:CARD,borderRadius:14,padding:'14px 20px',border:`1px solid ${BORDER}`,flex:1,minWidth:150}}><p style={{fontSize:11,color:'rgba(255,255,255,.4)',marginBottom:4}}>TRANSACTIONS</p><p style={{fontSize:20,fontWeight:800,color:'#fff'}}>{filtered.length}</p></div>
     </div>
     <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
@@ -817,15 +832,16 @@ function TransactionsSection({showToast,onLogout,selectedCurrency}){
     </div>
     {loading?<p style={{color:'rgba(255,255,255,.4)',padding:40,textAlign:'center'}}>Loading...</p>:
     <div style={{background:CARD,borderRadius:16,border:`1px solid ${BORDER}`,overflow:'auto'}}>
-      <table><thead><tr><th>Date</th><th>Employee</th><th>Gross Tip</th><th>Payout</th><th>Method</th></tr></thead>
-      <tbody>{filtered.map((t,i)=><tr key={i}>
+      <table><thead><tr><th>Date</th><th>Employee</th><th>Original Tip</th><th>USD Charged</th><th>Payout</th><th>Method</th></tr></thead>
+      <tbody>{filtered.map((t,i)=>{const localCurrency=txLocalCurrency(t);const localAmount=txLocalAmount(t);const usd=txUsdAmount(t);return<tr key={i}>
         <td style={{fontSize:12}}>{fmtDate(t.created_at)}</td>
         <td><span style={{fontWeight:600,color:'#fff'}}>{t.full_name}</span> <span style={{color:'rgba(255,255,255,.3)'}}>@{t.username}</span></td>
-        <td style={{fontWeight:700,color:'#fff'}}><CurrencyPill currency={t.currency} amount={t.amount}/></td>
+        <td><CurrencyPill currency={localCurrency} amount={localAmount}/></td>
+        <td><div style={{fontWeight:800,color:'#4facfe'}}>{usd===null?'-':fmtUSD(usd)}</div><div style={{fontSize:11,color:'rgba(255,255,255,.35)',marginTop:3}}>Rate {fmtRate(t.exchange_rate_used)}</div></td>
         <td><Badge text={t.payout_method||'wise_manual'} bg='rgba(0,255,204,.08)' color={ACCENT}/></td>
         <td><Badge text={t.payment_method||'mock'} bg='rgba(255,255,255,.06)' color='rgba(255,255,255,.5)'/></td>
-      </tr>)}
-      {!filtered.length&&<tr><td colSpan={5} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No {selectedCurrency} transactions for this period</td></tr>}
+      </tr>})}
+      {!filtered.length&&<tr><td colSpan={6} style={{textAlign:'center',padding:40,color:'rgba(255,255,255,.3)'}}>No {selectedCurrency} transactions for this period</td></tr>}
       </tbody></table>
     </div>}
   </>);
