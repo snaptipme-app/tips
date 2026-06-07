@@ -24,6 +24,46 @@ function parseRating(value) {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
 }
 
+function parseStripeEventAccount(rawBody) {
+  try {
+    const parsed = JSON.parse(Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody || ''));
+    return parsed?.account || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function constructStripeWebhookEvent(rawBody, signature) {
+  const mainSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const connectSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  const hasConnectAccount = Boolean(parseStripeEventAccount(rawBody));
+  const candidates = hasConnectAccount
+    ? [
+        { name: 'connect', secret: connectSecret },
+        { name: 'main', secret: mainSecret },
+      ]
+    : [
+        { name: 'main', secret: mainSecret },
+        { name: 'connect', secret: connectSecret },
+      ];
+
+  let lastError = null;
+  for (const candidate of candidates) {
+    if (!candidate.secret) continue;
+    try {
+      const event = stripe.webhooks.constructEvent(rawBody, signature, candidate.secret);
+      return { event, source: candidate.name };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (!mainSecret && !connectSecret) {
+    throw new Error('Stripe webhook secrets are not configured.');
+  }
+  throw lastError || new Error('Stripe webhook signature verification failed.');
+}
+
 router.post('/create-intent', async (req, res) => {
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
@@ -224,16 +264,19 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   }
 
   const signature = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!webhookSecret) {
-    return res.status(503).json({ received: false, error: 'Stripe webhook secret is not configured.' });
+  if (!signature) {
+    return res.status(400).send('Webhook Error: Missing Stripe signature.');
   }
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
-    console.log('[payment/webhook] Signature verified:', event.type);
+    const verified = constructStripeWebhookEvent(req.body, signature);
+    event = verified.event;
+    console.log('[payment/webhook] Signature verified:', {
+      type: event.type,
+      source: verified.source,
+      account: event.account || null,
+    });
   } catch (err) {
     console.error('[payment/webhook] Signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
