@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "me.snaptip.app",
+      "buildNumber": "1.0.0",
       "icon": "./assets/images/snaptip_icon.png",
       "infoPlist": {
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
@@ -52,6 +53,7 @@
         "backgroundColor": "#1a1a1a"
       },
       "package": "me.snaptip.app",
+      "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
