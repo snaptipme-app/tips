@@ -18,6 +18,7 @@ const {
 } = require('../lib/exchangeRates');
 
 const router = express.Router();
+const DEMO_EMPLOYEE_EMAIL = 'snaptip.me@gmail.com';
 
 function parseRating(value) {
   const rating = Number(value);
@@ -67,14 +68,6 @@ function constructStripeWebhookEvent(rawBody, signature) {
 router.post('/create-intent', async (req, res) => {
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   try {
-    if (!stripe) {
-      console.error(`[payment/create-intent:${requestId}] Stripe unavailable: ${stripeConfigError}`);
-      return res.status(503).json({
-        success: false,
-        error: stripeConfigError,
-      });
-    }
-
     const {
       amount,
       currency: requestedCurrency,
@@ -111,7 +104,7 @@ router.post('/create-intent', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT id, username, full_name, country, currency, payout_method
+      `SELECT id, username, full_name, email, country, currency, payout_method
        FROM employees
        WHERE id = $1`,
       [employeeId]
@@ -123,6 +116,23 @@ router.post('/create-intent', async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Employee not found.',
+      });
+    }
+
+    if (String(employee.email || '').trim().toLowerCase() === DEMO_EMPLOYEE_EMAIL) {
+      console.log(`[payment/create-intent:${requestId}] demo employee detected; Stripe skipped`, {
+        employeeId: employee.id,
+        amount: parsedAmount,
+        currency: requestedCurrency || employee.currency,
+      });
+      return res.json({ isDemo: true });
+    }
+
+    if (!stripe) {
+      console.error(`[payment/create-intent:${requestId}] Stripe unavailable: ${stripeConfigError}`);
+      return res.status(503).json({
+        success: false,
+        error: stripeConfigError,
       });
     }
 
@@ -252,6 +262,104 @@ router.post('/create-intent', async (req, res) => {
       error: statusCode === 500
         ? 'Server error creating payment intent.'
         : stripeMessage || 'Stripe rejected the payment intent request.',
+    });
+  }
+});
+
+router.post('/mock-success', async (req, res) => {
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    const {
+      amount,
+      currency: requestedCurrency,
+      employeeId: employeeIdCamel,
+      employee_id: employeeIdSnake,
+      tourist_email = null,
+      rating = null,
+    } = req.body;
+    const employeeId = employeeIdCamel || employeeIdSnake;
+
+    if (!employeeId || amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'employeeId and amount are required.',
+      });
+    }
+
+    const parsedAmount = Number(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number.',
+      });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, username, full_name, email, country, currency, payout_method
+       FROM employees
+       WHERE id = $1`,
+      [employeeId]
+    );
+    const employee = rows[0];
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        error: 'Employee not found.',
+      });
+    }
+
+    if (String(employee.email || '').trim().toLowerCase() !== DEMO_EMPLOYEE_EMAIL) {
+      console.warn(`[payment/mock-success:${requestId}] rejected non-demo employee`, { employeeId });
+      return res.status(403).json({
+        success: false,
+        error: 'Mock payments are only available for the demo account.',
+      });
+    }
+
+    const originalCurrency = normalizeCurrency(employee.currency || requestedCurrency || 'MAD');
+    const safeRating = parseRating(rating);
+    const transactionId = `demo_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    const payment = await processSuccessfulPayment(
+      pool,
+      employee.id,
+      parsedAmount,
+      'mock',
+      transactionId,
+      tourist_email,
+      originalCurrency,
+      safeRating,
+      {
+        originalAmount: parsedAmount,
+        originalCurrency,
+        employeeBalanceCurrency: originalCurrency,
+        settlementStatus: 'available',
+        amountAvailableForEmployee: parsedAmount,
+        isDemo: true,
+      }
+    );
+
+    console.log(`[payment/mock-success:${requestId}] demo payment recorded`, {
+      paymentId: payment?.id,
+      employeeId: employee.id,
+      amount: parsedAmount,
+      currency: originalCurrency,
+      isDemo: true,
+    });
+
+    return res.json({
+      success: true,
+      isDemo: true,
+      paymentId: payment?.id || null,
+      amount: parsedAmount,
+      currency: originalCurrency,
+    });
+  } catch (err) {
+    console.error(`[payment/mock-success:${requestId}] ERROR:`, err.message, err.stack);
+    return res.status(500).json({
+      success: false,
+      error: 'Server error recording demo payment.',
     });
   }
 });

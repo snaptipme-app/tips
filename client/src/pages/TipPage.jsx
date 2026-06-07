@@ -693,6 +693,104 @@ function PaymentSection({
 }
 
 /* ─── Inline styles + keyframes ─────────────────────────────────────── */
+function DemoPaymentUI({
+  amount, currency, employeeId, rating,
+  t, onSuccess, onError, sending, onProcessing,
+}) {
+  const simulatePayment = useCallback(async () => {
+    if (!employeeId || !amount || amount <= 0) {
+      onError(t.invalidAmount || 'Choose a valid tip amount before paying.');
+      return;
+    }
+
+    onProcessing(true);
+    onError('');
+    try {
+      const response = await api.post('/payment/mock-success', {
+        employeeId,
+        amount,
+        currency,
+        rating: rating > 0 ? rating : null,
+      });
+
+      if (!response.data?.success || !response.data?.isDemo) {
+        onError(response.data?.error || t.paymentFailed || 'Payment failed. Please try again.');
+        return;
+      }
+
+      onSuccess();
+    } catch (err) {
+      console.error('[TipPage demo payment] mock-success exception', err);
+      onError(err?.response?.data?.error || err?.message || t.paymentFailed || 'Payment failed. Please try again.');
+    } finally {
+      onProcessing(false);
+    }
+  }, [amount, currency, employeeId, rating, t, onError, onSuccess, onProcessing]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        background: '#111',
+        borderRadius: 14,
+        padding: '18px 16px',
+        border: '1px solid rgba(0,255,204,0.22)',
+        color: 'rgba(255,255,255,0.68)',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 54,
+          height: 54,
+          borderRadius: '50%',
+          margin: '0 auto 12px',
+          background: 'rgba(0,255,204,0.10)',
+          border: '1px solid rgba(0,255,204,0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#00ffcc',
+        }}>
+          <SnapTipBolt/>
+        </div>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45, fontWeight: 600 }}>
+          Demo checkout ready for {amount} {currency}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={simulatePayment}
+        disabled={sending}
+        className="pay-btn-main"
+        style={{
+          width: '100%',
+          background: sending ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #00ffcc 0%, #00C896 100%)',
+          border: 'none',
+          borderRadius: 50,
+          padding: '17px 20px',
+          fontSize: 17,
+          fontWeight: 700,
+          color: sending ? 'rgba(255,255,255,0.35)' : '#000',
+          fontFamily: 'inherit',
+          cursor: sending ? 'not-allowed' : 'pointer',
+          letterSpacing: '-0.2px',
+          boxShadow: sending ? 'none' : '0 4px 24px rgba(0,255,204,0.28)',
+          opacity: sending ? 0.7 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+        }}
+      >
+        {sending ? (
+          <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>{t.processing || 'Processing...'}</>
+        ) : (
+          'Simulate Demo Payment'
+        )}
+      </button>
+    </div>
+  );
+}
+
 const inlineStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; }
@@ -916,6 +1014,7 @@ export default function TipPage() {
   const ratingCount = employee.rating_count || 0;
   const hasRatings  = ratingAvg != null && ratingCount > 0;
   const ratingDisplay = hasRatings ? Number(ratingAvg).toFixed(1) : null;
+  const isDemo = Boolean(employee?.is_demo || employee?.isDemo);
 
   /* Elements options — deferred PaymentIntent */
   const elementsOptions = stripePayment?.stripeAmountMinor > 0 ? {
@@ -1157,82 +1256,98 @@ export default function TipPage() {
               </div>
             )}
 
-            {!stripePromise && (
-              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 12, textAlign: 'center' }}>
-                <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, margin: 0 }}>
-                  Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.
-                </p>
-              </div>
-            )}
+            {isDemo ? (
+              <DemoPaymentUI
+                amount={amount}
+                currency={currency}
+                employeeId={employee.id}
+                rating={rating}
+                t={t}
+                sending={sending}
+                onProcessing={setSending}
+                onError={setPaymentError}
+                onSuccess={handleStripeSuccess}
+              />
+            ) : (
+              <>
+                {!stripePromise && (
+                  <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: '12px 16px', marginBottom: 12, textAlign: 'center' }}>
+                    <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, margin: 0 }}>
+                      Stripe is not configured. Add a real VITE_STRIPE_PUBLISHABLE_KEY on the client.
+                    </p>
+                  </div>
+                )}
 
-            {stripePromise && !elementsOptions && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{
-                  background: '#111',
-                  borderRadius: 14,
-                  padding: '18px 16px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  textAlign: 'center',
-                  color: 'rgba(255,255,255,0.48)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}>
-                  {t.enterAmount || 'Enter an amount to load the secure card form.'}
-                </div>
-                <button
-                  type="button"
-                  disabled
-                  className="pay-btn-main"
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: 'none',
-                    borderRadius: 50,
-                    padding: '17px 20px',
-                    fontSize: 17,
-                    fontWeight: 700,
-                    color: 'rgba(255,255,255,0.35)',
-                    fontFamily: 'inherit',
-                    cursor: 'not-allowed',
-                    letterSpacing: '-0.2px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {t.enterAmount || 'Enter amount'}
-                </button>
-              </div>
-            )}
+                {stripePromise && !elementsOptions && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{
+                      background: '#111',
+                      borderRadius: 14,
+                      padding: '18px 16px',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      textAlign: 'center',
+                      color: 'rgba(255,255,255,0.48)',
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}>
+                      {t.enterAmount || 'Enter an amount to load the secure card form.'}
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      className="pay-btn-main"
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: 'none',
+                        borderRadius: 50,
+                        padding: '17px 20px',
+                        fontSize: 17,
+                        fontWeight: 700,
+                        color: 'rgba(255,255,255,0.35)',
+                        fontFamily: 'inherit',
+                        cursor: 'not-allowed',
+                        letterSpacing: '-0.2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {t.enterAmount || 'Enter amount'}
+                    </button>
+                  </div>
+                )}
 
-            {stripePromise && elementsOptions && (
-              <PaymentErrorBoundary t={t}>
-                <Elements
-                  key={`${employee.id}-${stripePayment.stripeCurrency}-${stripePayment.stripeAmountMinor}`}
-                  stripe={stripePromise}
-                  options={elementsOptions}
-                >
-                  <PaymentSection
-                    amount={amount}
-                    currency={currency}
-                    employeeId={employee.id}
-                    rating={rating}
-                    t={t}
-                    sending={sending}
-                    onProcessing={setSending}
-                    onError={setPaymentError}
-                    onSuccess={handleStripeSuccess}
-                    onWalletsDetected={setWalletsAvailable}
-                    walletsAvailable={walletsAvailable}
-                  />
-                </Elements>
-              </PaymentErrorBoundary>
+                {stripePromise && elementsOptions && (
+                  <PaymentErrorBoundary t={t}>
+                    <Elements
+                      key={`${employee.id}-${stripePayment.stripeCurrency}-${stripePayment.stripeAmountMinor}`}
+                      stripe={stripePromise}
+                      options={elementsOptions}
+                    >
+                      <PaymentSection
+                        amount={amount}
+                        currency={currency}
+                        employeeId={employee.id}
+                        rating={rating}
+                        t={t}
+                        sending={sending}
+                        onProcessing={setSending}
+                        onError={setPaymentError}
+                        onSuccess={handleStripeSuccess}
+                        onWalletsDetected={setWalletsAvailable}
+                        walletsAvailable={walletsAvailable}
+                      />
+                    </Elements>
+                  </PaymentErrorBoundary>
+                )}
+              </>
             )}
 
             {/* ── ⑦ Secure footer ── */}
             <div style={{ textAlign: 'center', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, color: 'rgba(255,255,255,0.3)' }}>
               <LockIcon/>
-              <span style={{ fontSize: 12 }}>{t.securePayment || 'Secure payment · Powered by Stripe'}</span>
+              <span style={{ fontSize: 12 }}>{isDemo ? 'Demo sandbox payment' : (t.securePayment || 'Secure payment · Powered by Stripe')}</span>
             </div>
           </div>
 

@@ -311,10 +311,10 @@ router.get('/stats', adminAuth, async (req, res) => {
     const { rows: tEmp } = await pool.query('SELECT COUNT(*) as count FROM employees');
     const totalEmployees = Number(tEmp[0]?.count) || 0;
 
-    const { rows: tPay } = await pool.query('SELECT COUNT(*) as count FROM payments');
+    const { rows: tPay } = await pool.query('SELECT COUNT(*) as count FROM payments WHERE COALESCE(is_demo, 0) = 0');
     const totalPayments = Number(tPay[0]?.count) || 0;
 
-    const { rows: tTips } = await pool.query('SELECT COALESCE(SUM(COALESCE(gross_amount, amount)),0) as sum FROM payments');
+    const { rows: tTips } = await pool.query('SELECT COALESCE(SUM(COALESCE(gross_amount, amount)),0) as sum FROM payments WHERE COALESCE(is_demo, 0) = 0');
     const totalTips = Number(tTips[0]?.sum) || 0;
 
     const { rows: pWithCount } = await pool.query("SELECT COUNT(*) as count FROM withdrawals w INNER JOIN employees e ON e.id = w.employee_id WHERE w.status='pending' AND (e.is_suspended = 0 OR e.is_suspended IS NULL)");
@@ -340,6 +340,7 @@ router.get('/stats', adminAuth, async (req, res) => {
         e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
+      WHERE COALESCE(p.is_demo, 0) = 0
       ORDER BY p.created_at DESC LIMIT 10
     `);
 
@@ -349,6 +350,7 @@ router.get('/stats', adminAuth, async (req, res) => {
         COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total,
         COUNT(*) as count
       FROM payments
+      WHERE COALESCE(is_demo, 0) = 0
       GROUP BY currency
       ORDER BY total DESC
     `);
@@ -375,6 +377,7 @@ router.get('/stats', adminAuth, async (req, res) => {
       SELECT created_at::date as day, COUNT(*) as count
       FROM payments
       WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+        AND COALESCE(is_demo, 0) = 0
       GROUP BY created_at::date
       ORDER BY day
     `);
@@ -549,6 +552,7 @@ router.get('/withdrawals', adminAuth, async (req, res) => {
           COALESCE(SUM(COALESCE(gross_amount, amount)), 0) AS gross_earned
         FROM payments
         WHERE status = 'completed'
+          AND COALESCE(is_demo, 0) = 0
         GROUP BY employee_id
       ),
       withdrawal_fee_rollup AS (
@@ -917,6 +921,7 @@ router.get('/businesses', adminAuth, async (req, res) => {
         SELECT COALESCE(SUM(p.amount),0) as s FROM payments p
         INNER JOIN team_members tm ON tm.employee_id = p.employee_id
         WHERE tm.business_id = $1
+          AND COALESCE(p.is_demo, 0) = 0
       `, [biz.id]);
       biz.total_tips = Number(sRows[0]?.s) || 0;
     }
@@ -971,7 +976,7 @@ router.get('/transactions', adminAuth, async (req, res) => {
         e.full_name, e.username
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
-      WHERE 1=1 ${dateFilter}
+      WHERE COALESCE(p.is_demo, 0) = 0 ${dateFilter}
       ORDER BY p.created_at DESC
     `);
 
@@ -980,7 +985,7 @@ router.get('/transactions', adminAuth, async (req, res) => {
         COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total,
         0 as commission
       FROM payments p
-      WHERE 1=1 ${dateFilter}
+      WHERE COALESCE(p.is_demo, 0) = 0 ${dateFilter}
     `);
     const summary = summaryRows[0];
 
@@ -1005,7 +1010,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
       SELECT e.id, e.full_name, e.username, e.country, e.currency,
         COALESCE(SUM(COALESCE(p.gross_amount, p.amount)),0) as total_tips, COUNT(p.id) as tip_count
       FROM employees e
-      LEFT JOIN payments p ON p.employee_id = e.id
+      LEFT JOIN payments p ON p.employee_id = e.id AND COALESCE(p.is_demo, 0) = 0
       GROUP BY e.id
       ORDER BY total_tips DESC
       LIMIT 10
@@ -1025,23 +1030,26 @@ router.get('/analytics', adminAuth, async (req, res) => {
       FROM payments p
       LEFT JOIN employees e ON e.id = p.employee_id
       WHERE e.country IS NOT NULL
+        AND COALESCE(p.is_demo, 0) = 0
       GROUP BY e.country
       ORDER BY total DESC
       LIMIT 5
     `);
 
-    const { rows: avgTipRow } = await pool.query('SELECT COALESCE(AVG(COALESCE(gross_amount, amount)),0) as avg FROM payments');
+    const { rows: avgTipRow } = await pool.query('SELECT COALESCE(AVG(COALESCE(gross_amount, amount)),0) as avg FROM payments WHERE COALESCE(is_demo, 0) = 0');
     const avgTip = Number(avgTipRow[0]?.avg) || 0;
 
     const { rows: methodBreakdown } = await pool.query(`
       SELECT payment_method, COUNT(*) as count, COALESCE(SUM(COALESCE(gross_amount, amount)),0) as total
       FROM payments
+      WHERE COALESCE(is_demo, 0) = 0
       GROUP BY payment_method
     `);
 
     const { rows: peakHours } = await pool.query(`
       SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count
       FROM payments
+      WHERE COALESCE(is_demo, 0) = 0
       GROUP BY hour
       ORDER BY hour
     `);

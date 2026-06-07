@@ -336,7 +336,12 @@ router.get('/:username', async (req, res) => {
     const { username } = req.params;
 
     const { rows } = await pool.query(
-      'SELECT id, username, full_name, photo_url, photo_base64, profile_image_url, account_type, balance, job_title, country, currency, custom_message, show_photo_on_card FROM employees WHERE username = $1',
+      `SELECT id, username, full_name, photo_url, photo_base64, profile_image_url,
+              account_type, balance, job_title, country, currency, custom_message,
+              show_photo_on_card,
+              (LOWER(COALESCE(email, '')) = 'snaptip.me@gmail.com') AS is_demo
+       FROM employees
+       WHERE username = $1`,
       [username]
     );
 

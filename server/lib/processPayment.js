@@ -131,6 +131,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       ? 'pending'
       : 'available';
   const amountAvailableForEmployee = options.amountAvailableForEmployee || grossAmount;
+  const isDemo = options.isDemo === true || options.isDemo === 1 ? 1 : 0;
 
   // 1. Insert gross payment record. SnapTip commission is calculated later, at withdrawal time.
   const { rows: paymentRows } = await pool.query(
@@ -141,7 +142,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
        payment_method, status, stripe_payment_id, stripe_payment_intent_id, stripe_charge_id,
        stripe_balance_transaction_id, stripe_fee_amount, net_platform_received_amount,
        settlement_status, available_on, amount_available_for_employee,
-       tourist_email, rating, payout_method, fee
+       tourist_email, rating, payout_method, fee, is_demo
      )
      VALUES (
        $1, $2, $3::real, $4::numeric, $5::numeric,
@@ -150,7 +151,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
        $16, 'completed', $17, $17, $18,
        $19, $20::numeric, $21::numeric,
        $22, $23::timestamp, $24::numeric,
-       $25, $26, $27, $28::real
+       $25, $26, $27, $28::real, $29::integer
      ) RETURNING *`,
     [
       employeeId,
@@ -181,6 +182,7 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       safeRating,
       payoutMethod,
       Number(zeroAmount),
+      isDemo,
     ]
   );
   const payment = paymentRows[0];
@@ -197,13 +199,14 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
 
   // 3. Insert gross tip into tips table (keeps existing dashboard/analytics working)
   await pool.query(
-    "INSERT INTO tips (employee_id, amount, status, rating) VALUES ($1, $2, 'completed', $3)",
-    [employeeId, Number(grossAmount), safeRating]
+    "INSERT INTO tips (employee_id, amount, status, rating, is_demo) VALUES ($1, $2, 'completed', $3, $4)",
+    [employeeId, Number(grossAmount), safeRating, isDemo]
   );
   // Ensure rating column exists (idempotent - only runs if column is missing)
   pool.query(
     'ALTER TABLE tips ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5)'
   ).catch(() => {});
+  pool.query('ALTER TABLE tips ADD COLUMN IF NOT EXISTS is_demo INTEGER DEFAULT 0').catch(() => {});
 
   // 4. Send push notification + emails (fire-and-forget - never blocks payment flow)
   try {
