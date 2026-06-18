@@ -13,6 +13,54 @@ function publicStripeError() {
   return 'Stripe Connect onboarding is not available right now. Please try again later.';
 }
 
+function serializeStripeError(err) {
+  const raw = err?.raw && typeof err.raw === 'object' ? { ...err.raw } : null;
+  if (raw?.headers) raw.headers = '[redacted]';
+
+  return {
+    name: err?.name || null,
+    type: err?.type || raw?.type || null,
+    code: err?.code || raw?.code || null,
+    rawCode: raw?.code || null,
+    declineCode: err?.decline_code || raw?.decline_code || null,
+    param: err?.param || raw?.param || null,
+    docUrl: err?.doc_url || raw?.doc_url || null,
+    statusCode: err?.statusCode || raw?.statusCode || null,
+    requestId: err?.requestId || raw?.requestId || raw?.request_id || null,
+    requestLogUrl: err?.request_log_url || raw?.request_log_url || null,
+    message: err?.message || raw?.message || null,
+    raw,
+  };
+}
+
+function getStripeOnboardingErrorResponse(err) {
+  const message = String(err?.message || err?.raw?.message || '').toLowerCase();
+  const isPlatformSetupIssue = [
+    "signed up for connect",
+    'responsibilities of managing losses',
+    'platform needs approval',
+    'request transfers without card_payments',
+  ].some((needle) => message.includes(needle));
+
+  if (isPlatformSetupIssue) {
+    return {
+      status: 503,
+      body: {
+        error: 'Stripe Connect onboarding is waiting on Stripe platform approval. Please try again later.',
+        code: 'stripe_connect_platform_setup_required',
+      },
+    };
+  }
+
+  return {
+    status: 500,
+    body: {
+      error: publicStripeError(),
+      code: 'stripe_connect_onboarding_unavailable',
+    },
+  };
+}
+
 router.post('/stripe-connect', authMiddleware, async (req, res) => {
   try {
     if (!stripe) {
@@ -95,12 +143,10 @@ router.post('/stripe-connect', authMiddleware, async (req, res) => {
       stripeAccountId,
     });
   } catch (err) {
-    console.error('[onboarding/stripe-connect]', {
-      type: err?.type,
-      code: err?.code,
-      message: err?.message,
-    });
-    return res.status(500).json({ error: publicStripeError() });
+    const details = serializeStripeError(err);
+    console.error('[onboarding/stripe-connect] Stripe error detail', JSON.stringify(details, null, 2));
+    const response = getStripeOnboardingErrorResponse(err);
+    return res.status(response.status).json(response.body);
   }
 });
 
@@ -148,11 +194,8 @@ router.get('/stripe-connect/status', authMiddleware, async (req, res) => {
       requirementsCurrentlyDue,
     });
   } catch (err) {
-    console.error('[onboarding/stripe-connect/status]', {
-      type: err?.type,
-      code: err?.code,
-      message: err?.message,
-    });
+    const details = serializeStripeError(err);
+    console.error('[onboarding/stripe-connect/status] Stripe error detail', JSON.stringify(details, null, 2));
     return res.status(500).json({ error: 'Could not check onboarding status. Please try again later.' });
   }
 });
