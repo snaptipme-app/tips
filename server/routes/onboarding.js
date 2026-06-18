@@ -100,10 +100,8 @@ router.post('/stripe-connect', authMiddleware, async (req, res) => {
         country: config.code,
         email: employee.email || undefined,
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
-        },
-        tos_acceptance: {
-          service_agreement: 'recipient',
         },
         metadata: {
           employee_id: String(employeeId),
