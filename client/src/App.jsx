@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import LandingPage from './pages/LandingPage';
+import DemoTipPage from './pages/DemoTipPage';
 import TipPage from './pages/TipPage';
 import DashboardLayout from './pages/dashboard/DashboardLayout';
 import Home from './pages/dashboard/Home';
@@ -22,6 +23,11 @@ function App() {
         <Routes>
           {/* ── Root: App Landing Page ── */}
           <Route path="/" element={<LandingPage />} />
+
+          {/* ── Demo tipping page — target of the landing hero QR.
+                 Must stay above the /:username catch-all, or it resolves
+                 to TipPage and looks up an employee named "demo". ── */}
+          <Route path="/demo" element={<DemoTipPage />} />
 
           {/* ── Web auth (kept for backwards compat / deep links) ── */}
           <Route path="/login" element={<Navigate to="/" replace />} />
