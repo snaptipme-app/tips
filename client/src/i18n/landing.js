@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────────────────────────────
    SnapTip — Marketing landing page copy
-   Used by client/src/pages/LandingPage.jsx and client/src/pages/DemoTipPage.jsx
+   Used by client/src/pages/LandingPage.jsx
 
    Deliberately separate from ./translations.js: that dictionary serves the live
    guest tipping page and the payment flow, and is not worth destabilising for
@@ -12,7 +12,8 @@
      · 20 payout currencies — distinct `currency` values in that same file
      · 14 tipping-page languages — top-level keys in ./translations.js
      · 10% fee at withdrawal only, full gross credited at payment time
-   Do not add numbers here that cannot be pointed at in source.
+   Do not add numbers here that cannot be pointed at in source. No testimonials,
+   user counts, press logos or ratings — we do not have them yet.
    ────────────────────────────────────────────────────────────────────────── */
 
 import { getLanguageCode } from './translations';
@@ -31,90 +32,86 @@ export const landingCopy = {
   /* ── English ───────────────────────────────────────────────────────── */
   en: {
     dir: 'ltr',
-    nav: { how: 'How it works', money: 'Pricing', business: 'For business', app: 'Get the app' },
-    a11y: { skip: 'Skip to content', nav: 'Main', lang: 'Language', close: 'Close', menu: 'Menu' },
+    nav: { how: 'How it works', staff: 'For staff', business: 'For business', pricing: 'Pricing', app: 'Get the app' },
+    a11y: { skip: 'Skip to content', nav: 'Main', lang: 'Language' },
 
     hero: {
       eyebrow: 'Cashless tipping for hospitality',
-      title: 'Try it before you read about it.',
-      body: 'Point your phone camera at this code. It opens a real tipping page — the same one a guest sees. Nothing to install, on their phone or yours.',
-      scanDesktop: 'Scan with your phone camera',
-      scanMobile: 'Tap to open the demo',
-      cardName: 'Demo server',
-      cardRole: 'SnapTip demo · no real payment',
-      trust: 'Powered by Stripe · No app for guests · Free to start',
+      title: 'Great service deserves a tip. Even when nobody carries cash.',
+      body: 'SnapTip gives every waiter, guide, driver and hotel worker a personal QR code. Guests scan it, pay in seconds, and the money lands straight in your balance.',
+      trust: 'Free to start · No app for guests · Powered by Stripe',
+      alt: 'SnapTip app screens for guests, staff and business owners',
     },
 
-    seconds: {
-      kicker: 'The ten seconds',
-      title: 'What happens between the scan and the money.',
-      rows: [
-        ['0:00', 'The guest points a camera at a printed code.'],
-        ['0:03', 'A tipping page opens in the browser. No app, no account.'],
-        ['0:08', 'They pay by card, Apple Pay or Google Pay.'],
-        ['0:10', "The full amount sits in the worker's balance."],
-      ],
-    },
+    stats: [
+      ['29', 'Countries'],
+      ['20', 'Currencies'],
+      ['14', 'Languages'],
+      ['10%', 'Only when you cash out'],
+    ],
 
-    doors: {
-      kicker: 'Three ways to land here',
-      items: [
-        ['You run a place', 'See what your whole team earns, without counting cash at midnight.', 'What operators get', '#operators'],
-        ['You work for tips', 'Get your own code, take card tips, move the money to your bank.', 'Get the app', '#get-app'],
-        ['You just scanned a code', "You're in the right place. You don't need an account or an app.", 'See the tipping page', '/demo'],
+    how: {
+      kicker: 'How it works',
+      title: 'Three steps. That’s it.',
+      steps: [
+        ['Get your code', 'Download the app, sign up, and your personal QR code is ready to print, display or share.'],
+        ['Guests scan and pay', 'No app and no account for them. Card, Apple Pay or Google Pay in about ten seconds.'],
+        ['Cash out to your bank', 'Tips land in your balance instantly. Withdraw whenever you want.'],
       ],
     },
 
-    money: {
-      kicker: 'Where the money goes',
-      title: 'The entire fee, in one line.',
-      example: 'Example — a $20 tip',
-      rows: [
-        ['Guest tips', '$20.00'],
-        ['Credited to the worker, immediately', '$20.00'],
-        ['SnapTip fee, taken at withdrawal', '−$2.00'],
-      ],
-      total: ['Reaches their bank', '$18.00'],
-      zeros: [
-        ['Monthly fee', '$0.00'],
-        ['Setup cost', '$0.00'],
-        ['Cost if nobody tips', '$0.00'],
-      ],
-      note: 'The full tip lands in the balance the moment the guest pays. The 10% comes out only when the worker moves money to their bank. If a withdrawal is rejected, the money returns to their balance.',
+    guest: {
+      kicker: 'For guests',
+      title: 'Tipping takes ten seconds.',
+      body: 'Your guests point a camera at your code and a clean payment page opens in their browser. No download, no sign-up, no awkward moment at the table.',
+      points: ['Works with any phone camera', 'Card, Apple Pay and Google Pay', 'Optional rating and email receipt'],
+      alt: 'SnapTip guest tipping page showing tip amounts and payment options',
     },
 
-    ops: {
-      kicker: 'For operators',
-      title: 'See the whole floor, not a shoebox of receipts.',
-      points: [
-        'Invite your team by email or one shared link.',
-        'Watch tips land across the team as they happen.',
-        'See who is earning, by week and by shift.',
-        'Every payment keeps a record. Nothing to reconcile by hand.',
-      ],
+    staff: {
+      kicker: 'For staff',
+      title: 'Watch your tips land, live.',
+      body: 'Every tip appears in your balance the moment a guest pays — the full amount, with nothing taken up front. Your phone buzzes and the number goes up.',
+      points: ['Full tip credited immediately', 'Live balance and monthly totals', 'Split a tip with a teammate'],
+      alt: 'SnapTip employee home screen showing balance and recent tips',
     },
 
-    reach: {
-      kicker: 'Reach',
-      items: [
-        ['29', 'countries staff can cash out in'],
-        ['20', 'payout currencies'],
-        ['14', 'languages on the tipping page'],
-      ],
-      note: 'In 23 countries staff link a bank account directly through Stripe. The rest are paid by bank transfer.',
+    business: {
+      kicker: 'For business',
+      title: 'See what your whole team earns.',
+      body: 'Invite your staff with one link. Watch tips come in across the floor, spot your top performers, and keep a clean record of every payment.',
+      points: ['Invite your team by email or link', 'Team totals, trends and leaderboard', 'Full history — no cash to count'],
+      alt: 'SnapTip business dashboard showing team totals and top performers',
+    },
+
+    payout: {
+      kicker: 'Getting paid',
+      title: 'Your money, on your terms.',
+      body: 'Link a bank account and withdraw whenever you like, or set it to pay out automatically every week or every month.',
+      points: ['Bank payouts in 29 countries', 'Automatic weekly or monthly payouts', 'Bank details encrypted, screens protected'],
+      alt: 'SnapTip profile and payout settings screen',
+    },
+
+    pricing: {
+      kicker: 'Pricing',
+      title: 'Free until you earn.',
+      body: 'No monthly fee. No setup cost. No card on file. SnapTip takes 10% only when you move money to your bank — so if your team earns nothing, you pay nothing.',
+      points: ['$0 to download and set up', '$0 monthly, forever', '10% only at withdrawal'],
+      note: 'Example: a $20 tip is credited to your balance in full. When you withdraw, $2 goes to SnapTip and $18 reaches your bank.',
     },
 
     trust: {
-      title: 'Handled properly.',
+      kicker: 'Trust',
+      title: 'Payments handled properly.',
       points: [
-        'Payments run on Stripe. Card details go straight to Stripe, not to us.',
+        'Payments run on Stripe — card details go straight to Stripe, never to us.',
         'Bank details are encrypted before they are stored.',
-        'Guests pay by card, Apple Pay or Google Pay.',
+        'Banking screens block screenshots and screen recording.',
       ],
     },
 
     app: {
-      title: 'Get the app.',
+      title: 'Start taking card tips today.',
       body: 'Free to download. Free until your team earns.',
       qr: 'Scan to download',
       playEyebrow: 'Get it on',
@@ -123,116 +120,98 @@ export const landingCopy = {
       apple: 'App Store',
     },
 
-    footer: { privacy: 'Privacy', terms: 'Terms', contact: 'Contact', rights: 'SnapTip by Hitte Technologies LLC.' },
-
-    demo: {
-      badge: 'Demo',
-      notice: 'This is a demonstration. No card is charged and no money moves.',
-      tagline: 'Enjoyed the service? Leave a tip',
-      name: 'Demo server',
-      role: 'Table service',
-      choose: 'Choose your tip',
-      popular: 'Popular',
-      custom: 'Custom amount',
-      rate: 'How was your experience?',
-      optional: 'Optional',
-      pay: 'Pay',
-      secure: 'Secure payment · Powered by Stripe',
-      done: 'That’s the whole flow.',
-      doneBody: 'A real guest would be finished here, and the tip would already be in the worker’s balance. Nothing was charged.',
-      again: 'Run it again',
-      back: 'Back to snaptip.me',
-      amounts: ['Quick thanks', 'Great service', 'Excellent', 'Outstanding'],
+    footer: {
+      tagline: 'Cashless tipping for modern hospitality.',
+      privacy: 'Privacy',
+      terms: 'Terms',
+      contact: 'Contact',
+      rights: 'SnapTip by Hitte Technologies LLC.',
     },
   },
 
   /* ── Français ──────────────────────────────────────────────────────── */
   fr: {
     dir: 'ltr',
-    nav: { how: 'Comment ça marche', money: 'Tarifs', business: 'Pour les entreprises', app: "Obtenir l'app" },
-    a11y: { skip: 'Aller au contenu', nav: 'Principal', lang: 'Langue', close: 'Fermer', menu: 'Menu' },
+    nav: { how: 'Comment ça marche', staff: 'Pour le personnel', business: 'Pour les entreprises', pricing: 'Tarifs', app: "Obtenir l'app" },
+    a11y: { skip: 'Aller au contenu', nav: 'Principal', lang: 'Langue' },
 
     hero: {
       eyebrow: "Pourboires sans espèces pour l'hôtellerie",
-      title: 'Essayez avant de lire.',
-      body: "Pointez l'appareil photo de votre téléphone vers ce code. Il ouvre une vraie page de pourboire, celle que voit un client. Rien à installer, ni sur son téléphone ni sur le vôtre.",
-      scanDesktop: 'Scannez avec votre téléphone',
-      scanMobile: 'Touchez pour ouvrir la démo',
-      cardName: 'Serveur démo',
-      cardRole: 'Démo SnapTip · aucun paiement réel',
-      trust: 'Propulsé par Stripe · Aucune app pour les clients · Gratuit au départ',
+      title: 'Un bon service mérite un pourboire. Même sans espèces.',
+      body: "SnapTip donne à chaque serveur, guide, chauffeur et employé d'hôtel un QR code personnel. Les clients le scannent, paient en quelques secondes, et l'argent arrive directement sur votre solde.",
+      trust: 'Gratuit au départ · Aucune app pour les clients · Propulsé par Stripe',
+      alt: "Écrans de l'app SnapTip pour les clients, le personnel et les gérants",
     },
 
-    seconds: {
-      kicker: 'Les dix secondes',
-      title: "Ce qui se passe entre le scan et l'argent.",
-      rows: [
-        ['0:00', 'Le client pointe son appareil photo vers un code imprimé.'],
-        ['0:03', "Une page de pourboire s'ouvre dans le navigateur. Sans app, sans compte."],
-        ['0:08', 'Il paie par carte, Apple Pay ou Google Pay.'],
-        ['0:10', "La totalité du montant est sur le solde de l'employé."],
-      ],
-    },
+    stats: [
+      ['29', 'Pays'],
+      ['20', 'Devises'],
+      ['14', 'Langues'],
+      ['10 %', 'Seulement au retrait'],
+    ],
 
-    doors: {
-      kicker: "Trois façons d'arriver ici",
-      items: [
-        ['Vous dirigez un établissement', 'Voyez ce que gagne toute votre équipe, sans compter les espèces à minuit.', 'Ce que reçoivent les gérants', '#operators'],
-        ['Vous travaillez au pourboire', "Obtenez votre code, recevez des pourboires par carte, virez l'argent sur votre compte.", "Obtenir l'app", '#get-app'],
-        ['Vous venez de scanner un code', 'Vous êtes au bon endroit. Ni compte ni application nécessaires.', 'Voir la page de pourboire', '/demo'],
+    how: {
+      kicker: 'Comment ça marche',
+      title: 'Trois étapes. C’est tout.',
+      steps: [
+        ['Obtenez votre code', "Téléchargez l'app, inscrivez-vous, et votre QR code personnel est prêt à imprimer, afficher ou partager."],
+        ['Le client scanne et paie', 'Ni app ni compte pour lui. Carte, Apple Pay ou Google Pay en une dizaine de secondes.'],
+        ['Virez sur votre compte', 'Les pourboires arrivent instantanément sur votre solde. Retirez quand vous voulez.'],
       ],
     },
 
-    money: {
-      kicker: "Où va l'argent",
-      title: 'Tous les frais, en une ligne.',
-      example: 'Exemple — un pourboire de 20 $',
-      rows: [
-        ['Le client laisse', '20,00 $'],
-        ["Crédité à l'employé, immédiatement", '20,00 $'],
-        ['Frais SnapTip, prélevés au retrait', '−2,00 $'],
-      ],
-      total: ['Arrive sur son compte', '18,00 $'],
-      zeros: [
-        ['Abonnement mensuel', '0,00 $'],
-        ["Frais d'installation", '0,00 $'],
-        ['Coût si personne ne laisse de pourboire', '0,00 $'],
-      ],
-      note: "Le pourboire entier arrive sur le solde dès que le client paie. Les 10 % ne sont prélevés qu'au moment où l'employé vire l'argent vers sa banque. Si un retrait est refusé, l'argent revient sur son solde.",
+    guest: {
+      kicker: 'Pour les clients',
+      title: 'Laisser un pourboire prend dix secondes.',
+      body: "Vos clients pointent leur appareil photo vers votre code et une page de paiement s'ouvre dans leur navigateur. Sans téléchargement, sans inscription, sans moment gênant à table.",
+      points: ["Fonctionne avec n'importe quel appareil photo", 'Carte, Apple Pay et Google Pay', 'Note et reçu par e-mail en option'],
+      alt: 'Page de pourboire SnapTip avec les montants et les moyens de paiement',
     },
 
-    ops: {
-      kicker: 'Pour les gérants',
-      title: 'Voyez toute la salle, pas une boîte de tickets.',
-      points: [
-        'Invitez votre équipe par e-mail ou avec un seul lien.',
-        'Voyez les pourboires arriver en temps réel.',
-        'Sachez qui gagne quoi, par semaine et par service.',
-        'Chaque paiement laisse une trace. Rien à rapprocher à la main.',
-      ],
+    staff: {
+      kicker: 'Pour le personnel',
+      title: 'Voyez vos pourboires arriver en direct.',
+      body: "Chaque pourboire apparaît sur votre solde dès que le client paie — le montant entier, sans rien prélevé d'avance. Votre téléphone vibre et le chiffre monte.",
+      points: ['Pourboire entier crédité immédiatement', 'Solde en direct et totaux mensuels', 'Partagez un pourboire avec un collègue'],
+      alt: "Écran d'accueil SnapTip avec le solde et les derniers pourboires",
     },
 
-    reach: {
-      kicker: 'Portée',
-      items: [
-        ['29', 'pays où le personnel peut retirer'],
-        ['20', 'devises de versement'],
-        ['14', 'langues sur la page de pourboire'],
-      ],
-      note: 'Dans 23 pays, le personnel relie un compte bancaire directement via Stripe. Les autres sont payés par virement.',
+    business: {
+      kicker: 'Pour les entreprises',
+      title: 'Voyez ce que gagne toute votre équipe.',
+      body: 'Invitez votre personnel avec un seul lien. Suivez les pourboires dans toute la salle, repérez vos meilleurs éléments et gardez une trace claire de chaque paiement.',
+      points: ['Invitez votre équipe par e-mail ou par lien', 'Totaux, tendances et classement', 'Historique complet — plus rien à compter'],
+      alt: "Tableau de bord SnapTip avec les totaux de l'équipe et le classement",
+    },
+
+    payout: {
+      kicker: 'Être payé',
+      title: 'Votre argent, à vos conditions.',
+      body: 'Reliez un compte bancaire et retirez quand vous le souhaitez, ou programmez un versement automatique chaque semaine ou chaque mois.',
+      points: ['Versements bancaires dans 29 pays', 'Versements automatiques hebdomadaires ou mensuels', 'Coordonnées chiffrées, écrans protégés'],
+      alt: 'Écran de profil et de paramètres de versement SnapTip',
+    },
+
+    pricing: {
+      kicker: 'Tarifs',
+      title: "Gratuit jusqu'à ce que vous gagniez.",
+      body: "Aucun abonnement. Aucun frais d'installation. Aucune carte enregistrée. SnapTip prend 10 % uniquement quand vous virez l'argent vers votre banque — si votre équipe ne gagne rien, vous ne payez rien.",
+      points: ['0 $ pour télécharger et démarrer', '0 $ par mois, pour toujours', '10 % uniquement au retrait'],
+      note: "Exemple : un pourboire de 20 $ est crédité en entier sur votre solde. Au retrait, 2 $ vont à SnapTip et 18 $ arrivent sur votre compte.",
     },
 
     trust: {
-      title: 'Traité correctement.',
+      kicker: 'Confiance',
+      title: 'Des paiements traités correctement.',
       points: [
-        'Les paiements passent par Stripe. Les données de carte vont directement à Stripe, pas à nous.',
+        'Les paiements passent par Stripe — les données de carte vont directement à Stripe, jamais à nous.',
         "Les coordonnées bancaires sont chiffrées avant d'être stockées.",
-        'Les clients paient par carte, Apple Pay ou Google Pay.',
+        "Les écrans bancaires bloquent les captures et l'enregistrement d'écran.",
       ],
     },
 
     app: {
-      title: "Obtenez l'application.",
+      title: 'Commencez à recevoir des pourboires par carte.',
       body: "Téléchargement gratuit. Gratuit jusqu'à ce que votre équipe gagne.",
       qr: 'Scannez pour télécharger',
       playEyebrow: 'Disponible sur',
@@ -241,116 +220,98 @@ export const landingCopy = {
       apple: 'App Store',
     },
 
-    footer: { privacy: 'Confidentialité', terms: 'Conditions', contact: 'Contact', rights: 'SnapTip par Hitte Technologies LLC.' },
-
-    demo: {
-      badge: 'Démo',
-      notice: "Ceci est une démonstration. Aucune carte n'est débitée et aucun argent ne circule.",
-      tagline: 'Vous avez apprécié le service ? Laissez un pourboire',
-      name: 'Serveur démo',
-      role: 'Service en salle',
-      choose: 'Choisissez votre pourboire',
-      popular: 'Populaire',
-      custom: 'Montant personnalisé',
-      rate: 'Comment était votre expérience ?',
-      optional: 'Facultatif',
-      pay: 'Payer',
-      secure: 'Paiement sécurisé · Propulsé par Stripe',
-      done: 'Voilà tout le parcours.',
-      doneBody: "Un vrai client aurait terminé ici, et le pourboire serait déjà sur le solde de l'employé. Rien n'a été débité.",
-      again: 'Recommencer',
-      back: 'Retour à snaptip.me',
-      amounts: ['Petit merci', 'Bon service', 'Excellent', 'Exceptionnel'],
+    footer: {
+      tagline: "Pourboires sans espèces pour l'hôtellerie moderne.",
+      privacy: 'Confidentialité',
+      terms: 'Conditions',
+      contact: 'Contact',
+      rights: 'SnapTip par Hitte Technologies LLC.',
     },
   },
 
   /* ── العربية (RTL) ─────────────────────────────────────────────────── */
   ar: {
     dir: 'rtl',
-    nav: { how: 'كيف يعمل', money: 'الأسعار', business: 'للشركات', app: 'حمّل التطبيق' },
-    a11y: { skip: 'تخطَّ إلى المحتوى', nav: 'الرئيسية', lang: 'اللغة', close: 'إغلاق', menu: 'القائمة' },
+    nav: { how: 'كيف يعمل', staff: 'للموظفين', business: 'للشركات', pricing: 'الأسعار', app: 'حمّل التطبيق' },
+    a11y: { skip: 'تخطَّ إلى المحتوى', nav: 'الرئيسية', lang: 'اللغة' },
 
     hero: {
       eyebrow: 'إكراميات بلا نقود لقطاع الضيافة',
-      title: 'جرّبه قبل أن تقرأ عنه.',
-      body: 'وجّه كاميرا هاتفك إلى هذا الرمز. سيفتح صفحة إكرامية حقيقية، نفس الصفحة التي يراها الضيف. لا شيء لتثبيته، لا على هاتفه ولا على هاتفك.',
-      scanDesktop: 'امسح الرمز بكاميرا هاتفك',
-      scanMobile: 'اضغط لفتح العرض التجريبي',
-      cardName: 'نادل تجريبي',
-      cardRole: 'عرض تجريبي · لا يوجد دفع حقيقي',
-      trust: 'مدعوم من Stripe · لا تطبيق للضيوف · مجاني للبدء',
+      title: 'الخدمة الجيدة تستحق إكرامية. حتى لو لم يحمل أحد نقودًا.',
+      body: 'يمنح SnapTip كل نادل ومرشد وسائق وموظف فندق رمز QR خاصًا به. يمسحه الضيوف، ويدفعون في ثوانٍ، ويصل المال مباشرة إلى رصيدك.',
+      trust: 'مجاني للبدء · لا تطبيق للضيوف · مدعوم من Stripe',
+      alt: 'شاشات تطبيق SnapTip للضيوف والموظفين وأصحاب الأعمال',
     },
 
-    seconds: {
-      kicker: 'العشر ثوانٍ',
-      title: 'ما يحدث بين المسح ووصول المال.',
-      rows: [
-        ['0:00', 'يوجّه الضيف الكاميرا إلى رمز مطبوع.'],
-        ['0:03', 'تفتح صفحة إكرامية في المتصفح. بلا تطبيق وبلا حساب.'],
-        ['0:08', 'يدفع ببطاقة أو Apple Pay أو Google Pay.'],
-        ['0:10', 'المبلغ كاملًا في رصيد الموظف.'],
-      ],
-    },
+    stats: [
+      ['29', 'دولة'],
+      ['20', 'عملة'],
+      ['14', 'لغة'],
+      ['10٪', 'عند السحب فقط'],
+    ],
 
-    doors: {
-      kicker: 'ثلاث طرق للوصول إلى هنا',
-      items: [
-        ['أنت تدير مكانًا', 'اطّلع على ما يكسبه فريقك بالكامل، دون عدّ النقود في آخر الليل.', 'ما الذي يحصل عليه المديرون', '#operators'],
-        ['تعمل مقابل الإكراميات', 'احصل على رمزك الخاص، اقبض الإكراميات بالبطاقة، وحوّل المال إلى بنكك.', 'حمّل التطبيق', '#get-app'],
-        ['لقد مسحت رمزًا للتو', 'أنت في المكان الصحيح. لا تحتاج إلى حساب ولا تطبيق.', 'شاهد صفحة الإكرامية', '/demo'],
+    how: {
+      kicker: 'كيف يعمل',
+      title: 'ثلاث خطوات. هذا كل شيء.',
+      steps: [
+        ['احصل على رمزك', 'حمّل التطبيق وسجّل، وسيكون رمز QR الخاص بك جاهزًا للطباعة أو العرض أو المشاركة.'],
+        ['الضيف يمسح ويدفع', 'بلا تطبيق وبلا حساب. بطاقة أو Apple Pay أو Google Pay في نحو عشر ثوانٍ.'],
+        ['حوّل إلى بنكك', 'تصل الإكراميات إلى رصيدك فورًا. اسحب متى شئت.'],
       ],
     },
 
-    money: {
-      kicker: 'إلى أين يذهب المال',
-      title: 'الرسوم كاملة، في سطر واحد.',
-      example: 'مثال — إكرامية بقيمة 20 $',
-      rows: [
-        ['يترك الضيف', '20.00 $'],
-        ['تُضاف إلى الموظف فورًا', '20.00 $'],
-        ['رسوم SnapTip عند السحب', '−2.00 $'],
-      ],
-      total: ['تصل إلى بنكه', '18.00 $'],
-      zeros: [
-        ['رسوم شهرية', '0.00 $'],
-        ['رسوم التسجيل', '0.00 $'],
-        ['التكلفة إذا لم يترك أحد إكرامية', '0.00 $'],
-      ],
-      note: 'تصل الإكرامية كاملة إلى الرصيد لحظة دفع الضيف. وتُخصم نسبة 10٪ فقط عندما يحوّل الموظف المال إلى بنكه. وإذا رُفض السحب، يعود المال إلى رصيده.',
+    guest: {
+      kicker: 'للضيوف',
+      title: 'ترك الإكرامية يستغرق عشر ثوانٍ.',
+      body: 'يوجّه ضيوفك الكاميرا إلى رمزك فتفتح صفحة دفع في متصفحهم. بلا تحميل، بلا تسجيل، وبلا لحظة محرجة على الطاولة.',
+      points: ['يعمل مع أي كاميرا هاتف', 'بطاقة و Apple Pay و Google Pay', 'تقييم وإيصال بالبريد اختياريًا'],
+      alt: 'صفحة الإكرامية في SnapTip مع المبالغ وطرق الدفع',
     },
 
-    ops: {
-      kicker: 'للمديرين',
-      title: 'اطّلع على الصالة كاملة، لا على صندوق إيصالات.',
-      points: [
-        'ادعُ فريقك بالبريد الإلكتروني أو برابط واحد.',
-        'تابع وصول الإكراميات لحظة بلحظة.',
-        'اعرف من يكسب وكم، أسبوعيًا وحسب الوردية.',
-        'كل عملية دفع لها سجل. لا شيء تتم تسويته يدويًا.',
-      ],
+    staff: {
+      kicker: 'للموظفين',
+      title: 'تابع وصول إكرامياتك مباشرة.',
+      body: 'تظهر كل إكرامية في رصيدك لحظة دفع الضيف — المبلغ كاملًا دون أي خصم مسبق. يهتز هاتفك ويرتفع الرقم.',
+      points: ['الإكرامية كاملة تُضاف فورًا', 'رصيد مباشر وإجماليات شهرية', 'شارك إكرامية مع زميل'],
+      alt: 'الشاشة الرئيسية لموظف SnapTip مع الرصيد وآخر الإكراميات',
     },
 
-    reach: {
-      kicker: 'النطاق',
-      items: [
-        ['29', 'دولة يمكن للموظفين السحب فيها'],
-        ['20', 'عملة للتحويل'],
-        ['14', 'لغة في صفحة الإكرامية'],
-      ],
-      note: 'في 23 دولة يربط الموظفون حسابًا بنكيًا مباشرة عبر Stripe. ويُدفع للبقية بالتحويل البنكي.',
+    business: {
+      kicker: 'للشركات',
+      title: 'اطّلع على ما يكسبه فريقك بالكامل.',
+      body: 'ادعُ موظفيك برابط واحد. تابع الإكراميات في الصالة كلها، واكتشف الأفضل أداءً، واحتفظ بسجل واضح لكل عملية دفع.',
+      points: ['ادعُ فريقك بالبريد أو برابط', 'إجماليات واتجاهات ولوحة ترتيب', 'سجل كامل — لا نقود تُعدّ'],
+      alt: 'لوحة تحكم أعمال SnapTip مع إجماليات الفريق والأفضل أداءً',
+    },
+
+    payout: {
+      kicker: 'استلام المال',
+      title: 'مالك، بشروطك.',
+      body: 'اربط حسابًا بنكيًا واسحب متى شئت، أو اضبطه ليحوّل تلقائيًا كل أسبوع أو كل شهر.',
+      points: ['تحويلات بنكية في 29 دولة', 'تحويلات تلقائية أسبوعية أو شهرية', 'بيانات مشفّرة وشاشات محمية'],
+      alt: 'شاشة الملف الشخصي وإعدادات التحويل في SnapTip',
+    },
+
+    pricing: {
+      kicker: 'الأسعار',
+      title: 'مجاني حتى تبدأ في الكسب.',
+      body: 'لا رسوم شهرية. لا رسوم تسجيل. لا بطاقة محفوظة. يأخذ SnapTip نسبة 10٪ فقط عندما تحوّل المال إلى بنكك — فإذا لم يكسب فريقك شيئًا، لن تدفع شيئًا.',
+      points: ['0 $ للتحميل والإعداد', '0 $ شهريًا، إلى الأبد', '10٪ عند السحب فقط'],
+      note: 'مثال: إكرامية بقيمة 20 $ تُضاف إلى رصيدك كاملة. وعند السحب، يذهب 2 $ إلى SnapTip ويصل 18 $ إلى بنكك.',
     },
 
     trust: {
-      title: 'مُدار كما ينبغي.',
+      kicker: 'الثقة',
+      title: 'مدفوعات تُدار كما ينبغي.',
       points: [
-        'تتم المدفوعات عبر Stripe. بيانات البطاقة تذهب مباشرة إلى Stripe، لا إلينا.',
+        'تتم المدفوعات عبر Stripe — بيانات البطاقة تذهب مباشرة إلى Stripe، لا إلينا أبدًا.',
         'تُشفَّر البيانات البنكية قبل تخزينها.',
-        'يدفع الضيوف بالبطاقة أو Apple Pay أو Google Pay.',
+        'تمنع الشاشات البنكية التقاط الصور وتسجيل الشاشة.',
       ],
     },
 
     app: {
-      title: 'حمّل التطبيق.',
+      title: 'ابدأ في قبول الإكراميات بالبطاقة اليوم.',
       body: 'التحميل مجاني. ومجاني حتى يبدأ فريقك في الكسب.',
       qr: 'امسح للتحميل',
       playEyebrow: 'احصل عليه من',
@@ -359,116 +320,98 @@ export const landingCopy = {
       apple: 'App Store',
     },
 
-    footer: { privacy: 'الخصوصية', terms: 'الشروط', contact: 'اتصل بنا', rights: 'SnapTip من Hitte Technologies LLC.' },
-
-    demo: {
-      badge: 'تجريبي',
-      notice: 'هذا عرض تجريبي. لا تُخصم أي بطاقة ولا ينتقل أي مال.',
-      tagline: 'هل أعجبتك الخدمة؟ اترك إكرامية',
-      name: 'نادل تجريبي',
-      role: 'خدمة الطاولات',
-      choose: 'اختر إكراميتك',
-      popular: 'الأكثر شيوعًا',
-      custom: 'مبلغ مخصص',
-      rate: 'كيف كانت تجربتك؟',
-      optional: 'اختياري',
-      pay: 'ادفع',
-      secure: 'دفع آمن · مدعوم من Stripe',
-      done: 'هذا هو المسار كاملًا.',
-      doneBody: 'كان الضيف الحقيقي سينتهي هنا، وكانت الإكرامية ستصل بالفعل إلى رصيد الموظف. لم يُخصم أي مبلغ.',
-      again: 'جرّب مرة أخرى',
-      back: 'العودة إلى snaptip.me',
-      amounts: ['شكر سريع', 'خدمة رائعة', 'ممتاز', 'استثنائي'],
+    footer: {
+      tagline: 'إكراميات بلا نقود لضيافة العصر.',
+      privacy: 'الخصوصية',
+      terms: 'الشروط',
+      contact: 'اتصل بنا',
+      rights: 'SnapTip من Hitte Technologies LLC.',
     },
   },
 
   /* ── Español ───────────────────────────────────────────────────────── */
   es: {
     dir: 'ltr',
-    nav: { how: 'Cómo funciona', money: 'Precios', business: 'Para empresas', app: 'Descargar la app' },
-    a11y: { skip: 'Ir al contenido', nav: 'Principal', lang: 'Idioma', close: 'Cerrar', menu: 'Menú' },
+    nav: { how: 'Cómo funciona', staff: 'Para el personal', business: 'Para empresas', pricing: 'Precios', app: 'Descargar la app' },
+    a11y: { skip: 'Ir al contenido', nav: 'Principal', lang: 'Idioma' },
 
     hero: {
       eyebrow: 'Propinas sin efectivo para la hostelería',
-      title: 'Pruébalo antes de leer sobre ello.',
-      body: 'Apunta la cámara de tu teléfono a este código. Abre una página de propinas real, la misma que ve un cliente. No hay que instalar nada, ni en su teléfono ni en el tuyo.',
-      scanDesktop: 'Escanea con la cámara de tu teléfono',
-      scanMobile: 'Toca para abrir la demo',
-      cardName: 'Camarero de demostración',
-      cardRole: 'Demo de SnapTip · sin pago real',
-      trust: 'Con tecnología de Stripe · Sin app para los clientes · Gratis para empezar',
+      title: 'Un buen servicio merece propina. Aunque nadie lleve efectivo.',
+      body: 'SnapTip da a cada camarero, guía, conductor y empleado de hotel su propio código QR. Los clientes lo escanean, pagan en segundos y el dinero llega directo a tu saldo.',
+      trust: 'Gratis para empezar · Sin app para los clientes · Con tecnología de Stripe',
+      alt: 'Pantallas de la app SnapTip para clientes, personal y gerentes',
     },
 
-    seconds: {
-      kicker: 'Los diez segundos',
-      title: 'Qué pasa entre el escaneo y el dinero.',
-      rows: [
-        ['0:00', 'El cliente apunta la cámara a un código impreso.'],
-        ['0:03', 'Se abre una página de propinas en el navegador. Sin app, sin cuenta.'],
-        ['0:08', 'Paga con tarjeta, Apple Pay o Google Pay.'],
-        ['0:10', 'El importe íntegro está en el saldo del trabajador.'],
-      ],
-    },
+    stats: [
+      ['29', 'Países'],
+      ['20', 'Divisas'],
+      ['14', 'Idiomas'],
+      ['10 %', 'Solo al retirar'],
+    ],
 
-    doors: {
-      kicker: 'Tres formas de llegar aquí',
-      items: [
-        ['Diriges un negocio', 'Mira lo que gana todo tu equipo, sin contar efectivo a medianoche.', 'Qué obtienen los gerentes', '#operators'],
-        ['Trabajas con propinas', 'Consigue tu código, cobra propinas con tarjeta y pasa el dinero a tu banco.', 'Descargar la app', '#get-app'],
-        ['Acabas de escanear un código', 'Estás en el sitio correcto. No necesitas cuenta ni aplicación.', 'Ver la página de propinas', '/demo'],
+    how: {
+      kicker: 'Cómo funciona',
+      title: 'Tres pasos. Ya está.',
+      steps: [
+        ['Consigue tu código', 'Descarga la app, regístrate y tu código QR personal estará listo para imprimir, mostrar o compartir.'],
+        ['El cliente escanea y paga', 'Sin app y sin cuenta para él. Tarjeta, Apple Pay o Google Pay en unos diez segundos.'],
+        ['Pasa el dinero a tu banco', 'Las propinas llegan al instante a tu saldo. Retira cuando quieras.'],
       ],
     },
 
-    money: {
-      kicker: 'Adónde va el dinero',
-      title: 'Toda la comisión, en una línea.',
-      example: 'Ejemplo: una propina de 20 $',
-      rows: [
-        ['El cliente deja', '20,00 $'],
-        ['Se abona al trabajador, al instante', '20,00 $'],
-        ['Comisión de SnapTip, al retirar', '−2,00 $'],
-      ],
-      total: ['Llega a su banco', '18,00 $'],
-      zeros: [
-        ['Cuota mensual', '0,00 $'],
-        ['Coste de alta', '0,00 $'],
-        ['Coste si nadie deja propina', '0,00 $'],
-      ],
-      note: 'La propina íntegra entra en el saldo en cuanto el cliente paga. El 10 % se cobra solo cuando el trabajador pasa el dinero a su banco. Si se rechaza una retirada, el dinero vuelve a su saldo.',
+    guest: {
+      kicker: 'Para los clientes',
+      title: 'Dejar propina tarda diez segundos.',
+      body: 'Tus clientes apuntan la cámara a tu código y se abre una página de pago en su navegador. Sin descargas, sin registro y sin momentos incómodos en la mesa.',
+      points: ['Funciona con cualquier cámara de móvil', 'Tarjeta, Apple Pay y Google Pay', 'Valoración y recibo por correo opcionales'],
+      alt: 'Página de propinas de SnapTip con importes y métodos de pago',
     },
 
-    ops: {
-      kicker: 'Para gerentes',
-      title: 'Ve toda la sala, no una caja de tickets.',
-      points: [
-        'Invita a tu equipo por correo o con un solo enlace.',
-        'Ve llegar las propinas en tiempo real.',
-        'Sabe quién gana cuánto, por semana y por turno.',
-        'Cada pago deja registro. Nada que cuadrar a mano.',
-      ],
+    staff: {
+      kicker: 'Para el personal',
+      title: 'Mira llegar tus propinas en directo.',
+      body: 'Cada propina aparece en tu saldo en cuanto el cliente paga — el importe íntegro, sin descuentos por adelantado. Tu móvil vibra y la cifra sube.',
+      points: ['Propina íntegra abonada al instante', 'Saldo en directo y totales mensuales', 'Comparte una propina con un compañero'],
+      alt: 'Pantalla de inicio de SnapTip con el saldo y las últimas propinas',
     },
 
-    reach: {
-      kicker: 'Alcance',
-      items: [
-        ['29', 'países donde el personal puede retirar'],
-        ['20', 'divisas de pago'],
-        ['14', 'idiomas en la página de propinas'],
-      ],
-      note: 'En 23 países el personal vincula su cuenta bancaria directamente con Stripe. El resto cobra por transferencia.',
+    business: {
+      kicker: 'Para empresas',
+      title: 'Mira lo que gana todo tu equipo.',
+      body: 'Invita a tu personal con un solo enlace. Sigue las propinas de toda la sala, detecta a los que más destacan y guarda un registro limpio de cada pago.',
+      points: ['Invita a tu equipo por correo o enlace', 'Totales, tendencias y clasificación', 'Historial completo — nada que contar'],
+      alt: 'Panel de negocio de SnapTip con totales del equipo y mejores resultados',
+    },
+
+    payout: {
+      kicker: 'Cobrar',
+      title: 'Tu dinero, como tú quieras.',
+      body: 'Vincula una cuenta bancaria y retira cuando quieras, o programa un pago automático cada semana o cada mes.',
+      points: ['Pagos bancarios en 29 países', 'Pagos automáticos semanales o mensuales', 'Datos cifrados y pantallas protegidas'],
+      alt: 'Pantalla de perfil y ajustes de pago de SnapTip',
+    },
+
+    pricing: {
+      kicker: 'Precios',
+      title: 'Gratis hasta que ganes.',
+      body: 'Sin cuota mensual. Sin coste de alta. Sin tarjeta guardada. SnapTip cobra el 10 % solo cuando pasas el dinero a tu banco: si tu equipo no gana nada, no pagas nada.',
+      points: ['0 $ para descargar y configurar', '0 $ al mes, para siempre', '10 % solo al retirar'],
+      note: 'Ejemplo: una propina de 20 $ se abona íntegra en tu saldo. Al retirar, 2 $ van a SnapTip y 18 $ llegan a tu banco.',
     },
 
     trust: {
-      title: 'Bien gestionado.',
+      kicker: 'Confianza',
+      title: 'Pagos bien gestionados.',
       points: [
-        'Los pagos van por Stripe. Los datos de la tarjeta van directos a Stripe, no a nosotros.',
+        'Los pagos van por Stripe: los datos de la tarjeta van directos a Stripe, nunca a nosotros.',
         'Los datos bancarios se cifran antes de guardarse.',
-        'Los clientes pagan con tarjeta, Apple Pay o Google Pay.',
+        'Las pantallas bancarias bloquean capturas y grabación de pantalla.',
       ],
     },
 
     app: {
-      title: 'Descarga la app.',
+      title: 'Empieza a cobrar propinas con tarjeta hoy.',
       body: 'Descarga gratuita. Gratis hasta que tu equipo gane.',
       qr: 'Escanea para descargar',
       playEyebrow: 'Disponible en',
@@ -477,26 +420,12 @@ export const landingCopy = {
       apple: 'App Store',
     },
 
-    footer: { privacy: 'Privacidad', terms: 'Términos', contact: 'Contacto', rights: 'SnapTip de Hitte Technologies LLC.' },
-
-    demo: {
-      badge: 'Demo',
-      notice: 'Esto es una demostración. No se cobra ninguna tarjeta ni se mueve dinero.',
-      tagline: '¿Te ha gustado el servicio? Deja una propina',
-      name: 'Camarero de demostración',
-      role: 'Servicio de sala',
-      choose: 'Elige tu propina',
-      popular: 'Popular',
-      custom: 'Importe personalizado',
-      rate: '¿Cómo fue tu experiencia?',
-      optional: 'Opcional',
-      pay: 'Pagar',
-      secure: 'Pago seguro · Con tecnología de Stripe',
-      done: 'Ese es todo el recorrido.',
-      doneBody: 'Un cliente real habría terminado aquí, y la propina ya estaría en el saldo del trabajador. No se cobró nada.',
-      again: 'Probar otra vez',
-      back: 'Volver a snaptip.me',
-      amounts: ['Gracias rápidas', 'Buen servicio', 'Excelente', 'Excepcional'],
+    footer: {
+      tagline: 'Propinas sin efectivo para la hostelería moderna.',
+      privacy: 'Privacidad',
+      terms: 'Términos',
+      contact: 'Contacto',
+      rights: 'SnapTip de Hitte Technologies LLC.',
     },
   },
 };
