@@ -17,6 +17,7 @@ const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const DROPDOWN_BG = '#080818';
 
 interface SearchResult {
@@ -458,14 +459,14 @@ export default function SplitTip() {
                 }}
               >
                 {sending ? (
-                  <ActivityIndicator size="small" color="#1a1a1a" />
+                  <ActivityIndicator size="small" color={ON_MINT} />
                 ) : (
                   <>
-                    <Ionicons name="send" size={20} color={canSend ? '#1a1a1a' : 'rgba(255,255,255,0.3)'} />
+                    <Ionicons name="send" size={20} color={canSend ? ON_MINT : 'rgba(255,255,255,0.3)'} />
                     <Text style={{
                       fontSize: 17,
                       fontWeight: '800',
-                      color: canSend ? '#1a1a1a' : 'rgba(255,255,255,0.3)',
+                      color: canSend ? ON_MINT : 'rgba(255,255,255,0.3)',
                     }}>
                       {amt > 0
                         ? `Confirm Split ${amt.toFixed(2)} ${cur}`

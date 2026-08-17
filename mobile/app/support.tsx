@@ -17,6 +17,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const GREEN = '#00C896';
 const ACCENT = '#00ffcc';
+const ON_MINT = '#04231C';
 
 const SUBJECTS = [
   'Account Issue',
@@ -98,7 +99,7 @@ export default function SupportScreen() {
             end={{ x: 1, y: 0 }}
             style={{ height: 52, borderRadius: 50, justifyContent: 'center', alignItems: 'center' }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1a1a1a' }}>Back to Profile</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>Back to Profile</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -204,8 +205,8 @@ export default function SupportScreen() {
                 end={{ x: 1, y: 0 }}
                 style={{ height: 52, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
               >
-                <Ionicons name="send-outline" size={18} color="#fff" />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+                <Ionicons name="send-outline" size={18} color={ON_MINT} />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>
                   {sending ? 'Sending...' : 'Send Message'}
                 </Text>
               </LinearGradient>

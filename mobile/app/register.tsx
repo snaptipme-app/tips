@@ -19,6 +19,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const SHEET_BG = '#1a1a1a';
 
 const STEPS = [
@@ -100,8 +101,8 @@ const Step1 = memo(({ firstName, lastName, email, errors, onFirstName, onLastNam
       <InputField icon="person-outline" placeholder={t('reg_last_name')} value={lastName} onChangeText={onLastName} error={errors.lastName} />
       <InputField icon="mail-outline" placeholder={t('reg_email_ph')} value={email} onChangeText={onEmail} error={errors.email} keyboardType="email-address" />
       <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-        <Ionicons name={loading ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_sending') : t('reg_send_code')}</Text>
+        <Ionicons name={loading ? 'hourglass-outline' : 'send-outline'} size={16} color={ON_MINT} />
+        <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{loading ? t('reg_sending') : t('reg_send_code')}</Text>
       </TouchableOpacity>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 10 }}>
         <Ionicons name="lock-closed" size={12} color="rgba(255,255,255,0.25)" />
@@ -142,7 +143,7 @@ const Step2 = memo(({ email, otp, otpRefs, onOtpChange, onOtpKey, onVerify, onRe
       </View>
 
       <TouchableOpacity onPress={onVerify} disabled={loading || otp.join('').length < 6} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: (loading || otp.join('').length < 6) ? 0.5 : 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_verifying') : t('reg_verify_code')}</Text>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{loading ? t('reg_verifying') : t('reg_verify_code')}</Text>
       </TouchableOpacity>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
@@ -237,8 +238,8 @@ const Step3 = memo(({ username, password, confirmPw, showPw, accountType, userna
       {errors.country ? <Text style={{ fontSize: 12, color: '#ef4444', marginBottom: 16, marginLeft: 4 }}>{errors.country}</Text> : null}
 
       <TouchableOpacity onPress={onNext} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-        {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('reg_creating') : t('reg_create_btn')}</Text>
+        {loading && <Ionicons name="hourglass-outline" size={16} color={ON_MINT} />}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{loading ? t('reg_creating') : t('reg_create_btn')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onBack} style={{ marginTop: 12, alignItems: 'center' }}>
@@ -272,8 +273,8 @@ const Step4 = memo(({ imageUri, jobTitle, onPickPhoto, onJobTitle, onComplete, o
       <InputField icon="briefcase-outline" placeholder={t('reg_job_title_ph')} value={jobTitle} onChangeText={onJobTitle} />
 
       <TouchableOpacity onPress={onComplete} disabled={loading} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-        {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? t('saving') : t('reg_complete_setup')}</Text>
+        {loading && <Ionicons name="hourglass-outline" size={16} color={ON_MINT} />}
+        <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{loading ? t('saving') : t('reg_complete_setup')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onSkip} style={{ marginTop: 12, alignItems: 'center' }}>

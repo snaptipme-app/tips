@@ -21,6 +21,7 @@ const SHEET_BG = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const RED = '#ef4444';
 
 interface Member {
@@ -274,8 +275,8 @@ export default function TeamManagement() {
             onPress={() => router.push('/business/invite')}
             style={{ backgroundColor: ACCENT, borderRadius: 50, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>Invite</Text>
+            <Ionicons name="add" size={16} color={ON_MINT} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: ON_MINT }}>Invite</Text>
           </HapticButton>
         </View>
       </LinearGradient>
@@ -307,8 +308,8 @@ export default function TeamManagement() {
                 activeOpacity={0.8}
                 style={{ marginTop: 24, backgroundColor: ACCENT, borderRadius: 50, paddingHorizontal: 24, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
               >
-                <Ionicons name="mail-outline" size={16} color="#fff" />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Send First Invite</Text>
+                <Ionicons name="mail-outline" size={16} color={ON_MINT} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: ON_MINT }}>Send First Invite</Text>
               </TouchableOpacity>
             </View>
           }

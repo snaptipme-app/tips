@@ -27,6 +27,7 @@ const SHEET_BG = '#080818';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const YELLOW = '#f59e0b';
 const RED = '#ef4444';
 
@@ -813,7 +814,7 @@ export default function MemberWithdraw() {
               <HapticButton onPress={saveWithdrawalPreferences} disabled={savingPreferences}>
                 <LinearGradient colors={['#4facfe', '#00ffcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={{ height: 54, borderRadius: 50, justifyContent: 'center', alignItems: 'center', opacity: savingPreferences ? 0.65 : 1 }}>
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>{savingPreferences ? 'Saving...' : 'Save preferences'}</Text>
+                  <Text style={{ color: ON_MINT, fontSize: 15, fontWeight: '800' }}>{savingPreferences ? 'Saving...' : 'Save preferences'}</Text>
                 </LinearGradient>
               </HapticButton>
             </View>
@@ -904,8 +905,8 @@ export default function MemberWithdraw() {
                   <HapticButton onPress={handleSubmit} disabled={submitting || (activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0)} style={{ marginTop: 8 }}>
                     <LinearGradient colors={['#4facfe', '#00ffcc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={{ height: 56, borderRadius: 50, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: submitting || (activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0) ? 0.6 : 1 }}>
-                      <Ionicons name={submitting ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{submitting ? t('submitting') : activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0 ? 'Funds settling' : t('request_withdrawal')}</Text>
+                      <Ionicons name={submitting ? 'hourglass-outline' : 'checkmark-circle'} size={20} color={ON_MINT} />
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{submitting ? t('submitting') : activeMethod.id === 'stripe_connect' && activeAvailableToWithdraw <= 0 ? 'Funds settling' : t('request_withdrawal')}</Text>
                     </LinearGradient>
                   </HapticButton>
                 </>)}

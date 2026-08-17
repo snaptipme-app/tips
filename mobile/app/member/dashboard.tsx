@@ -21,6 +21,7 @@ const CARD = '#1a1a1a';
 const BORDER = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 
 interface Tip {
   id: number;
@@ -180,8 +181,8 @@ export default function MemberDashboard() {
                   onPress={() => router.push('/member/withdraw')}
                   style={{ flex: 1, height: 46, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 }}
                 >
-                  <Ionicons name="arrow-up-circle" size={20} color="#fff" />
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('cash_out')}</Text>
+                  <Ionicons name="arrow-up-circle" size={20} color={ON_MINT} />
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>{t('cash_out')}</Text>
                 </HapticButton>
                 <HapticButton
                   onPress={() => router.push('/member/qr')}
@@ -222,8 +223,8 @@ export default function MemberDashboard() {
                 activeOpacity={0.8}
                 style={{ marginTop: 20, backgroundColor: ACCENT, borderRadius: 50, paddingHorizontal: 24, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}
               >
-                <Ionicons name="qr-code-outline" size={16} color="#fff" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{t('show_my_qr')}</Text>
+                <Ionicons name="qr-code-outline" size={16} color={ON_MINT} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: ON_MINT }}>{t('show_my_qr')}</Text>
               </TouchableOpacity>
             </View>
           ) : (

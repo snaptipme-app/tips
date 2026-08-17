@@ -15,6 +15,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 
 interface Invite {
   email: string;
@@ -157,8 +158,8 @@ export default function InviteMember() {
                   flex: 1, height: 44, borderRadius: 50, backgroundColor: ACCENT,
                   justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6,
                 }}>
-                  <Ionicons name="share-social-outline" size={16} color="#fff" />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Share</Text>
+                  <Ionicons name="share-social-outline" size={16} color={ON_MINT} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: ON_MINT }}>Share</Text>
                 </HapticButton>
               </View>
 
@@ -197,8 +198,8 @@ export default function InviteMember() {
           </View>
 
           <HapticButton onPress={handleEmailInvite} disabled={sendingEmail} style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: sendingEmail ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-            <Ionicons name={sendingEmail ? 'hourglass-outline' : 'send-outline'} size={16} color="#fff" />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{sendingEmail ? 'Sending...' : 'Send Invitation'}</Text>
+            <Ionicons name={sendingEmail ? 'hourglass-outline' : 'send-outline'} size={16} color={ON_MINT} />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>{sendingEmail ? 'Sending...' : 'Send Invitation'}</Text>
           </HapticButton>
         </View>
 

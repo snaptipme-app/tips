@@ -19,6 +19,7 @@ const CARD = 'rgba(255,255,255,0.05)';
 const BORDER = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const RATING_PREF_KEY = 'snaptip_show_rating';
 const DEFAULT_SHOW_RATING = false;
 
@@ -255,8 +256,8 @@ export default function Home() {
                   onPress={() => router.push('/member/withdraw')}
                   style={{ flex: 1, height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: rowDirection, gap: 8 }}
                 >
-                  <Ionicons name="arrow-up-circle" size={20} color="#1a1a1a" />
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#1a1a1a' }}>{t('cash_out')}</Text>
+                  <Ionicons name="arrow-up-circle" size={20} color={ON_MINT} />
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: ON_MINT }}>{t('cash_out')}</Text>
                 </HapticButton>
                 <HapticButton
                   onPress={() => router.push('/member/qr')}

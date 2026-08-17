@@ -21,6 +21,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 
 const BIZ_TYPES = [
   { id: 'Restaurant', icon: 'restaurant-outline' as const },
@@ -159,7 +160,7 @@ export default function BusinessProfileSettings() {
               )}
             </View>
             <View style={{ position: 'absolute', bottom: 2, right: 2, width: 30, height: 30, borderRadius: 15, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG }}>
-              <Ionicons name="camera" size={14} color="#fff" />
+              <Ionicons name="camera" size={14} color={ON_MINT} />
             </View>
           </TouchableOpacity>
           <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 10 }}>Tap to change logo</Text>
@@ -279,8 +280,8 @@ export default function BusinessProfileSettings() {
             elevation: 8,
           }}
         >
-          <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={20} color="#fff" />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+          <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={20} color={ON_MINT} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>
             {saving ? 'Saving...' : 'Save Changes'}
           </Text>
         </HapticButton>

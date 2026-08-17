@@ -15,6 +15,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 
 const FPInput = memo(({ icon, placeholder, value, onChangeText, secureTextEntry, right, ...props }: any) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT_BG, borderRadius: 12, height: 52, paddingHorizontal: 14, marginBottom: 14, borderWidth: 1, borderColor: BORDER }}>
@@ -156,8 +157,8 @@ export default function ForgotPassword() {
               activeOpacity={0.8}
               style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.6 : 1, flexDirection: 'row', gap: 8, marginTop: 6 }}
             >
-              {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+              {loading && <Ionicons name="hourglass-outline" size={16} color={ON_MINT} />}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>
                 {loading ? t('reg_sending') : t('fp_send_reset')}
               </Text>
             </TouchableOpacity>
@@ -219,8 +220,8 @@ export default function ForgotPassword() {
               activeOpacity={0.8}
               style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.6 : 1, flexDirection: 'row', gap: 8, marginTop: 6 }}
             >
-              {loading && <Ionicons name="hourglass-outline" size={16} color="#fff" />}
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+              {loading && <Ionicons name="hourglass-outline" size={16} color={ON_MINT} />}
+              <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>
                 {loading ? t('fp_resetting') : t('fp_reset_btn')}
               </Text>
             </TouchableOpacity>
@@ -249,7 +250,7 @@ export default function ForgotPassword() {
               activeOpacity={0.8}
               style={{ width: '100%', height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('fp_login_new_pw')}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{t('fp_login_new_pw')}</Text>
             </TouchableOpacity>
           </View>
         )}

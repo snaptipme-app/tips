@@ -14,6 +14,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 
 const TYPES = [
   { id: 'Restaurant', icon: 'restaurant-outline' as const, color: '#f59e0b' },
@@ -135,8 +136,8 @@ export default function BusinessSetup() {
           </View>
 
           <HapticButton onPress={handleCreate} disabled={loading} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: loading ? 0.5 : 1, flexDirection: 'row', gap: 8 }}>
-            <Ionicons name={loading ? 'hourglass-outline' : 'checkmark-circle'} size={16} color="#fff" />
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{loading ? 'Creating...' : 'Create Business'}</Text>
+            <Ionicons name={loading ? 'hourglass-outline' : 'checkmark-circle'} size={16} color={ON_MINT} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{loading ? 'Creating...' : 'Create Business'}</Text>
           </HapticButton>
         </View>
       </ScrollView>

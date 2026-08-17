@@ -19,6 +19,7 @@ const BG = '#1a1a1a';
 const CARD_DARK = '#1a1a1a';
 const BORDER_DARK = 'rgba(255,255,255,0.06)';
 const ACCENT = '#00ffcc';
+const ON_MINT = '#04231C';
 
 export default function MemberQR() {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ export default function MemberQR() {
   const [customMessage, setCustomMessage] = useState('');
   const [showPhoto, setShowPhoto] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const downloadContentColor = capturing ? '#fff' : ON_MINT;
 
   const username = user?.username || '';
   const tipUrl = username ? `https://snaptip.me/${username}` : null;
@@ -234,8 +236,8 @@ export default function MemberQR() {
               elevation: 8,
             }}
           >
-            <Ionicons name={capturing ? 'hourglass-outline' : 'download-outline'} size={20} color="#fff" />
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+            <Ionicons name={capturing ? 'hourglass-outline' : 'download-outline'} size={20} color={downloadContentColor} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: downloadContentColor }}>
               {capturing ? t('preparing') : t('download_share_card')}
             </Text>
           </LinearGradient>

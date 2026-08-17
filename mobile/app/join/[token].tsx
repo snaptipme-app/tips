@@ -23,6 +23,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const RED = '#ef4444';
 
 type Step = 'loading' | 'error' | 'preview' | 'register' | 'withdrawal' | 'success';
@@ -230,8 +231,8 @@ export default function JoinBusiness() {
         activeOpacity={0.8}
         style={{ height: 54, paddingHorizontal: 40, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10 }}
       >
-        <Ionicons name="home" size={20} color="#fff" />
-        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Go to My Dashboard</Text>
+        <Ionicons name="home" size={20} color={ON_MINT} />
+        <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>Go to My Dashboard</Text>
       </TouchableOpacity>
       <Toast {...toast} />
     </View>
@@ -296,8 +297,8 @@ export default function JoinBusiness() {
                     activeOpacity={0.8}
                     style={{ height: 54, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: regLoading ? 0.6 : 1, marginBottom: 12 }}
                   >
-                    {regLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{regLoading ? 'Joining...' : `Join ${businessName}`}</Text>
+                    {regLoading ? <Ionicons name="hourglass-outline" size={20} color={ON_MINT} /> : <Ionicons name="checkmark-circle" size={20} color={ON_MINT} />}
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{regLoading ? 'Joining...' : `Join ${businessName}`}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => router.back()} style={{ alignItems: 'center', padding: 12 }}>
                     <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }}>Decline</Text>
@@ -311,8 +312,8 @@ export default function JoinBusiness() {
                     activeOpacity={0.8}
                     style={{ height: 54, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10 }}
                   >
-                    <Ionicons name="person-add-outline" size={20} color="#fff" />
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Create Account</Text>
+                    <Ionicons name="person-add-outline" size={20} color={ON_MINT} />
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>Create Account</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -386,8 +387,8 @@ export default function JoinBusiness() {
                 activeOpacity={0.8}
                 style={{ height: 54, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 8, opacity: regLoading ? 0.6 : 1 }}
               >
-                {regLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="arrow-forward-circle" size={20} color="#fff" />}
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{regLoading ? 'Creating account...' : 'Continue'}</Text>
+                {regLoading ? <Ionicons name="hourglass-outline" size={20} color={ON_MINT} /> : <Ionicons name="arrow-forward-circle" size={20} color={ON_MINT} />}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{regLoading ? 'Creating account...' : 'Continue'}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -436,8 +437,8 @@ export default function JoinBusiness() {
                 activeOpacity={0.8}
                 style={{ height: 54, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10, opacity: wLoading ? 0.6 : 1 }}
               >
-                {wLoading ? <Ionicons name="hourglass-outline" size={20} color="#fff" /> : <Ionicons name="checkmark-circle" size={20} color="#fff" />}
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{wLoading ? 'Saving...' : 'Save & Continue'}</Text>
+                {wLoading ? <Ionicons name="hourglass-outline" size={20} color={ON_MINT} /> : <Ionicons name="checkmark-circle" size={20} color={ON_MINT} />}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{wLoading ? 'Saving...' : 'Save & Continue'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
