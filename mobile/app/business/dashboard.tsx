@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Image,
-  RefreshControl,
+  RefreshControl, ImageSourcePropType,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ const CARD    = 'rgba(255,255,255,0.05)';
 const BORDER  = 'rgba(255,255,255,0.08)';
 const ACCENT  = '#00ffcc';
 const GREEN   = '#00C896';
+const ON_MINT = '#04231C';
 const YELLOW  = '#f59e0b';
 const PURPLE  = '#00ffcc';
 
@@ -61,6 +62,12 @@ interface BusinessInfo {
   id: number;
   business_name: string;
   logo_url?: string;
+  logo_base64?: string;
+}
+
+function normalizeImageSource(source: { uri: string } | string | null): ImageSourcePropType | null {
+  if (!source) return null;
+  return typeof source === 'string' ? { uri: source } : source;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -78,7 +85,8 @@ export default function BusinessDashboard() {
   const currency        = user?.currency || 'MAD';
   const initials        = (user?.full_name || 'B').charAt(0).toUpperCase();
   const photoSrc        = getImageSource(user?.photo_base64 || user?.profile_image_url);
-  const businessLogoSrc = getImageSource(business?.logo_url?.trim() || '');
+  const businessLogoUrl = business?.logo_base64 || business?.logo_url?.trim() || '';
+  const businessLogoSrc = normalizeImageSource(getImageSource(businessLogoUrl));
 
   const fetchAll = useCallback(async () => {
     try {
@@ -89,6 +97,7 @@ export default function BusinessDashboard() {
       ]);
       setStats(statsRes.data);
       setTransactions(txRes.data.transactions || []);
+      console.log('Business Logo URL fetched:', bizRes.data?.business?.logo_url);
       console.log('[DEBUG logo_url]', bizRes.data?.business?.logo_url);
       console.log('[DEBUG businessLogoSrc]', getImageSource(bizRes.data?.business?.logo_url?.trim() || ''));
       setBusiness(bizRes.data.business || null);
@@ -202,7 +211,12 @@ export default function BusinessDashboard() {
               marginRight: 12,
             }}>
               {businessLogoSrc
-                ? <Image source={businessLogoSrc} style={{ width: 46, height: 46 }} resizeMode="cover" />
+                ? <Image
+                    source={businessLogoSrc}
+                    style={{ width: 46, height: 46 }}
+                    resizeMode="cover"
+                    onError={(event) => console.log('Business Logo image failed:', event.nativeEvent.error)}
+                  />
                 : <SnapTipLogo size={26} />
               }
             </View>
@@ -478,14 +492,14 @@ export default function BusinessDashboard() {
               gap: 14, marginBottom: 10,
             }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.18)', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="person-add-outline" size={20} color="#fff" />
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(4,35,28,0.14)', justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="person-add-outline" size={20} color={ON_MINT} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Invite Employee</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)', marginTop: 1 }}>Send a link or email invite</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>Invite Employee</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(4,35,28,0.72)', marginTop: 1 }}>Send a link or email invite</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+            <Ionicons name="chevron-forward" size={18} color="rgba(4,35,28,0.55)" />
           </HapticButton>
 
           {/* View Team — outlined blue */}
