@@ -14,6 +14,7 @@ import api from '../../lib/api';
 import { uploadProfileImage } from '../../lib/uploadImage';
 import { Toast, useToast } from '../../components/Toast';
 import HapticButton from '../../components/HapticButton';
+import DeleteAccountButton from '../../components/DeleteAccountButton';
 
 const BG = '#1a1a1a';
 const CARD = '#1a1a1a';
@@ -22,6 +23,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.07)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const RED = '#ef4444';
 
 const METHODS = ['CIH Bank', 'Cash Plus', 'Wafa Cash', 'Other Bank'];
@@ -167,7 +169,7 @@ export default function MemberProfile() {
               {photoSrc ? <Image source={{ uri: photoSrc }} style={{ width: 90, height: 90 }} /> : <Text style={{ fontSize: 32, fontWeight: '800', color: ACCENT }}>{initials}</Text>}
             </View>
             <View style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: BG }}>
-              <Ionicons name="camera" size={13} color="#fff" />
+              <Ionicons name="camera" size={13} color={ON_MINT} />
             </View>
           </TouchableOpacity>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginTop: 10 }}>@{user?.username}</Text>
@@ -198,8 +200,8 @@ export default function MemberProfile() {
             disabled={saving}
             style={{ height: 48, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: saving ? 0.6 : 1 }}
           >
-            <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{saving ? t('saving') : t('save_profile')}</Text>
+            <Ionicons name={saving ? 'hourglass-outline' : 'checkmark-circle'} size={18} color={ON_MINT} />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>{saving ? t('saving') : t('save_profile')}</Text>
           </HapticButton>
         </View>
 
@@ -290,6 +292,9 @@ export default function MemberProfile() {
           <Ionicons name="log-out-outline" size={20} color={RED} />
           <Text style={{ fontSize: 16, fontWeight: '700', color: RED }}>{t('logout')}</Text>
         </TouchableOpacity>
+
+        {/* ── Delete Account (Apple 5.1.1 / Google Play) ── */}
+        <DeleteAccountButton />
       </KeyboardAwareWrapper>
 
       {/* ── Change Password Sheet ── */}
@@ -314,8 +319,8 @@ export default function MemberProfile() {
                 </View>
               ))}
               <HapticButton onPress={handleChangePassword} disabled={changingPw} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: changingPw ? 0.6 : 1, marginTop: 6 }}>
-                <Ionicons name={changingPw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{changingPw ? t('saving') : t('save_password')}</Text>
+                <Ionicons name={changingPw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color={ON_MINT} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>{changingPw ? t('saving') : t('save_password')}</Text>
               </HapticButton>
             </View>
           </TouchableOpacity>
@@ -342,8 +347,8 @@ export default function MemberProfile() {
               <TextInput style={{ color: '#fff', fontSize: 15 }} placeholder="Enter account number" placeholderTextColor="rgba(255,255,255,0.2)" value={wAccount} onChangeText={setWAccount} keyboardType="numeric" />
             </View>
             <HapticButton onPress={handleSaveWithdrawal} disabled={savingWithdraw} style={{ height: 52, borderRadius: 50, backgroundColor: GREEN, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: savingWithdraw ? 0.6 : 1 }}>
-              <Ionicons name={savingWithdraw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color="#fff" />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>{t('save_method')}</Text>
+              <Ionicons name={savingWithdraw ? 'hourglass-outline' : 'checkmark-circle'} size={18} color={ON_MINT} />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: ON_MINT }}>{t('save_method')}</Text>
             </HapticButton>
           </View>
         </TouchableOpacity>

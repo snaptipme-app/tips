@@ -231,8 +231,11 @@ router.post('/delete-account', authMiddleware, async (req, res) => {
     const recoveryCode = String(Math.floor(100000 + Math.random() * 900000));
     const recoveryHash = crypto.createHash('sha256').update(recoveryCode).digest('hex');
 
+    // push_token is cleared immediately (not left for the 30-day purge) so the
+    // device stops receiving notifications the moment deletion is requested.
+    // It is re-registered on the next login if the account is recovered.
     await pool.query(
-      'UPDATE employees SET deleted_at = NOW(), deletion_recovery_code = $1 WHERE id = $2',
+      'UPDATE employees SET deleted_at = NOW(), deletion_recovery_code = $1, push_token = NULL WHERE id = $2',
       [recoveryHash, employeeId]
     );
 

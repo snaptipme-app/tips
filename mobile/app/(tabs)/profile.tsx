@@ -14,6 +14,7 @@ import { Toast, useToast } from '../../components/Toast';
 import SnapTipLogo from '../../components/SnapTipLogo';
 import { getImageSource } from '../../lib/imageUtils';
 import HapticButton from '../../components/HapticButton';
+import DeleteAccountButton from '../../components/DeleteAccountButton';
 import { CountryFlag } from '../../components/CountryFlag';
 import { COUNTRY_CODE_MAP } from '../../lib/countryData';
 
@@ -25,6 +26,7 @@ const BORDER = 'rgba(255,255,255,0.06)';
 const INPUT_BG = 'rgba(255,255,255,0.08)';
 const ACCENT = '#00ffcc';
 const GREEN = '#00C896';
+const ON_MINT = '#04231C';
 const RED = '#ef4444';
 const RATING_PREF_KEY = 'snaptip_show_rating';
 const DEFAULT_SHOW_RATING = false;
@@ -294,7 +296,7 @@ export default function Profile() {
               activeOpacity={0.8}
               style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: CARD }}
             >
-              <Ionicons name="camera" size={14} color="#fff" />
+              <Ionicons name="camera" size={14} color={ON_MINT} />
             </TouchableOpacity>
           </View>
 
@@ -462,6 +464,10 @@ export default function Profile() {
           <Ionicons name="log-out-outline" size={18} color={RED} />
           <Text style={{ fontSize: 15, fontWeight: '600', color: RED }}>{t('logout')}</Text>
         </TouchableOpacity>
+
+        {/* ── Delete Account (Apple 5.1.1 / Google Play) ── */}
+        <DeleteAccountButton />
+
         <Toast {...toast} />
       </ScrollView>
 
@@ -541,7 +547,7 @@ export default function Profile() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', marginBottom: 6 }}>{t('full_name')}</Text>
             <TextInput style={{ height: 52, borderRadius: 12, backgroundColor: INPUT_BG, borderWidth: 1, borderColor: BORDER, color: '#fff', fontSize: 15, paddingHorizontal: 14, marginBottom: 20 }} placeholder={t('your_full_name')} placeholderTextColor="rgba(255,255,255,0.2)" value={editName} onChangeText={setEditName} />
             <TouchableOpacity onPress={handleSaveProfile} disabled={editSaving} activeOpacity={0.8} style={{ height: 52, borderRadius: 50, backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.5 : 1, marginBottom: 10 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{editSaving ? t('saving') : t('save_changes')}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: ON_MINT }}>{editSaving ? t('saving') : t('save_changes')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowEditModal(false)} activeOpacity={0.8} style={{ height: 44, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('cancel')}</Text>
