@@ -2,8 +2,17 @@ const express = require('express');
 const router = express.Router();
 
 // GET /join/:token → serve a self-contained HTML page
+//
+// NOTE: this page is NOT part of the React app in client/. It is served
+// directly by Express (mounted at /join in server/index.js) so an invite link
+// renders instantly without booting the SPA bundle.
 router.get('/:token', (req, res) => {
   const { token } = req.params;
+
+  // The token is untrusted path input that gets interpolated into a <script>
+  // block below. JSON.stringify gives a safely quoted+escaped JS string literal;
+  // escaping </ prevents a crafted token from closing the script tag early.
+  const tokenLiteral = JSON.stringify(String(token)).replace(/<\//g, '<\\/');
 
   res.setHeader('Content-Type', 'text/html');
   res.send(`<!DOCTYPE html>
@@ -19,7 +28,7 @@ router.get('/:token', (req, res) => {
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #080818;
+      background: #1a1a1a;
       color: #fff;
       min-height: 100dvh;
       display: flex;
@@ -37,20 +46,22 @@ router.get('/:token', (req, res) => {
       text-align: center;
       margin-bottom: 28px;
     }
-    .brand h1 {
-      font-size: 22px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #6c6cff, #a855f7);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .brand-lockup {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+    }
+    .brand-lockup svg { display: block; }
+    .brand-lockup span {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
     }
     /* Card */
     .card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 20px;
       padding: 36px 28px;
       text-align: center;
@@ -61,13 +72,15 @@ router.get('/:token', (req, res) => {
       width: 80px;
       height: 80px;
       border-radius: 40px;
-      background: rgba(108, 108, 255, 0.12);
-      border: 2px solid #6c6cff;
+      background: rgba(0, 200, 150, 0.12);
+      border: 2px solid #00C896;
+      color: #00C896;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 20px;
-      font-size: 36px;
+      font-size: 32px;
+      font-weight: 800;
       line-height: 1;
     }
     .biz-name {
@@ -93,8 +106,8 @@ router.get('/:token', (req, res) => {
     .spinner {
       width: 40px;
       height: 40px;
-      border: 3px solid rgba(108, 108, 255, 0.2);
-      border-top-color: #6c6cff;
+      border: 3px solid rgba(0, 200, 150, 0.2);
+      border-top-color: #00C896;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin: 0 auto 16px;
@@ -124,12 +137,15 @@ router.get('/:token', (req, res) => {
       width: 100%;
     }
     .btn:active { transform: scale(0.97); }
-    .btn-primary { background: #00C896; color: #fff; }
+    .btn-primary { background: #00C896; color: #04231C; }
     .btn-primary:hover { opacity: 0.9; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.12); }
     .btn-secondary:hover { border-color: rgba(255,255,255,0.25); }
     .btn-outline { background: transparent; color: rgba(255,255,255,0.4); font-size: 14px; font-weight: 500; height: 40px; }
+    /* Store fallback: two half-width pills side by side */
+    .store-row { display: flex; gap: 10px; }
+    .store-row .btn { font-size: 14px; height: 46px; }
     .joining-as {
       font-size: 13px;
       color: rgba(255, 255, 255, 0.4);
@@ -139,7 +155,7 @@ router.get('/:token', (req, res) => {
     .joining-as strong { color: #fff; }
     .helper {
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.25);
       text-align: center;
       margin-top: 8px;
     }
@@ -173,30 +189,42 @@ router.get('/:token', (req, res) => {
     }
     .success-title { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 4px; }
     .success-sub { font-size: 14px; color: rgba(255,255,255,0.4); text-align: center; }
-    .success-biz { font-size: 16px; font-weight: 700; color: #6c6cff; text-align: center; margin: 4px 0 24px; }
-    .btn-accent { background: #6c6cff; color: #fff; }
+    .success-biz { font-size: 16px; font-weight: 700; color: #00C896; text-align: center; margin: 4px 0 24px; }
     /* App Banner */
     .app-banner {
       margin-top: 20px;
       padding: 16px;
-      background: rgba(108, 108, 255, 0.08);
-      border: 1px solid rgba(108, 108, 255, 0.2);
+      background: rgba(0, 200, 150, 0.08);
+      border: 1px solid rgba(0, 200, 150, 0.2);
       border-radius: 14px;
       text-align: center;
     }
     .app-banner p { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
-    .app-banner a {
+    .app-link {
       display: inline-block;
       font-size: 13px;
       font-weight: 600;
-      color: #6c6cff;
+      color: #00C896;
+      background: none;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0;
       text-decoration: none;
     }
+    .app-link:hover { opacity: 0.8; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="brand"><h1>&#9889; SnapTip</h1></div>
+    <div class="brand">
+      <div class="brand-lockup">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M13 2L4.09 12.64a1 1 0 00.78 1.62H11v5.49a.5.5 0 00.9.31L20.91 9.36a1 1 0 00-.78-1.62H13V2.25a.5.5 0 00-.9-.31L13 2z" fill="#00C896"/>
+        </svg>
+        <span>SnapTip</span>
+      </div>
+    </div>
 
     <!-- Loading -->
     <div id="loading" class="active">
@@ -223,37 +251,41 @@ router.get('/:token', (req, res) => {
         <div class="success-title">You're in!</div>
         <div class="success-sub">You've successfully joined</div>
         <div class="success-biz" id="success-biz-name"></div>
-        <a href="/" class="btn btn-accent">Open SnapTip</a>
+        <a href="/" class="btn btn-primary">Open SnapTip</a>
       </div>
       <div class="app-banner">
         <p>Open the SnapTip app to see your team dashboard</p>
-        <a href="snaptip://home">Open App →</a>
+        <button type="button" class="app-link" id="open-app-home">Open App &rarr;</button>
       </div>
     </div>
 
     <!-- Preview -->
     <div id="preview">
       <div class="card">
-        <div class="avatar" id="biz-emoji" style="font-size:36px;color:#6c6cff;">&#9733;</div>
+        <div class="avatar" id="biz-initial"></div>
         <div class="biz-name" id="biz-name"></div>
         <div class="biz-type" id="biz-type"></div>
         <div class="invite-msg">has invited you to join their team on SnapTip and start receiving digital tips.</div>
         <div class="actions" id="actions"></div>
       </div>
-      <div class="app-banner">
-        <p>Already have the SnapTip app?</p>
-        <a href="snaptip://join/${token}">Open in App →</a>
-      </div>
     </div>
   </div>
 
   <script>
-    // Extract token from server injection OR window.location as fallback
-    const TOKEN = '${token}' || window.location.pathname.split('/join/')[1] || window.location.pathname.split('/').pop();
+    // Token comes from the Express route param (safely encoded server-side).
+    // window.location is kept as a fallback for any cached/edge-rewritten HTML.
+    const TOKEN = ${tokenLiteral} || window.location.pathname.split('/join/')[1] || window.location.pathname.split('/').pop();
     const API = '/api'; // Always use relative path so it correctly proxies through Nginx
 
-    console.log('[join] Final TOKEN:', TOKEN);
-    console.log('[join] Fetch URL:', API + '/business/invite-info/' + TOKEN);
+    // Deep link into the mobile app's invite screen (mobile/app/join/[token].tsx),
+    // which handles both registering and joining in one pass.
+    const APP_JOIN_LINK = 'snaptip://join/' + TOKEN;
+
+    // There is no web signup — web auth was retired in favour of the app
+    // (client/src/App.jsx redirects /login and /register to /). Invitees without
+    // an account install the app and re-open this link.
+    const PLAY_URL = 'https://play.google.com/store/apps/details?id=me.snaptip.app';
+    const APPLE_URL = 'https://apps.apple.com/search?term=SnapTip';
 
     const $ = id => document.getElementById(id);
 
@@ -263,6 +295,12 @@ router.get('/:token', (req, res) => {
         if (el) el.classList.toggle('active', s === id);
       });
     }
+
+    // ── Deep-link handlers ──
+    function openAppJoin() { window.location.href = APP_JOIN_LINK; }
+    function openAppHome() { window.location.href = 'snaptip://home'; }
+
+    $('open-app-home').addEventListener('click', openAppHome);
 
     // Check if user has a stored JWT
     function getStoredToken() {
@@ -302,10 +340,11 @@ router.get('/:token', (req, res) => {
         }
         const data = await res.json();
 
-        // Populate preview
-        const typeMap = { Restaurant: '&#127860;', Hotel: '&#127976;', Transport: '&#128663;' };
-        $('biz-emoji').innerHTML = typeMap[data.business_type] || '&#9733;';
-        $('biz-name').textContent = data.business_name || 'Unknown Business';
+        // Populate preview. Initial-letter avatar mirrors the mobile app —
+        // the brand uses Ionicons/initials, never emoji.
+        const bizName = data.business_name || 'Unknown Business';
+        $('biz-initial').textContent = bizName.trim().charAt(0).toUpperCase() || 'S';
+        $('biz-name').textContent = bizName;
         $('biz-type').textContent = data.business_type || '';
 
         const sessionUser = await getValidSession();
@@ -323,19 +362,24 @@ router.get('/:token', (req, res) => {
 
       if (jwt && sessionUser) {
         // Logged in
-        acts.innerHTML = 
+        acts.innerHTML =
           '<div class="joining-as">Joining as <strong>' + (sessionUser.full_name || sessionUser.username || '') + '</strong></div>' +
-          '<button class="btn btn-primary" id="join-btn">&#10003; Join ' + (bizName || 'Team') + '</button>' +
+          '<button type="button" class="btn btn-primary" id="join-btn">&#10003; Join ' + (bizName || 'Team') + '</button>' +
           '<a href="/" class="btn btn-outline">Decline</a>';
 
         $('join-btn').addEventListener('click', handleJoin);
       } else {
-        // Not logged in
-        const redirectUrl = encodeURIComponent('/join/' + TOKEN);
-        acts.innerHTML = 
-          '<a href="/login?redirect=' + redirectUrl + '" class="btn btn-primary">Log in to Accept</a>' +
-          '<a href="/register?redirect=' + redirectUrl + '" class="btn btn-secondary">Create Account</a>' +
-          '<div class="helper">You need a SnapTip account to join the team</div>';
+        // No web session. Accepting happens in the app — hand off via deep link,
+        // with the stores as the fallback for people who don't have it yet.
+        acts.innerHTML =
+          '<button type="button" class="btn btn-primary" id="accept-in-app-btn">Accept in the App</button>' +
+          '<div class="store-row">' +
+            '<a class="btn btn-secondary" href="' + APPLE_URL + '">App Store</a>' +
+            '<a class="btn btn-secondary" href="' + PLAY_URL + '">Google Play</a>' +
+          '</div>' +
+          '<div class="helper">Don\\'t have SnapTip yet? Install the app, then open this invite link again to join.</div>';
+
+        $('accept-in-app-btn').addEventListener('click', openAppJoin);
       }
     }
 
