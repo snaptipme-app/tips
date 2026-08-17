@@ -4,7 +4,7 @@
     "name": "SnapTip",
     "slug": "snaptip",
     "owner": "hittedevv",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/snaptip_icon.png",
     "scheme": "snaptip",
@@ -24,6 +24,9 @@
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos.",
         "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification",
+          "remote-notification",
           "remote-notification"
         ],
         "NSAppTransportSecurity": {
@@ -35,9 +38,11 @@
               "NSExceptionMinimumTLSVersion": "TLSv1.2"
             }
           }
-        }
+        },
+        "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
+        "applinks:snaptip.me",
         "applinks:snaptip.me"
       ]
     },
@@ -53,18 +58,21 @@
         "backgroundColor": "#1a1a1a"
       },
       "package": "me.snaptip.app",
-      "versionCode": 1,
+      "versionCode": 6,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_IMAGES",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK",
         "android.permission.VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ],
       "intentFilters": [
         {
@@ -77,7 +85,10 @@
               "pathPrefix": "/join"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -87,7 +98,10 @@
               "host": "join"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -129,6 +143,12 @@
       "eas": {
         "projectId": "d53512d7-5a91-49c2-8a37-764e896bbcac"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d53512d7-5a91-49c2-8a37-764e896bbcac"
     }
   }
 }
