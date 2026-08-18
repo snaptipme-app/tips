@@ -24,9 +24,6 @@
         "NSCameraUsageDescription": "SnapTip needs camera access to take profile photos.",
         "NSPhotoLibraryUsageDescription": "SnapTip needs photo library access to select profile photos.",
         "UIBackgroundModes": [
-          "remote-notification",
-          "remote-notification",
-          "remote-notification",
           "remote-notification"
         ],
         "NSAppTransportSecurity": {
@@ -42,7 +39,6 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "associatedDomains": [
-        "applinks:snaptip.me",
         "applinks:snaptip.me"
       ]
     },

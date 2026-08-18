@@ -97,9 +97,6 @@ export default function BusinessDashboard() {
       ]);
       setStats(statsRes.data);
       setTransactions(txRes.data.transactions || []);
-      console.log('Business Logo URL fetched:', bizRes.data?.business?.logo_url);
-      console.log('[DEBUG logo_url]', bizRes.data?.business?.logo_url);
-      console.log('[DEBUG businessLogoSrc]', getImageSource(bizRes.data?.business?.logo_url?.trim() || ''));
       setBusiness(bizRes.data.business || null);
     } catch (e: any) {
       showToast(e.response?.data?.error || 'Failed to load dashboard.', 'error');
@@ -215,7 +212,6 @@ export default function BusinessDashboard() {
                     source={businessLogoSrc}
                     style={{ width: 46, height: 46 }}
                     resizeMode="cover"
-                    onError={(event) => console.log('Business Logo image failed:', event.nativeEvent.error)}
                   />
                 : <SnapTipLogo size={26} />
               }
