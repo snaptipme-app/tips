@@ -28,3 +28,8 @@ server/uploads/*
 # Logs
 *.log
 npm-debug.log*
+
+# Internal working docs — kept local. The handoff notes contain VPS paths,
+# the PM2 process name and the deploy sequence, and this repo is public.
+SNAPTIP_PROGRESS_HANDOFF_*.md
+SNAPTIP_PROJECT_OVERVIEW.md

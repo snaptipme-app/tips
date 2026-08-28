@@ -46,12 +46,28 @@ router.get('/:token', (req, res) => {
     .brand-lockup {
       display: inline-flex;
       align-items: center;
-      gap: 9px;
+      gap: 10px;
       line-height: 1;
     }
-    .brand-lockup svg {
+    /* Official app icon. Same file and same URL the web app's Logo component
+       uses (client/src/components/Logo.jsx), served from client/public at the
+       site root — so this mark is byte-identical to the rest of the product and
+       picks up any future asset change automatically. The black tile matches
+       Logo.jsx's treatment and fills the PNG's transparent rounded corners. */
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: #000;
+      overflow: hidden;
       display: block;
-      filter: drop-shadow(0 0 10px rgba(0, 200, 150, 0.35));
+      flex-shrink: 0;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
     }
     .brand-lockup .wordmark {
       font-size: 21px;
@@ -203,9 +219,9 @@ router.get('/:token', (req, res) => {
   <div class="container">
     <div class="brand">
       <div class="brand-lockup">
-        <svg width="27" height="27" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <path d="M13 2L4.09 12.64a1 1 0 00.78 1.62H11v5.49a.5.5 0 00.9.31L20.91 9.36a1 1 0 00-.78-1.62H13V2.25a.5.5 0 00-.9-.31L13 2z" fill="#00C896"/>
-        </svg>
+        <span class="brand-mark">
+          <img src="/snaptip_icon.png?v=black-20260524" alt="" aria-hidden="true" width="30" height="30">
+        </span>
         <span class="wordmark">SnapTip</span>
       </div>
     </div>
