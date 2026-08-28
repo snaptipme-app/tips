@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, AppState, Animated } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,6 +42,8 @@ export default function Home() {
   const router = useRouter();
   const { toast, showToast } = useToast();
   const { t, language, isRTL } = useLanguage();
+  const { joinedBusiness } = useLocalSearchParams<{ joinedBusiness?: string }>();
+  const joinToastShown = useRef(false);
   const [balance, setBalance] = useState(user?.balance ?? 0);
   const [totalEarned, setTotalEarned] = useState(0);
   const [tipCount, setTipCount] = useState(0);
@@ -66,6 +68,21 @@ export default function Home() {
 
   // Re-read pref every time screen comes into focus (user may have changed it in profile)
   useFocusEffect(useCallback(() => { loadRatingPref(); }, [loadRatingPref]));
+
+  // Post-join confirmation. The invite screen replaces into this route with the
+  // business name attached, so the toast lands here — after the dashboard has
+  // painted — rather than on the join screen that is busy unmounting. The short
+  // delay lets the navigation transition settle so the slide-in isn't clipped,
+  // and the ref plus cleared param keep it to exactly one showing.
+  useEffect(() => {
+    if (!joinedBusiness || joinToastShown.current) return;
+    joinToastShown.current = true;
+    const timer = setTimeout(() => {
+      showToast(`Successfully joined ${joinedBusiness}`, 'success');
+      router.setParams({ joinedBusiness: '' });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [joinedBusiness, showToast, router]);
 
   const cur = user?.currency || 'MAD';
   const initials = (user?.full_name || 'U').charAt(0).toUpperCase();

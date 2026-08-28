@@ -300,13 +300,14 @@ router.get('/invite-info/:token', async (req, res) => {
       return res.status(400).json({ error: 'This invitation has already been used.' });
     }
 
-    const { rows: bizRows } = await pool.query('SELECT business_name, business_type, logo_url FROM businesses WHERE id = $1', [invitation.business_id]);
+    const { rows: bizRows } = await pool.query('SELECT business_name, business_type, logo_url, logo_base64 FROM businesses WHERE id = $1', [invitation.business_id]);
     const business = bizRows[0];
 
     res.json({
       business_name: business?.business_name || 'Unknown Business',
       business_type: business?.business_type || '',
       logo_url: business?.logo_url || '',
+      logo_base64: business?.logo_base64 || '',
       email: invitation.email,
     });
   } catch (err) {
@@ -359,9 +360,29 @@ router.post('/join/:token', authMiddleware, async (req, res) => {
     console.log(`[join] token=${token.slice(0,8)}… status=${invitation.status} is_valid=${invitation.is_valid}`);
 
     // Verify employee exists
-    const { rows: joiningEmpRows } = await pool.query('SELECT id, country FROM employees WHERE id = $1', [employeeId]);
+    const { rows: joiningEmpRows } = await pool.query(
+      'SELECT id, country, account_type FROM employees WHERE id = $1',
+      [employeeId]
+    );
     if (joiningEmpRows.length === 0) {
       return res.status(400).json({ error: 'Employee account not found. Please register first.' });
+    }
+
+    // Guard: never downgrade a business owner into a team member.
+    //
+    // The UPDATE further down sets account_type = 'member' unconditionally. If an
+    // owner followed an employee invite link, that stripped their 'business'
+    // account type and left the business they own with no reachable owner — their
+    // dashboard, team and invite screens all disappear. Ownership is checked two
+    // ways because the two can drift: account_type is what the app routes on,
+    // businesses.owner_id is what actually ties a business to a person.
+    const ownedBusiness = await getOwnedBusiness(pool, employeeId);
+    if (joiningEmpRows[0].account_type === 'business' || ownedBusiness) {
+      console.log(`[join] denied: business account employee_id=${employeeId}`);
+      return res.status(403).json({
+        error: 'Action Denied: Business accounts cannot join a team as an employee. Please log out and sign in with an employee account.',
+        code: 'BUSINESS_ACCOUNT_CANNOT_JOIN',
+      });
     }
 
     // Country validation

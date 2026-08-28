@@ -93,6 +93,15 @@ export default function JoinBusiness() {
 
   // If user is already logged in, join button goes directly
   const handleLoggedInJoin = async () => {
+    // Refuse before the request: accepting as a business owner would strip the
+    // 'business' account_type and orphan the business they run. The server
+    // rejects this too — this check only spares them a pointless round trip.
+    if (user?.account_type === 'business') {
+      setError('Action Denied: Business accounts cannot join a team as an employee. Please log out and sign in with an employee account.');
+      animateStep(() => setStep('error'));
+      return;
+    }
+
     setRegLoading(true);
     try {
       const { data } = await api.post(`/business/join/${inviteToken}`);
@@ -105,6 +114,9 @@ export default function JoinBusiness() {
       const errData = e.response?.data;
       if (errData?.code === 'COUNTRY_MISMATCH') {
         setError(`This invitation is for employees from ${errData.required_country}. Your account is registered in ${errData.your_country}.`);
+        animateStep(() => setStep('error'));
+      } else if (errData?.code === 'BUSINESS_ACCOUNT_CANNOT_JOIN') {
+        setError(errData.error);
         animateStep(() => setStep('error'));
       } else {
         showToast(errData?.error || 'Failed to join.', 'error');
@@ -177,7 +189,20 @@ export default function JoinBusiness() {
     } finally { setWLoading(false); }
   };
 
-  const goToDashboard = () => router.replace('/member/dashboard');
+  // Land inside the tab navigator, not on the standalone /member/dashboard
+  // screen. That legacy route renders outside <Tabs>, so joining used to drop
+  // the user on a screen with no tab bar while the tab navigator behind it still
+  // held the pre-join account_type — the "broken until you force-quit" state.
+  // Replacing into the tabs group remounts it against the updated AuthContext.
+  //
+  // businessName rides along as a param so the toast fires on the destination
+  // screen, after the new UI has painted, rather than on this unmounting one.
+  const goToDashboard = () => {
+    router.replace({
+      pathname: '/(tabs)/home',
+      params: { joinedBusiness: businessName || '' },
+    });
+  };
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -208,8 +233,12 @@ export default function JoinBusiness() {
       <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(239,68,68,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 24, borderWidth: 2, borderColor: RED }}>
         <Ionicons name="alert-circle" size={44} color={RED} />
       </View>
-      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 10 }}>Invitation Error</Text>
-      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>{error}</Text>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 10 }}>
+        {error.startsWith('Action Denied') ? 'Action Denied' : 'Invitation Error'}
+      </Text>
+      <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+        {error.replace(/^Action Denied:\s*/, '')}
+      </Text>
       <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} style={{ height: 48, paddingHorizontal: 28, borderRadius: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' }}>Go to Home</Text>
       </TouchableOpacity>
