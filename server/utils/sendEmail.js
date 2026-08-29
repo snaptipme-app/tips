@@ -261,7 +261,7 @@ function renderLayout({ preheader, title, eyebrow, children }) {
                 This transactional email was sent by SnapTip. Please keep it for your records if it contains payment or account information.
               </p>
               <div style="height:1px;background:${COLORS.border};line-height:1px;font-size:1px;margin:18px auto;width:100%;max-width:420px;">&nbsp;</div>
-              <p style="margin:0 auto;color:${COLORS.tertiary};font-size:12px;line-height:1.55;text-align:center;max-width:420px;">© 2026 SnapTip. All rights reserved.</p>
+              <p style="margin:0 auto;color:${COLORS.tertiary};font-size:12px;line-height:1.55;text-align:center;max-width:420px;">ï¿½ 2026 SnapTip. All rights reserved.</p>
             </td>
           </tr>
         </table>
@@ -319,9 +319,22 @@ function buildPaymentConfirmationEmail({
   date,
   paymentMethod,
   receiptUrl,
+  processingFee = 0,
+  totalAmount = null,
 } = {}) {
   const safeEmployee = employeeName ? escapeHtml(employeeName) : 'your service professional';
   const targetUrl = absoluteUrl(receiptUrl || BRAND.url);
+
+  /* The guest covers Stripe's processing fee, so the card statement reads
+     higher than the tip. Itemise it here or the receipt won't reconcile. */
+  const numericFee = Number(processingFee || 0);
+  const chargedRows = numericFee > 0
+    ? [
+      ['Tip', formatMoney(amount, currency)],
+      ['Processing fee', formatMoney(numericFee, currency)],
+      ['Total charged', formatMoney(totalAmount ?? (Number(amount || 0) + numericFee), currency)],
+    ]
+    : [];
 
   return renderLayout({
     preheader: `Your ${formatMoney(amount, currency)} SnapTip payment was successful.`,
@@ -334,6 +347,7 @@ function buildPaymentConfirmationEmail({
       ${summaryCard([
         ['Employee', safeEmployee],
         ['Business', businessName ? escapeHtml(businessName) : 'SnapTip partner'],
+        ...chargedRows,
         ['Transaction ID', transactionId ? `<span style="font-family:'SF Mono',Consolas,Menlo,monospace;font-size:12px;">${escapeHtml(transactionId)}</span>` : 'Pending'],
         ['Payment date', escapeHtml(formatDate(date))],
         ['Payment method', paymentMethod ? escapeHtml(paymentMethod) : 'Card or wallet'],

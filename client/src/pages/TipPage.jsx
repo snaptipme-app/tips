@@ -40,12 +40,6 @@ const ZERO_DECIMAL_CURRENCIES = new Set([
   'BIF','CLP','DJF','GNF','ISK','JPY','KMF','KRW','MGA','PYG',
   'RWF','UGX','VND','VUV','XAF','XOF','XPF',
 ]);
-function toStripeMinorUnits(amount, currency) {
-  const code = (currency || 'USD').toUpperCase();
-  if (ZERO_DECIMAL_CURRENCIES.has(code)) return Math.max(1, Math.round(Number(amount) || 0));
-  return Math.max(1, Math.round((Number(amount) || 0) * 100));
-}
-
 const EXCHANGE_RATE_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
 const EXCHANGE_RATE_CACHE_TTL_MS = 60 * 60 * 1000;
 const FALLBACK_USD_RATES = {
@@ -101,6 +95,67 @@ function getUsdRate(currency, rates) {
   return Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
+/* ─── Customer-covers-fees ───────────────────────────────────────────────
+   Mirrors server/lib/stripeFees.js, which is the source of truth — the server
+   recomputes this independently and charges its own figure. This copy exists
+   only so the summary and the wallet sheet can show the total before the
+   PaymentIntent is created. Keep the two tables in sync.               */
+const STRIPE_FEE_SCHEDULE = {
+  USD: { percent: 0.029,  fixed: 0.30 },
+  CAD: { percent: 0.029,  fixed: 0.30 },
+  GBP: { percent: 0.015,  fixed: 0.20 },
+  EUR: { percent: 0.015,  fixed: 0.25 },
+  AUD: { percent: 0.0175, fixed: 0.30 },
+  NZD: { percent: 0.027,  fixed: 0.30 },
+  SGD: { percent: 0.034,  fixed: 0.50 },
+  HKD: { percent: 0.034,  fixed: 2.35 },
+  JPY: { percent: 0.036,  fixed: 0    },
+  CHF: { percent: 0.029,  fixed: 0.30 },
+  SEK: { percent: 0.014,  fixed: 1.80 },
+  DKK: { percent: 0.014,  fixed: 1.80 },
+  NOK: { percent: 0.014,  fixed: 2.00 },
+  PLN: { percent: 0.014,  fixed: 1.00 },
+  MXN: { percent: 0.036,  fixed: 3.00 },
+  BRL: { percent: 0.0399, fixed: 0.39 },
+  INR: { percent: 0.02,   fixed: 2.00 },
+  MYR: { percent: 0.03,   fixed: 1.00 },
+  THB: { percent: 0.0365, fixed: 11.00 },
+  AED: { percent: 0.029,  fixed: 1.00 },
+};
+const FALLBACK_FEE = { percent: 0.029, fixed: 0.30 };
+
+/* Mirrors DEFAULT_CROSS_BORDER_PERCENT in server/lib/stripeFees.js — the extra
+   Stripe charges for foreign cards and currency conversion, which is the norm
+   for SnapTip's tourist guests. If the server's STRIPE_CROSS_BORDER_PERCENT is
+   overridden, set VITE_STRIPE_CROSS_BORDER_PERCENT to match, or the total shown
+   here will disagree with the amount actually charged. */
+const CROSS_BORDER_PERCENT = (() => {
+  const raw = String(import.meta.env.VITE_STRIPE_CROSS_BORDER_PERCENT ?? '').trim();
+  const parsed = raw === '' ? 2.5 : Number(raw);
+  return (Number.isFinite(parsed) && parsed >= 0 && parsed < 50 ? parsed : 2.5) / 100;
+})();
+
+function getMinorUnitFactor(currency) {
+  return ZERO_DECIMAL_CURRENCIES.has(String(currency || 'USD').toUpperCase()) ? 1 : 100;
+}
+
+/* total = (tip + fixed) / (1 - percent), in integer minor units, rounded up. */
+function grossUpForFees(tipMajorAmount, currency) {
+  const code = String(currency || 'USD').toUpperCase();
+  const schedule = STRIPE_FEE_SCHEDULE[code] || FALLBACK_FEE;
+  const percent = schedule.percent + CROSS_BORDER_PERCENT;
+  const fixed = schedule.fixed;
+  const minorFactor = getMinorUnitFactor(code);
+
+  const tipMinor = Math.round((Number(tipMajorAmount) || 0) * minorFactor);
+  if (tipMinor <= 0 || percent >= 1) return null;
+
+  const fixedMinor = Math.round(fixed * minorFactor);
+  const totalMinor = Math.ceil((tipMinor + fixedMinor) / (1 - percent));
+
+  return { tipMinor, totalMinor, processingFeeMinor: totalMinor - tipMinor, minorFactor };
+}
+
 function getStripeProcessingPayment({ amount, currency, employee, usdRates }) {
   const originalAmount = Number(amount) || 0;
   if (originalAmount <= 0) return null;
@@ -110,10 +165,24 @@ function getStripeProcessingPayment({ amount, currency, employee, usdRates }) {
   const stripeCurrency = 'USD';
   const stripeMajorAmount = originalAmount / exchangeRate;
 
+  // The guest covers Stripe's fee so the employee's balance gets the full tip.
+  const charge = grossUpForFees(stripeMajorAmount, stripeCurrency);
+  if (!charge) return null;
+
+  // Converted back for display, rounded up so the summary never reads lower
+  // than what is actually charged.
+  const localFactor = getMinorUnitFactor(originalCurrency);
+  const processingFeeLocal =
+    Math.ceil((charge.processingFeeMinor / charge.minorFactor) * exchangeRate * localFactor) / localFactor;
+
   return {
     stripeCurrency,
     stripeMajorAmount,
-    stripeAmountMinor: toStripeMinorUnits(stripeMajorAmount, stripeCurrency),
+    stripeAmountMinor: charge.totalMinor,
+    tipAmountLocal: originalAmount,
+    processingFeeLocal,
+    totalAmountLocal: originalAmount + processingFeeLocal,
+    currency: originalCurrency,
   };
 }
 
@@ -458,6 +527,61 @@ class WalletSectionBoundary extends Component {
   }
 }
 
+/* ─── Payment summary — itemises what the guest is actually charged ────
+   The guest covers Stripe's processing fee so the employee receives the full
+   tip, which means the card statement reads higher than the amount they
+   picked. Showing the split up front is the whole point.
+   ──────────────────────────────────────────────────────────────────── */
+function formatSummaryAmount(value, currency) {
+  const code = String(currency || 'USD').toUpperCase();
+  const decimals = ZERO_DECIMAL_CURRENCIES.has(code) ? 0 : 2;
+  return `${Number(value || 0).toFixed(decimals)} ${code}`;
+}
+
+function PaymentSummary({ breakdown, t }) {
+  if (!breakdown || !(breakdown.processingFeeLocal > 0)) return null;
+
+  const rowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.62)',
+  };
+
+  return (
+    <div style={{
+      background: '#111',
+      borderRadius: 14,
+      border: '1px solid rgba(255,255,255,0.08)',
+      padding: '14px 16px',
+      marginBottom: 14,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 9,
+    }}>
+      <div style={rowStyle}>
+        <span>{t.tipAmountLabel || 'Tip'}</span>
+        <span style={{ color: '#fff' }}>{formatSummaryAmount(breakdown.tipAmountLocal, breakdown.currency)}</span>
+      </div>
+      <div style={rowStyle}>
+        <span>{t.processingFeeLabel || 'Processing fee'}</span>
+        <span style={{ color: '#fff' }}>{formatSummaryAmount(breakdown.processingFeeLocal, breakdown.currency)}</span>
+      </div>
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '1px 0' }}/>
+      <div style={{ ...rowStyle, fontSize: 15, fontWeight: 700, color: '#fff' }}>
+        <span>{t.totalLabel || 'Total'}</span>
+        <span style={{ color: '#00ffcc' }}>{formatSummaryAmount(breakdown.totalAmountLocal, breakdown.currency)}</span>
+      </div>
+      <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.45, color: 'rgba(255,255,255,0.42)', fontWeight: 500 }}>
+        {t.processingFeeNote || 'Covers card processing, so your full tip reaches the person who served you.'}
+      </p>
+    </div>
+  );
+}
+
 /* ─── PAYMENT SECTION (inside <Elements> with deferred PI mode) ────────
    Hosts:
      - ExpressCheckoutElement (Apple Pay / Google Pay — real when available)
@@ -466,7 +590,7 @@ class WalletSectionBoundary extends Component {
      - the big teal Pay button
    ──────────────────────────────────────────────────────────────────── */
 function PaymentSection({
-  amount, currency, employeeId, rating,
+  amount, currency, employeeId, rating, breakdown,
   t, onSuccess, onError, sending, onProcessing,
   onWalletsDetected, walletsAvailable,
 }) {
@@ -541,6 +665,9 @@ function PaymentSection({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* What the guest is actually charged, itemised before any pay button */}
+      <PaymentSummary breakdown={breakdown} t={t}/>
 
       {/* Express Checkout — real Apple Pay / Google Pay when browser/device supports */}
       {walletsAvailable !== false && (
@@ -683,7 +810,11 @@ function PaymentSection({
             {sending ? (
               <><div style={{ width: 18, height: 18, border: '2px solid #000', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>{t.processing || 'Processing…'}</>
             ) : (
-              `${t.payButton || 'Pay'} ${amount} ${currency}`
+              `${t.payButton || 'Pay'} ${
+                breakdown?.totalAmountLocal > 0
+                  ? formatSummaryAmount(breakdown.totalAmountLocal, breakdown.currency)
+                  : `${amount} ${currency}`
+              }`
             )}
           </button>
         </>
@@ -1330,6 +1461,7 @@ export default function TipPage() {
                         currency={currency}
                         employeeId={employee.id}
                         rating={rating}
+                        breakdown={stripePayment}
                         t={t}
                         sending={sending}
                         onProcessing={setSending}

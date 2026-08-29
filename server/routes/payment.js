@@ -8,9 +8,12 @@ const {
   getEffectivePayoutMethod,
 } = require('../lib/countryPayoutConfig');
 const {
-  toStripeMinorUnit,
   fromStripeMinorUnit,
 } = require('../lib/stripeCurrency');
+const {
+  calculateCustomerCoveredCharge,
+  getMinorUnitFactor,
+} = require('../lib/stripeFees');
 const { getStripeSettlementDetails } = require('../lib/stripeSettlementLedger');
 const {
   convertLocalAmountToUsd,
@@ -23,6 +26,20 @@ const DEMO_EMPLOYEE_EMAIL = 'snaptip.me@gmail.com';
 function parseRating(value) {
   const rating = Number(value);
   return Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
+}
+
+/**
+ * The guest picks a tip in the employee's local currency but is charged in USD,
+ * so the processing fee has to be converted back before we can show it. Rounded
+ * UP in the local minor unit, so the total the guest is shown never reads lower
+ * than what Stripe actually collects.
+ */
+function toLocalDisplayAmount(usdAmount, exchangeRate, currency) {
+  const minorFactor = getMinorUnitFactor(currency);
+  const rate = Number(exchangeRate);
+  const amount = Number(usdAmount);
+  if (!Number.isFinite(rate) || !Number.isFinite(amount) || rate <= 0) return 0;
+  return Math.ceil(amount * rate * minorFactor) / minorFactor;
 }
 
 function parseStripeEventAccount(rawBody) {
@@ -148,21 +165,52 @@ router.post('/create-intent', async (req, res) => {
     const payoutMethod = storedPayoutMethod || getEffectivePayoutMethod(payoutConfig);
     const stripePaymentCurrency = 'USD';
     const conversion = await convertLocalAmountToUsd(originalAmount, originalCurrency);
-    const stripePaymentMajorAmount = conversion.usdAmount;
-    const stripePaymentAmount = toStripeMinorUnit(stripePaymentMajorAmount, stripePaymentCurrency);
     const exchangeRateUsed = conversion.exchangeRate;
-    const usdAmount = fromStripeMinorUnit(stripePaymentAmount, stripePaymentCurrency);
+
+    /* Customer-covers-fees: gross the charge up so that once Stripe takes its
+       cut, the NET amount SnapTip receives equals the tip the guest chose. Fee
+       terms are looked up by the currency we actually charge in (USD), not the
+       currency displayed to the guest. See lib/stripeFees.js. */
+    const charge = calculateCustomerCoveredCharge({
+      tipAmount: conversion.usdAmount,
+      currency: stripePaymentCurrency,
+    });
+
+    if (!charge) {
+      console.warn(`[payment/create-intent:${requestId}] could not price charge`, {
+        originalAmount,
+        originalCurrency,
+        usdAmount: conversion.usdAmount,
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'amount is too small for this currency.',
+      });
+    }
+
+    const stripePaymentAmount = charge.totalMinor;
+    // Ledger value stays the TIP, not the grossed-up total: the fee is Stripe's,
+    // never SnapTip's revenue and never the employee's.
+    const usdAmount = charge.tipAmount;
+    const processingFeeUsd = charge.processingFee;
+    const processingFeeLocal = toLocalDisplayAmount(processingFeeUsd, exchangeRateUsed, originalCurrency);
+    /* Derived as tip + fee, NOT by converting the charged total back: the tip
+       is already rounded to USD cents, so a round trip double-rounds and can
+       display a total a cent under the tip and fee the guest was just shown. */
+    const totalChargedLocal = originalAmount + processingFeeLocal;
 
     console.log(
-      `Converted ${originalAmount} ${originalCurrency} to ${stripePaymentAmount} USD cents using rate ${exchangeRateUsed}`
+      `Converted ${originalAmount} ${originalCurrency} to ${charge.tipMinor} USD cents using rate ${exchangeRateUsed};`
+      + ` charging ${stripePaymentAmount} cents after a ${charge.processingFeeMinor}-cent processing fee`
     );
 
-    if (!stripePaymentAmount || stripePaymentAmount < 1) {
-      console.warn(`[payment/create-intent:${requestId}] amount too small`, {
+    if (!charge.meetsMinimum) {
+      console.warn(`[payment/create-intent:${requestId}] below Stripe minimum charge`, {
         originalAmount,
         originalCurrency,
         stripePaymentCurrency,
         stripePaymentAmount,
+        minimumChargeMinor: charge.minimumChargeMinor,
       });
       return res.status(400).json({
         success: false,
@@ -171,10 +219,12 @@ router.post('/create-intent', async (req, res) => {
     }
 
     const safeRating = parseRating(rating);
+    const employeeLabel = employee.full_name || employee.username || `employee ${employee.id}`;
     console.log(`[payment/create-intent:${requestId}] creating Stripe PaymentIntent`, {
       employeeId: employee.id,
       stripePaymentAmount,
       stripePaymentCurrency,
+      processingFeeUsd,
       originalAmount,
       originalCurrency,
       payoutMethod,
@@ -185,7 +235,9 @@ router.post('/create-intent', async (req, res) => {
       amount: stripePaymentAmount,
       currency: 'usd',
       automatic_payment_methods: { enabled: true },
-      description: `SnapTip for ${employee.full_name || employee.username || `employee ${employee.id}`}`,
+      // Itemised so the breakdown also shows on the Stripe receipt and dashboard.
+      description: `SnapTip for ${employeeLabel}`
+        + ` — tip ${usdAmount.toFixed(2)} USD + processing fee ${processingFeeUsd.toFixed(2)} USD`,
       receipt_email: tourist_email || undefined,
       metadata: {
         employee_id: String(employee.id),
@@ -200,6 +252,14 @@ router.post('/create-intent', async (req, res) => {
         exchange_rate_used: String(exchangeRateUsed),
         usd_amount: String(usdAmount),
         employee_balance_currency: originalCurrency,
+        // Customer-covers-fees breakdown. The webhook credits original_amount,
+        // so these are for reconciliation and support, never for crediting.
+        fee_model: 'customer_covers',
+        stripe_tip_amount: String(charge.tipMinor),
+        processing_fee_amount: String(charge.processingFeeMinor),
+        processing_fee_usd: String(processingFeeUsd),
+        processing_fee_local: String(processingFeeLocal),
+        total_charged_local: String(totalChargedLocal),
         payout_method: payoutMethod,
         stripe_amount_usd: stripePaymentCurrency === 'USD'
           ? String(usdAmount)
@@ -225,6 +285,7 @@ router.post('/create-intent', async (req, res) => {
         currency: originalCurrency,
         stripe_payment_amount: stripePaymentAmount,
         stripe_payment_currency: stripePaymentCurrency,
+        processing_fee_usd: processingFeeUsd,
         exchange_rate_used: exchangeRateUsed,
         usd_amount: usdAmount,
         stripe_payment_intent: paymentIntent.id,
@@ -241,6 +302,15 @@ router.post('/create-intent', async (req, res) => {
       stripePaymentCurrency,
       exchangeRateUsed,
       usdAmount,
+      // What the guest is actually charged, itemised for the payment summary.
+      breakdown: {
+        tipAmount: originalAmount,
+        processingFee: processingFeeLocal,
+        totalAmount: totalChargedLocal,
+        currency: originalCurrency,
+        chargedAmount: charge.totalAmount,
+        chargedCurrency: stripePaymentCurrency,
+      },
     });
   } catch (err) {
     const stripeMessage = err?.raw?.message || err?.message;
@@ -403,12 +473,16 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       const stripePaymentCurrency = normalizeCurrency(metadata.stripe_payment_currency || paymentIntent.currency || 'USD');
       const stripePaymentAmount = Number(paymentIntent.amount_received || paymentIntent.amount || metadata.stripe_payment_amount || 0);
       const metadataUsdAmount = Number(metadata.usd_amount || metadata.stripe_amount_usd);
-      const usdAmount = stripePaymentCurrency === 'USD'
-        ? fromStripeMinorUnit(stripePaymentAmount, stripePaymentCurrency)
-        : Number.isFinite(metadataUsdAmount) && metadataUsdAmount > 0
-          ? metadataUsdAmount
+      /* Prefer the metadata figure: under customer-covers-fees the charged
+         amount is the tip PLUS Stripe's fee, and the ledger tracks the tip. */
+      const usdAmount = Number.isFinite(metadataUsdAmount) && metadataUsdAmount > 0
+        ? metadataUsdAmount
+        : stripePaymentCurrency === 'USD'
+          ? fromStripeMinorUnit(stripePaymentAmount, stripePaymentCurrency)
           : null;
       const exchangeRateUsed = Number(metadata.exchange_rate_used || 1);
+      const processingFeeLocal = Number(metadata.processing_fee_local || 0);
+      const totalChargedLocal = Number(metadata.total_charged_local || 0);
 
       if (!employeeId || !amount || amount <= 0) {
         console.error('[payment/webhook] Missing employee_id or amount metadata:', paymentIntent.id);
@@ -465,6 +539,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             settlementStatus: settlementDetails.settlementStatus,
             availableOn: settlementDetails.availableOn,
             amountAvailableForEmployee: amount,
+            processingFee: processingFeeLocal,
+            totalCharged: totalChargedLocal,
           }
         );
 

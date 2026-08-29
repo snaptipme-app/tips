@@ -132,6 +132,13 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
       : 'available';
   const amountAvailableForEmployee = options.amountAvailableForEmployee || grossAmount;
   const isDemo = options.isDemo === true || options.isDemo === 1 ? 1 : 0;
+  /* Stripe's fee, paid by the guest on top of the tip. Never touches the
+     employee's balance or SnapTip's margin - it exists only so the guest's
+     receipt matches their card statement. */
+  const guestProcessingFee = Number(options.processingFee) > 0 ? Number(options.processingFee) : 0;
+  const guestTotalCharged = Number(options.totalCharged) > 0
+    ? Number(options.totalCharged)
+    : Number(grossAmount) + guestProcessingFee;
 
   // 1. Insert gross payment record. SnapTip commission is calculated later, at withdrawal time.
   const { rows: paymentRows } = await pool.query(
@@ -262,6 +269,8 @@ async function processSuccessfulPayment(pool, employeeId, amount, method, transa
           businessName: emp?.business_name || null,
           transactionId: transactionId || (payment?.id ? `SNAP-${payment.id}` : null),
           date: payment?.created_at || new Date(),
+          processingFee: guestProcessingFee,
+          totalAmount: guestTotalCharged,
         })
       ).catch((err) => console.error('[email] Payment-confirmation email failed:', err.message));
     }
